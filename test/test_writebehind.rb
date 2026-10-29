@@ -2,10 +2,7 @@ require 'test_helper'
 require 'logger'
 require 'stringio'
 require 'roma/write_behind'
-require 'roma/client/rclient'
 require 'roma/messaging/con_pool'
-require 'roma/client/plugin/alist'
-require 'roma/client/plugin/map'
 
 module FileWriterTests
   # making and writing test
@@ -202,9 +199,7 @@ class WriteBehindTest < Test::Unit::TestCase
 
   def setup
     start_roma
-    @rc = Roma::Client::RomaClient.new(%w(localhost_11211 localhost_11212),
-                                       [Roma::Client::Plugin::Alist,
-                                        Roma::Client::Plugin::Map])
+    @rc = RomaTestClient.new(%w(localhost_11211 localhost_11212))
     system('rm -rf wb')
   end
 

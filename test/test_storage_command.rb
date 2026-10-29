@@ -1,20 +1,14 @@
 require 'test_helper'
 
-require 'roma/client/rclient'
 require 'roma/messaging/con_pool'
 require 'roma/config'
 
-Roma::Client::RomaClient.class_eval{
-  def init_sync_routing_proc
-  end
-}
-
-module RClientTests
+module StorageCommandTests
   include RomaTestUtils
 
   def setup
     start_roma
-    @rc=Roma::Client::RomaClient.new(["localhost_11211","localhost_11212"])
+    @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
   end
 
   def teardown
@@ -180,27 +174,18 @@ module RClientTests
   end
 end
 
-class RClientTest < Test::Unit::TestCase
+class StorageCommandTest < Test::Unit::TestCase
   self.test_order = :defined
-  include RClientTests
+  include StorageCommandTests
 end
 
-class RClientTestForceForward < Test::Unit::TestCase
+class StorageCommandTestForceForward < Test::Unit::TestCase
   self.test_order = :defined
-  include RClientTests
+  include StorageCommandTests
 
   def setup
     super
-    @rc.rttable.instance_eval{
-      undef search_node
-
-      def search_node(key); search_node2(key); end
-
-      def search_node2(key)
-        d = Digest::SHA1.hexdigest(key).hex % @hbits
-        @rd.v_idx[d & @search_mask][1]
-      end
-    }
+    @rc.rttable.force_forward = true
   end
 
 end

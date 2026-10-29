@@ -4,20 +4,7 @@ require 'rbconfig'
 require 'roma/config'
 require 'roma/messaging/con_pool'
 require 'roma/logging/rlogger'
-require 'roma/client/rclient'
-require 'roma/client/version'
-require 'roma/client/client_pool'
-
-Roma::Client::RomaClient.class_eval do
-  def init_sync_routing_proc
-  end
-
-  # roma-client 0.4.5 calls Kernel#timeout, which no longer exists.
-  # TODO: Remove this after roma-client is fixed.
-  def timeout(sec, &block)
-    Timeout.timeout(sec, &block)
-  end
-end
+require 'roma_test_client'
 
 module RomaTestUtils
   DEFAULT_CONFIG = 'config4test.rb'
@@ -84,9 +71,7 @@ module RomaTestUtils
   end
 
   def get_client
-    client_pool = Roma::Client::ClientPool.instance
-    client_pool.servers = DEFAULT_NODES
-    client_pool.client
+    RomaTestClient.new(DEFAULT_NODES)
   end
 
   def wait_join(node)
@@ -137,20 +122,20 @@ module RomaTestUtils
   def stop_roma
     balse_message = %w(balse yes)
     send_message(messages: balse_message)
-    Roma::Client::ConPool.instance.close_all
+    RomaTestClient.close_all
     Roma::Messaging::ConPool.instance.close_all
   end
 
   def stop_roma_replica
     balse_message = %w(balse yes)
     send_message(messages: balse_message, node: REPLICA_NODES[0])
-    Roma::Client::ConPool.instance.close_all
+    RomaTestClient.close_all
     Roma::Messaging::ConPool.instance.close_all
   end
 
   def stop_roma_node(node)
     send_message(messages: 'rbalse', node: node)
-    Roma::Client::ConPool.instance.close_all
+    RomaTestClient.close_all
     Roma::Messaging::ConPool.instance.close_all
   end
 

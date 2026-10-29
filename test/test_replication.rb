@@ -1,16 +1,15 @@
 require 'test_helper'
 require 'logger'
 require 'roma/write_behind'
-require 'roma/client/rclient'
 require 'roma/messaging/con_pool'
 
 module StreamWriterTests
   def setup
     start_roma
-    @rc = Roma::Client::RomaClient.new(%w(localhost_11211 localhost_11212))
+    @rc = RomaTestClient.new(%w(localhost_11211 localhost_11212))
 
     start_roma_replica
-    @rc_replica = Roma::Client::RomaClient.new(%w(localhost_21211 localhost_21212))
+    @rc_replica = RomaTestClient.new(%w(localhost_21211 localhost_21212))
   end
 
   def teardown

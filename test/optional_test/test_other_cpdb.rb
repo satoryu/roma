@@ -1,5 +1,4 @@
 require 'test_helper'
-require 'roma/client/rclient'
 require 'roma/messaging/con_pool'
 require 'roma/config'
 require 'pathname'
@@ -21,7 +20,7 @@ if ENV['OPTIONAL']
   class DbmTest < CpdbBaseTest
     def setup
       start_roma 'cpdbtest/config4cpdb_dbm.rb'
-      @rc=Roma::Client::RomaClient.new(["localhost_11211","localhost_11212"])
+      @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
       @sock = TCPSocket.new("localhost", 11211)
     end
     def test_st_class_dbm
@@ -35,7 +34,7 @@ if ENV['OPTIONAL']
   class Sqlite3Test < CpdbBaseTest
     def setup
       start_roma 'cpdbtest/config4cpdb_sqlite3.rb'
-      @rc=Roma::Client::RomaClient.new(["localhost_11211","localhost_11212"])
+      @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
       @sock = TCPSocket.new("localhost", 11211)
     end
     def test_st_class_sqlite3

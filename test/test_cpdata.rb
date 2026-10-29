@@ -1,6 +1,5 @@
 require 'test_helper'
 
-require 'roma/client/rclient'
 require 'roma/messaging/con_pool'
 
 TCP_SERVER_PORT = 11_219
@@ -88,7 +87,7 @@ class CopyDataTest < Test::Unit::TestCase
   def setup
     @th = Thread.new { receive_command_server }
     start_roma
-    @rc = Roma::Client::RomaClient.new(%w(localhost_11211 localhost_11212))
+    @rc = RomaTestClient.new(%w(localhost_11211 localhost_11212))
   end
 
   def teardown
