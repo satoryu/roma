@@ -1,4 +1,3 @@
-require 'shell'
 require 'pathname'
 require 'fileutils'
 require 'rbconfig'

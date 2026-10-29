@@ -33,9 +33,6 @@ Gem::Specification.new do |s|
   s.bindir = "bin"
   s.executables = Dir.entries('bin').reject{ |d| d =~ /^\.+$/ || d =~ /^sample_/ }
 
-  s.default_executable = "romad"
-
-  s.has_rdoc = true
   s.rdoc_options = [
                 '--line-numbers',
                 '--inline-source',
@@ -44,9 +41,12 @@ Gem::Specification.new do |s|
                ]
   s.extra_rdoc_files = ["README.md", "CHANGELOG.md"]
 
-  s.add_dependency 'eventmachine', '~> 1.0.0'
-  s.add_dependency 'jaro_winkler', '~> 1.3.5'
+  s.add_dependency 'eventmachine', '~> 1.2.7'
+  s.add_dependency 'jaro_winkler', '~> 1.7'
   s.add_dependency 'roma-storage', '~> 0.1.0'
+  s.add_dependency 'logger'
+  s.add_dependency 'nkf'
+  s.add_dependency 'readline'
   #s.add_dependency 'levenshtein', '~> 0.2.2'
 
   #s.add_development_dependency 'tokyocabinet', '~> 1.29.1' # we prepared customized gem(1.31a) for ruby2.1. Please use this.
@@ -54,4 +54,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'test-unit'
   s.add_development_dependency 'rake'
   s.add_development_dependency 'roma-client'
+  s.add_development_dependency 'irb'
 end
