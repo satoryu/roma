@@ -2,6 +2,7 @@
 # File: con_pool.rb
 #
 require 'singleton'
+require 'socket'
 require 'eventmachine'
 require 'roma/logging/rlogger'
 require 'roma/dns_cache'
@@ -117,6 +118,9 @@ module Roma
       def create_connection(ap)
         host,port = ap.split(/[:_]/)
         addr = DNSCache.instance.resolve_name(host)
+        # romad listens on IPv4 only (0.0.0.0), so resolve to an IPv4 address.
+        # EventMachine 1.2 may pick IPv6 (e.g. ::1 for localhost) otherwise.
+        addr = Addrinfo.getaddrinfo(addr, port, :INET, :STREAM).first.ip_address
         con = EventMachine::connect(addr, port, Roma::Event::EMConnection)
         con.ap = ap
         con

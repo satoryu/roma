@@ -11,6 +11,12 @@ require 'roma/client/client_pool'
 Roma::Client::RomaClient.class_eval do
   def init_sync_routing_proc
   end
+
+  # roma-client 0.4.5 calls Kernel#timeout, which no longer exists.
+  # TODO: Remove this after roma-client is fixed.
+  def timeout(sec, &block)
+    Timeout.timeout(sec, &block)
+  end
 end
 
 module RomaTestUtils
