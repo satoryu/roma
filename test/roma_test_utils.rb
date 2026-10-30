@@ -27,28 +27,28 @@ module RomaTestUtils
   def start_roma(conf = DEFAULT_CONFIG, div_bits: 3, replication_in_host: true)
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_NODES[0][0..-2]}?*"))
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_IP}_#{DEFAULT_PORTS[0][0..-2]}?*"))
-    sleep 0.1
 
     system("#{ruby_path} #{mkroute_path} #{DEFAULT_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
-    sleep 0.2
 
-    DEFAULT_NODES.each do |node|
-      do_command_romad(node, conf, replication_in_host)
+    # Boot the nodes at the same time; each command returns once romad daemonizes.
+    pids = DEFAULT_NODES.map do |node|
+      do_command_romad(node, conf, replication_in_host, wait: false)
     end
+    pids.each { |pid| Process.wait(pid) }
     wait_until_up(DEFAULT_NODES)
   end
 
   def start_roma_replica(conf = DEFAULT_CONFIG, div_bits: 3, replication_in_host: true)
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{REPLICA_NODES[0][0..-2]}?*"))
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_IP}_#{REPLICA_PORTS[0][0..-2]}?*"))
-    sleep 0.1
 
     system("#{ruby_path} #{mkroute_path} #{REPLICA_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
-    sleep 0.2
 
-    REPLICA_NODES.each do |node|
-      do_command_romad(node, conf, replication_in_host)
+    # Boot the nodes at the same time; each command returns once romad daemonizes.
+    pids = REPLICA_NODES.map do |node|
+      do_command_romad(node, conf, replication_in_host, wait: false)
     end
+    pids.each { |pid| Process.wait(pid) }
     wait_until_up(REPLICA_NODES)
   end
 
@@ -56,7 +56,8 @@ module RomaTestUtils
     do_command_romad(node, conf, replication_in_host, true)
   end
 
-  def do_command_romad(node, conf, replication_in_host = true, is_join = false)
+  # Runs romad, or with wait: false starts it and returns the pid.
+  def do_command_romad(node, conf, replication_in_host = true, is_join = false, wait: true)
     host, port = node.split('_')
     romad_command = [
       ruby_path, romad_path, host,
@@ -68,6 +69,7 @@ module RomaTestUtils
     romad_command << "-j #{DEFAULT_NODES[0]}" if is_join
     romad_command << ">> #{SHELL_LOG} 2>&1"
 
+    return Process.spawn(romad_command.join(' ')) unless wait
     system(romad_command.join(' '))
   end
 

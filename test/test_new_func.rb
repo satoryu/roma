@@ -59,7 +59,6 @@ class NewFuncTest < Test::Unit::TestCase
 
   def test_stat_secondary
     @sock.write("stat secondary\r\n")
-    sleep 1
     column, param = @sock.gets.chomp.split("\s")
     assert_equal("routing.secondary1", column)
     assert_equal(true, param.to_i > 0)
@@ -378,9 +377,18 @@ class NewFuncChangingClusterTest < Test::Unit::TestCase
     @sock.write("switch_failover on\r\n")
     assert_equal('{"localhost_11212" => "ENABLED", "localhost_11211" => "ENABLED"}', @sock.gets.chomp)
 
+    # Fail over at the first failed check (once a second) instead of the fifth.
+    @sock.write("set_threshold_for_failover 1\r\n")
+    @sock.gets
     stop_roma_node('localhost_11212')
-    sleep 5 # wait failover
 
+    # wait failover
+    wait_for('the leave event') do
+      @sock.write("stat routing.event$\r\n")
+      line = @sock.gets.chomp
+      @sock.gets # END
+      line != 'routing.event []'
+    end
     @sock.write("stat routing.event$\r\n")
     assert_match(/routing\.event \["[-T\d:\.]+ leave localhost_11212"\]/, @sock.gets.chomp)
     assert_equal('END', @sock.gets.chomp)
