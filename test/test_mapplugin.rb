@@ -1,6 +1,9 @@
 require 'test_helper'
 require 'roma/plugin/plugin_map'
 
+# End-to-end tests for the map plugin: they go through romad, including
+# forwarding to the node that owns the key (MapPluginTestForceForward).
+# Each command's behavior is covered by test_mapplugin_command.rb.
 module MapPluginTests
   include RomaTestUtils
 
@@ -21,13 +24,6 @@ module MapPluginTests
       assert_equal 'STORED', @rc.map_set('key1', k, v)
       assert_equal v, @rc.map_get('key1', k)
     end    
-  end
-
-  def test_map_set_expt
-    assert_equal 'STORED', @rc.map_set('key1','mapkey1','value1', 1)
-    assert_equal 'value1', @rc.map_get('key1','mapkey1')
-    sleep 2
-    assert_nil @rc.map_get('key1','mapkey1')
   end
 
   def test_map_set
@@ -59,13 +55,6 @@ module MapPluginTests
     assert_equal 0, @rc.map_size('key1')
   end
 
-  def test_map_key?
-    assert_equal 'NOT_FOUND', @rc.map_key?('key1', 'key1')
-    mk_data
-    assert !@rc.map_key?('key1', 'key1')
-    assert @rc.map_key?('key1', 'mapkey1')
-  end
-
   def test_map_value?
     assert_equal 'NOT_FOUND', @rc.map_value?('key1', 'value1')
     mk_data
@@ -79,26 +68,6 @@ module MapPluginTests
     v = [10]
     10.times{|i| v << "mapkey#{i}" }
     assert_equal v, @rc.map_keys('key1')
-  end
-
-  def test_map_values
-    assert_nil @rc.map_values('key1')
-    mk_data
-    v = [10]
-    10.times{|i| v << "value#{i}" }
-    assert_equal v, @rc.map_values('key1')
-  end
-
-  def test_map_to_s
-    assert !@rc.map_to_s('key1')
-    mk_data
-    h = {}
-    10.times do |i|
-      v = "value#{i}"
-      k = "mapkey#{i}"
-      h[k] = v
-    end    
-    assert_equal h, eval(@rc.map_to_s('key1'))
   end
 
 end # MapPluginTests
@@ -117,5 +86,4 @@ class MapPluginTestForceForward < Test::Unit::TestCase
     @rc.rttable.force_forward = true
   end  
 end
-
 
