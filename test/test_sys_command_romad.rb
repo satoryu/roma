@@ -130,11 +130,7 @@ class SysCommandRomadTest < Test::Unit::TestCase
   def test_switch_replication_with_invalid_arguments(data)
     args, reply = data
     assert_equal reply, @conn.request("switch_replication #{args}")
-    if data_label == 'value'
-      pend('BUG: the reply ends with "\n\r"') { assert_equal reply, @conn.request("rswitch_replication #{args}") }
-    else
-      assert_equal reply, @conn.request("rswitch_replication #{args}")
-    end
+    assert_equal reply, @conn.request("rswitch_replication #{args}")
     assert_equal [], @conn.broadcasts
     assert_false @conn.romad.cr_writer.run_replication
   end
@@ -205,10 +201,8 @@ class SysCommandRomadTest < Test::Unit::TestCase
   end
 
   def test_set_storage_status_with_unknown_hash
-    pend('BUG: a typo (hanme) raises NameError instead of replying') do
-      assert_equal "CLIENT_ERROR hash_name = nohash does not found\r\n",
-                   @conn.request('set_storage_status 0 safecopy nohash')
-    end
+    assert_equal "CLIENT_ERROR hash_name = nohash does not found\r\n",
+                 @conn.request('set_storage_status 0 safecopy nohash')
   end
 
   def test_set_gui_run_snapshot

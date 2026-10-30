@@ -273,7 +273,7 @@ module Roma
           return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         unless s[1] =~ /^(true|false)$/
-          return send_data("CLIENT_ERROR value must be true or false\n\r")
+          return send_data("CLIENT_ERROR value must be true or false\r\n")
         end
         if s[3] && s[3] != 'all'
           return send_data("CLIENT_ERROR [copy target] must be all or nil\r\n")
@@ -1161,7 +1161,7 @@ module Roma
         end
         st = @storages[hname]
         unless st
-          return send_data("CLIENT_ERROR hash_name = #{hanme} does not found\r\n")
+          return send_data("CLIENT_ERROR hash_name = #{hname} does not found\r\n")
         end
         dn = s[1].to_i
         if st.divnum <= dn
