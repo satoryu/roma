@@ -1,6 +1,7 @@
 require 'pathname'
 require 'fileutils'
 require 'rbconfig'
+require 'socket'
 require 'roma/config'
 require 'roma/messaging/con_pool'
 require 'roma/logging/rlogger'
@@ -26,36 +27,37 @@ module RomaTestUtils
   def start_roma(conf = DEFAULT_CONFIG, div_bits: 3, replication_in_host: true)
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_NODES[0][0..-2]}?*"))
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_IP}_#{DEFAULT_PORTS[0][0..-2]}?*"))
-    sleep 0.1
 
     system("#{ruby_path} #{mkroute_path} #{DEFAULT_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
-    sleep 0.2
 
-    DEFAULT_NODES.each do |node|
-      do_command_romad(node, conf, replication_in_host)
+    # Boot the nodes at the same time; each command returns once romad daemonizes.
+    pids = DEFAULT_NODES.map do |node|
+      do_command_romad(node, conf, replication_in_host, wait: false)
     end
-    sleep 1
+    pids.each { |pid| Process.wait(pid) }
+    wait_until_up(DEFAULT_NODES)
   end
 
   def start_roma_replica(conf = DEFAULT_CONFIG, div_bits: 3, replication_in_host: true)
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{REPLICA_NODES[0][0..-2]}?*"))
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_IP}_#{REPLICA_PORTS[0][0..-2]}?*"))
-    sleep 0.1
 
     system("#{ruby_path} #{mkroute_path} #{REPLICA_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
-    sleep 0.2
 
-    REPLICA_NODES.each do |node|
-      do_command_romad(node, conf, replication_in_host)
+    # Boot the nodes at the same time; each command returns once romad daemonizes.
+    pids = REPLICA_NODES.map do |node|
+      do_command_romad(node, conf, replication_in_host, wait: false)
     end
-    sleep 1
+    pids.each { |pid| Process.wait(pid) }
+    wait_until_up(REPLICA_NODES)
   end
 
   def join_roma(node, conf = DEFAULT_CONFIG, replication_in_host: true)
     do_command_romad(node, conf, replication_in_host, true)
   end
 
-  def do_command_romad(node, conf, replication_in_host = true, is_join = false)
+  # Runs romad, or with wait: false starts it and returns the pid.
+  def do_command_romad(node, conf, replication_in_host = true, is_join = false, wait: true)
     host, port = node.split('_')
     romad_command = [
       ruby_path, romad_path, host,
@@ -67,6 +69,7 @@ module RomaTestUtils
     romad_command << "-j #{DEFAULT_NODES[0]}" if is_join
     romad_command << ">> #{SHELL_LOG} 2>&1"
 
+    return Process.spawn(romad_command.join(' ')) unless wait
     system(romad_command.join(' '))
   end
 
@@ -124,6 +127,7 @@ module RomaTestUtils
     send_message(messages: balse_message)
     RomaTestClient.close_all
     Roma::Messaging::ConPool.instance.close_all
+    wait_until_down(DEFAULT_NODES)
   end
 
   def stop_roma_replica
@@ -131,19 +135,59 @@ module RomaTestUtils
     send_message(messages: balse_message, node: REPLICA_NODES[0])
     RomaTestClient.close_all
     Roma::Messaging::ConPool.instance.close_all
+    wait_until_down(REPLICA_NODES)
   end
 
   def stop_roma_node(node)
     send_message(messages: 'rbalse', node: node)
     RomaTestClient.close_all
     Roma::Messaging::ConPool.instance.close_all
+    wait_until_down([node])
   end
 
   def release_roma_node(node)
     send_message(messages: 'release', node: node)
   end
 
+  # Asserts that the block returns +expected+ within +timeout+ seconds.
+  # Use it to wait for asynchronous work, such as replication or expiry.
+  def assert_eventually_equal(expected, timeout: DEFAULT_TIMEOUT_SEC)
+    deadline = Time.now + timeout
+    loop do
+      actual = yield
+      return assert_equal(expected, actual) if actual == expected || Time.now > deadline
+      sleep 0.05
+    end
+  end
+
+  # Waits until every node accepts connections.
+  def wait_until_up(nodes)
+    wait_for("#{nodes} to start") { nodes.all? { |node| listening?(node) } }
+  end
+
+  # Waits until every node stops, so that the next romad can use its port.
+  # (romad exits at once if the same node is already running.)
+  def wait_until_down(nodes)
+    wait_for("#{nodes} to stop") { nodes.none? { |node| listening?(node) } }
+  end
+
   private
+
+  def wait_for(what)
+    deadline = Time.now + DEFAULT_TIMEOUT_SEC
+    until yield
+      fail "timed out waiting for #{what}" if Time.now > deadline
+      sleep 0.05
+    end
+  end
+
+  def listening?(node)
+    host, port = node.split('_')
+    TCPSocket.new(host, port).close
+    true
+  rescue SystemCallError
+    false
+  end
 
   def base_dir
     Pathname(__FILE__).dirname.parent.expand_path

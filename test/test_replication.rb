@@ -112,10 +112,10 @@ class ClusterReplicationTest < Test::Unit::TestCase
     ret = send_cmd('localhost_11211', 'stat run_existing_data_replication')
     assert_equal("write-behind.run_existing_data_replication true\r\n", ret)
 
-    sleep 1 # wait finish existing data copy
-    # run_existing_data_replication status
-    ret = send_cmd('localhost_11211', 'stat run_existing_data_replication')
-    assert_equal("write-behind.run_existing_data_replication false\r\n", ret)
+    # wait finish existing data copy
+    assert_eventually_equal("write-behind.run_existing_data_replication false\r\n") do
+      send_cmd('localhost_11211', 'stat run_existing_data_replication')
+    end
     # run_replication status
     ret = send_cmd('localhost_11211', 'stat run_replication')
     assert_equal("write-behind.run_replication true\r\n", ret)
@@ -227,16 +227,14 @@ class ClusterReplicationTest < Test::Unit::TestCase
     @rc.set('key4', 'val4', 1)
     sleep 0.1
     assert_equal('val4', @rc_replica.get('key4'))
-    sleep 2
-    assert_nil( @rc_replica.get('key4') )
+    assert_eventually_equal(nil) { @rc_replica.get('key4') }
 
     # set_expt
     @rc.set('key5', 'val5')
     sleep 0.1
     assert_equal('val5', @rc_replica.get('key5'))
     send_cmd('localhost_11211', 'set_expt key5 1')
-    sleep 5
-    assert_nil( @rc_replica.get('key5') )
+    assert_eventually_equal(nil) { @rc_replica.get('key5') }
 
     # cas
     @rc.set("cnt", 1)
@@ -264,11 +262,10 @@ class ClusterReplicationTest < Test::Unit::TestCase
     @rc.set('key3', 'val3')
 
     send_cmd('localhost_11211', 'switch_replication true localhost_21211 all')
-    sleep 1
 
-    assert_equal('val1', @rc_replica.get('key1'))
-    assert_equal('val2', @rc_replica.get('key2'))
-    assert_equal('val3', @rc_replica.get('key3'))
+    assert_eventually_equal('val1') { @rc_replica.get('key1') }
+    assert_eventually_equal('val2') { @rc_replica.get('key2') }
+    assert_eventually_equal('val3') { @rc_replica.get('key3') }
   end
 
   def test_rc_background_copy_unactivate

@@ -2,20 +2,29 @@ require 'test_helper'
 
 require 'socket'
 
+# Tests that don't change the cluster share one pair of romad processes.
 class NewFuncTest < Test::Unit::TestCase
   self.test_order = :defined
   include RomaTestUtils
 
+  class << self
+    include RomaTestUtils
+
+    def startup
+      start_roma
+    end
+
+    def shutdown
+      stop_roma
+    end
+  end
+
   def setup
-    start_roma
     @sock = TCPSocket.new("localhost", 11211)
   end
 
   def teardown
     @sock.close if @sock
-    stop_roma
-  rescue => e
-    puts "#{e} #{$@}"
   end
 
   def test_jaro_winkler
@@ -50,7 +59,6 @@ class NewFuncTest < Test::Unit::TestCase
 
   def test_stat_secondary
     @sock.write("stat secondary\r\n")
-    sleep 1
     column, param = @sock.gets.chomp.split("\s")
     assert_equal("routing.secondary1", column)
     assert_equal(true, param.to_i > 0)
@@ -88,6 +96,99 @@ class NewFuncTest < Test::Unit::TestCase
     assert_equal("true", @sock.gets.chomp)
   end
 
+  def test_nid_brank
+    @sock.write("stat sub\r\n")
+    assert_equal('routing.sub_nid {}', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
+    @sock.write("routingdump yaml\r\n")
+    dump = []
+    while select [@sock], nil, nil, 0.5
+      dump << @sock.gets.chomp!
+    end
+    assert_equal(true, dump.grep(/vm/).empty?)
+  end
+
+  def test_stat_latency
+    @sock.write("stat latency\r\n")
+    assert_equal("stats.hilatency_warn_time 5.0", @sock.gets.chomp)
+    assert_equal("stats.latency_log false", @sock.gets.chomp)
+    assert_equal('stats.latency_check_cmd ["get", "set", "delete"]', @sock.gets.chomp)
+    assert_equal("stats.latency_check_time_count false", @sock.gets.chomp)
+  end
+
+  def test_auto_recover_stat
+    @sock.write("stat recover\r\n")
+    assert_equal("stats.run_recover false", @sock.gets.chomp)
+    assert_equal("routing.auto_recover false", @sock.gets.chomp)
+    assert_equal("routing.auto_recover_status waiting", @sock.gets.chomp)
+    assert_equal("routing.auto_recover_time 1800", @sock.gets.chomp)
+    assert_equal("END", @sock.gets.chomp)
+  end
+
+  def test_stat_trans_timeout
+    @sock.write("stat trans\r\n")
+    assert_equal("stats.routing_trans_timeout 10800", @sock.gets.chomp)
+    assert_equal("END", @sock.gets.chomp)
+  end
+
+  def test_stat_routing_event
+    @sock.write("stat routing.event\r\n")
+    assert_equal('routing.event []', @sock.gets.chomp)
+    assert_equal('routing.event_limit_line 1000', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
+  end
+
+  def test_adm_tool_sendcmd
+    res = `#{bin_dir}/roma-adm`
+    assert_equal('Argument Error: roma-adm [adm-command] [port No.]', res.chomp)
+
+    res = `#{bin_dir}/roma-adm -h`
+    assert_match(/usage:roma-adm \[command\] \[port No.\]\n\s+-h, --help\s+Show this message/, res.chomp)
+
+    res = `#{bin_dir}/roma-adm whoami 11211`
+    assert_equal(".\r\nROMA", res.chomp)
+  end
+
+  def test_romad_option
+    res = `#{bin_dir}/romad -h`
+    assert_equal("usage:romad [options] address
+    -d, --daemon
+    -j, --join [address:port]
+    -p, --port [PORT]
+        --verbose
+    -n, --name [name]
+        --enabled_repeathost         Allow redundancy to same host
+        --replication_in_host        Allow redundancy to same host
+        --disabled_cmd_protect       Command protection disable while starting
+        --config [file path of the config.rb]
+    -h, --help                       Show this message
+    -v, --version                    Show version", res.chomp)
+  end
+
+  def test_waiting_node
+    log = File.read("./localhost_11211.log")
+    assert_equal(true, log.include?("I'm waiting for booting the localhost_11211 instance"))
+  end
+
+end
+
+# Tests that change settings or nodes start new romad processes each time.
+class NewFuncChangingClusterTest < Test::Unit::TestCase
+  self.test_order = :defined
+  include RomaTestUtils
+
+  def setup
+    start_roma
+    @sock = TCPSocket.new("localhost", 11211)
+  end
+
+  def teardown
+    @sock.close if @sock
+    stop_roma
+  rescue => e
+    puts "#{e} #{$@}"
+  end
+
   def test_switch_dns_caching
     @sock.write("stat dns\r\n")
     assert_equal("dns_caching false", @sock.gets.chomp)
@@ -110,18 +211,6 @@ class NewFuncTest < Test::Unit::TestCase
     @sock.write("stat dns\r\n")
     assert_equal("dns_caching false", @sock.gets.chomp)
     assert_equal("END", @sock.gets.chomp)
-  end
-
-  def test_nid_brank
-    @sock.write("stat sub\r\n")
-    assert_equal('routing.sub_nid {}', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-    @sock.write("routingdump yaml\r\n")
-    dump = []
-    while select [@sock], nil, nil, 0.5
-      dump << @sock.gets.chomp!
-    end
-    assert_equal(true, dump.grep(/vm/).empty?)
   end
 
   def test_add_rttable_sub_nid
@@ -183,14 +272,6 @@ class NewFuncTest < Test::Unit::TestCase
       dump << @sock.gets.chomp!
     end
     assert_equal(true, dump.grep(/vm/).empty?)
-  end
-
-  def test_stat_latency
-    @sock.write("stat latency\r\n")
-    assert_equal("stats.hilatency_warn_time 5.0", @sock.gets.chomp)
-    assert_equal("stats.latency_log false", @sock.gets.chomp)
-    assert_equal('stats.latency_check_cmd ["get", "set", "delete"]', @sock.gets.chomp)
-    assert_equal("stats.latency_check_time_count false", @sock.gets.chomp)
   end
 
   def test_del_latency_avg_calc_cmd
@@ -255,15 +336,6 @@ class NewFuncTest < Test::Unit::TestCase
     assert_equal("END", @sock.gets.chomp)
   end
 
-  def test_auto_recover_stat
-    @sock.write("stat recover\r\n")
-    assert_equal("stats.run_recover false", @sock.gets.chomp)
-    assert_equal("routing.auto_recover false", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_status waiting", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_time 1800", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
-  end
-
   def test_set_auto_recover
     @sock.write("set_auto_recover true\r\n")
     assert_equal('{"localhost_11212" => "STORED", "localhost_11211" => "STORED"}', @sock.gets.chomp)
@@ -293,12 +365,6 @@ class NewFuncTest < Test::Unit::TestCase
     assert_equal("END", @sock.gets.chomp)
   end
 
-  def test_stat_trans_timeout
-    @sock.write("stat trans\r\n")
-    assert_equal("stats.routing_trans_timeout 10800", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
-  end
-
   def test_set_routing_trans_timeout
     @sock.write("set_routing_trans_timeout 1\r\n")
     assert_equal('{"localhost_11212" => "STORED", "localhost_11211" => "STORED"}', @sock.gets.chomp)
@@ -307,55 +373,25 @@ class NewFuncTest < Test::Unit::TestCase
     assert_equal("END", @sock.gets.chomp)
   end
 
-  def test_stat_routing_event
-    @sock.write("stat routing.event\r\n")
-    assert_equal('routing.event []', @sock.gets.chomp)
-    assert_equal('routing.event_limit_line 1000', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-  end
-
   def test_add_routing_event
     @sock.write("switch_failover on\r\n")
     assert_equal('{"localhost_11212" => "ENABLED", "localhost_11211" => "ENABLED"}', @sock.gets.chomp)
 
+    # Fail over at the first failed check (once a second) instead of the fifth.
+    @sock.write("set_threshold_for_failover 1\r\n")
+    @sock.gets
     stop_roma_node('localhost_11212')
-    sleep 5 # wait failover
 
+    # wait failover
+    wait_for('the leave event') do
+      @sock.write("stat routing.event$\r\n")
+      line = @sock.gets.chomp
+      @sock.gets # END
+      line != 'routing.event []'
+    end
     @sock.write("stat routing.event$\r\n")
     assert_match(/routing\.event \["[-T\d:\.]+ leave localhost_11212"\]/, @sock.gets.chomp)
     assert_equal('END', @sock.gets.chomp)
-  end
-
-  def test_adm_tool_sendcmd
-    res = `#{bin_dir}/roma-adm`
-    assert_equal('Argument Error: roma-adm [adm-command] [port No.]', res.chomp)
-
-    res = `#{bin_dir}/roma-adm -h`
-    assert_match(/usage:roma-adm \[command\] \[port No.\]\n\s+-h, --help\s+Show this message/, res.chomp)
-
-    res = `#{bin_dir}/roma-adm whoami 11211`
-    assert_equal(".\r\nROMA", res.chomp)
-  end
-
-  def test_romad_option
-    res = `#{bin_dir}/romad -h`
-    assert_equal("usage:romad [options] address
-    -d, --daemon
-    -j, --join [address:port]
-    -p, --port [PORT]
-        --verbose
-    -n, --name [name]
-        --enabled_repeathost         Allow redundancy to same host
-        --replication_in_host        Allow redundancy to same host
-        --disabled_cmd_protect       Command protection disable while starting
-        --config [file path of the config.rb]
-    -h, --help                       Show this message
-    -v, --version                    Show version", res.chomp)
-  end
-
-  def test_waiting_node
-    log = File.read("./localhost_11211.log")
-    assert_equal(true, log.include?("I'm waiting for booting the localhost_11211 instance"))
   end
 
 end

@@ -1,6 +1,8 @@
 require 'test_helper'
 require 'roma/plugin/plugin_alist'
 require 'roma/messaging/con_pool'
+require 'roma/plugin/plugin_storage'
+require 'plugin_test_harness'
 
 module ListPluginTests
   include RomaTestUtils
@@ -599,14 +601,39 @@ module ListPluginTests
 
 end # ListPluginTests
 
+# Runs every test in-process, without romad.
+class ListPluginInProcessTest < Test::Unit::TestCase
+  self.test_order = :defined
+  include ListPluginTests
+
+  def setup
+    harness = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage,
+                                    Roma::CommandPlugin::PluginAshiatoList).new
+    @rc = PluginTestHarness::Client.new(harness)
+  end
+
+  def teardown; end
+
+  # It streams a vnode from another node.
+  undef test_alist_spushv
+end
+
+# Runs a few tests through romad: one for each way a request is forwarded,
+# and alist_spushv, which streams data between nodes.
+E2E_LIST_PLUGIN_TESTS = %i(test_at test_delete test_gets test_alist_spushv)
+
 class ListPluginTest < Test::Unit::TestCase
   self.test_order = :defined
   include ListPluginTests
+
+  (ListPluginTests.public_instance_methods.grep(/\Atest_/) - E2E_LIST_PLUGIN_TESTS).each { |t| undef_method(t) }
 end
 
 class ListPluginTestForceForward < Test::Unit::TestCase
   self.test_order = :defined
   include ListPluginTests
+
+  (ListPluginTests.public_instance_methods.grep(/\Atest_/) - E2E_LIST_PLUGIN_TESTS).each { |t| undef_method(t) }
 
   def setup
     super
