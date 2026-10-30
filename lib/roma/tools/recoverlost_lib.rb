@@ -2,6 +2,7 @@
 #
 # usage:recoverlost address port storage-path [yyyymmddhhmmss]
 #
+require 'roma/tcp_fast_fallback'
 require 'roma/client/sender'
 require 'roma/messaging/con_pool'
 require 'roma/routing/routing_data'

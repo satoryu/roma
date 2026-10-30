@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'roma/tcp_fast_fallback'
 require 'kconv'
 require 'logger'
 require 'socket'

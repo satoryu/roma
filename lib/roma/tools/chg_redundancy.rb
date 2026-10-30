@@ -2,6 +2,7 @@
 #
 # usage:chg_redundancy n address port > routingfile
 #
+require 'roma/tcp_fast_fallback'
 require 'roma/logging/rlogger'
 require 'roma/messaging/con_pool'
 require 'roma/routing/routing_data'
