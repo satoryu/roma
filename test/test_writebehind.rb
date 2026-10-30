@@ -2,10 +2,7 @@ require 'test_helper'
 require 'logger'
 require 'stringio'
 require 'roma/write_behind'
-require 'roma/client/rclient'
 require 'roma/messaging/con_pool'
-require 'roma/client/plugin/alist'
-require 'roma/client/plugin/map'
 
 module FileWriterTests
   # making and writing test
@@ -202,9 +199,7 @@ class WriteBehindTest < Test::Unit::TestCase
 
   def setup
     start_roma
-    @rc = Roma::Client::RomaClient.new(%w(localhost_11211 localhost_11212),
-                                       [Roma::Client::Plugin::Alist,
-                                        Roma::Client::Plugin::Map])
+    @rc = RomaTestClient.new(%w(localhost_11211 localhost_11212))
     system('rm -rf wb')
   end
 
@@ -223,7 +218,7 @@ class WriteBehindTest < Test::Unit::TestCase
   def test_wb2_command_map
     send_cmd('localhost_11211', 'wb_command_map {:set=>1}')
     ret = send_cmd('localhost_11211', 'stat wb_command_map')
-    assert_equal("stats.wb_command_map {:set=>1}\r\n", ret)
+    assert_equal("stats.wb_command_map {set: 1}\r\n", ret)
   end
 
   def test_wb2_set
@@ -264,7 +259,7 @@ class WriteBehindTest < Test::Unit::TestCase
 
   def test_wb2_storage_commands
     h = { set: 1, delete: 2, add: 3, replace: 4, append: 5, prepend: 6, cas: 7, incr: 8, decr: 9, set_expt: 10 }
-    send_cmd('localhost_11211', "wb_command_map #{h}")
+    send_cmd('localhost_11211', "wb_command_map {#{h.map { |k, v| ":#{k}=>#{v}" }.join(',')}}")
     assert_equal('STORED', @rc.set('abc', '1', 0, true))
     assert_equal('DELETED', @rc.delete('abc'))
     assert_equal('STORED', @rc.add('abc', '1', 0, true))
@@ -304,7 +299,7 @@ class WriteBehindTest < Test::Unit::TestCase
       decr: 9, decr__prev: 19,
       set_expt: 10, set_expt__prev: 20
     }
-    send_cmd('localhost_11211', "wb_command_map #{h}")
+    send_cmd('localhost_11211', "wb_command_map {#{h.map { |k, v| ":#{k}=>#{v}" }.join(',')}}")
     assert_equal('STORED', @rc.set('abc', '1', 0, true))
     assert_equal('DELETED', @rc.delete('abc'))
     assert_equal('STORED', @rc.add('abc', '1', 0, true))
@@ -367,7 +362,7 @@ class WriteBehindTest < Test::Unit::TestCase
       alist_expired_swap_and_sized_push: 15,
       alist_update_at: 16
     }
-    send_cmd('localhost_11211', "wb_command_map #{h}")
+    send_cmd('localhost_11211', "wb_command_map {#{h.map { |k, v| ":#{k}=>#{v}" }.join(',')}}")
     assert_equal('STORED', @rc.alist_push('abc', '1')) # ['1']
     assert_equal('STORED', @rc.alist_insert('abc', 0, '2')) # ['2','1']
     assert_equal('STORED', @rc.alist_sized_insert('abc', 5, '3')) # ['3','2','1']
@@ -409,7 +404,7 @@ class WriteBehindTest < Test::Unit::TestCase
       map_delete: 2,
       map_clear: 3
     }
-    send_cmd('localhost_11211', "wb_command_map #{h}")
+    send_cmd('localhost_11211', "wb_command_map {#{h.map { |k, v| ":#{k}=>#{v}" }.join(',')}}")
     assert_equal('STORED', @rc.map_set('abc', 'mapkey1', 'value1'))
     assert_equal('DELETED', @rc.map_delete('abc', 'mapkey1'))
     assert_equal('STORED', @rc.map_set('abc', 'mapkey1', 'value1'))
@@ -436,7 +431,7 @@ class WriteBehindTest < Test::Unit::TestCase
       map_delete: 2, map_delete__prev: 12,
       map_clear: 3, map_clear__prev: 13
     }
-    send_cmd('localhost_11211', "wb_command_map #{h}")
+    send_cmd('localhost_11211', "wb_command_map {#{h.map { |k, v| ":#{k}=>#{v}" }.join(',')}}")
     assert_equal('STORED', @rc.map_set('abc', 'mapkey1', 'value1'))
     assert_equal('STORED', @rc.map_set('abc', 'mapkey2', 'value2'))
     assert_equal('DELETED', @rc.map_delete('abc', 'mapkey1'))

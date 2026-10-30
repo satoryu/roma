@@ -40,7 +40,7 @@ module Roma
       def self.load_snapshot(fname)
         rd=nil
         open(fname,'rb'){|io|
-          rd = YAML.load(io.read)
+          rd = YAML.unsafe_load(io.read)
         }
         rd
       end

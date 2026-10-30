@@ -1,11 +1,4 @@
 require 'test_helper'
-require 'roma/client'
-require 'roma/client/plugin/mapcount'
-
-Roma::Client::RomaClient.class_eval{
-  def init_sync_routing_proc
-  end
-}
 
 class MapCountPluginTest < Test::Unit::TestCase
   self.test_order = :defined
@@ -15,7 +8,7 @@ class MapCountPluginTest < Test::Unit::TestCase
 
   def setup
     start_roma
-    @rc=Roma::Client::RomaClient.new(["localhost_11211","localhost_11212"], [Roma::Client::Plugin::MapCount])
+    @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
     @k = "key1"
     @sk = "subkey1"
     @lt = Time.parse(Time.now.strftime(DATE_FORMAT))

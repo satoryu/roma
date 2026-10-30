@@ -1,12 +1,6 @@
 require 'test_helper'
-require 'roma/client/rclient'
 require 'roma/messaging/con_pool'
 require 'roma/config'
-
-Roma::Client::RomaClient.class_eval do
-  def init_sync_routing_proc
-  end
-end
 
 class MHashTest < Test::Unit::TestCase
   self.test_order = :defined
@@ -14,7 +8,7 @@ class MHashTest < Test::Unit::TestCase
 
   def setup
     start_roma 'config4mhash.rb'
-    @rc = Roma::Client::RomaClient.new(%w(localhost_11211 localhost_11212))
+    @rc = RomaTestClient.new(%w(localhost_11211 localhost_11212))
   end
 
   def teardown

@@ -1,16 +1,15 @@
 require 'test_helper'
 require 'logger'
 require 'roma/write_behind'
-require 'roma/client/rclient'
 require 'roma/messaging/con_pool'
 
 module StreamWriterTests
   def setup
     start_roma
-    @rc = Roma::Client::RomaClient.new(%w(localhost_11211 localhost_11212))
+    @rc = RomaTestClient.new(%w(localhost_11211 localhost_11212))
 
     start_roma_replica
-    @rc_replica = Roma::Client::RomaClient.new(%w(localhost_21211 localhost_21212))
+    @rc_replica = RomaTestClient.new(%w(localhost_21211 localhost_21212))
   end
 
   def teardown
@@ -80,7 +79,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
   def test_rc_switch_replication_default
     # default activate
     ret = send_cmd('localhost_11211', 'switch_replication true localhost_21211')
-    assert_equal("{\"localhost_11212\"=>\"ACTIVATED\", \"localhost_11211\"=>\"ACTIVATED\"}\r\n", ret)
+    assert_equal("{\"localhost_11212\" => \"ACTIVATED\", \"localhost_11211\" => \"ACTIVATED\"}\r\n", ret)
     # run_replication status
     ret = send_cmd('localhost_11211', 'stat run_replication')
     assert_equal("write-behind.run_replication true\r\n", ret)
@@ -94,7 +93,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
 
     # default deactivate
     ret = send_cmd('localhost_11211', 'switch_replication false')
-    assert_equal("{\"localhost_11212\"=>\"DEACTIVATED\", \"localhost_11211\"=>\"DEACTIVATED\"}\r\n", ret)
+    assert_equal("{\"localhost_11212\" => \"DEACTIVATED\", \"localhost_11211\" => \"DEACTIVATED\"}\r\n", ret)
     # run_replication status
     ret = send_cmd('localhost_11211', 'stat run_replication')
     assert_equal("write-behind.run_replication false\r\n", ret)
@@ -108,7 +107,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
 
     # activate with all data option
     ret = send_cmd('localhost_11211', 'switch_replication true localhost_21211 all')
-    assert_equal("{\"localhost_11212\"=>\"ACTIVATED\", \"localhost_11211\"=>\"ACTIVATED\"}\r\n", ret)
+    assert_equal("{\"localhost_11212\" => \"ACTIVATED\", \"localhost_11211\" => \"ACTIVATED\"}\r\n", ret)
     # run_existing_data_replication status
     ret = send_cmd('localhost_11211', 'stat run_existing_data_replication')
     assert_equal("write-behind.run_existing_data_replication true\r\n", ret)
