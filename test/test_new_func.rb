@@ -173,6 +173,8 @@ class NewFuncTest < Test::Unit::TestCase
 end
 
 # Tests that change settings or nodes start new romad processes each time.
+# Each setting command is covered by test_sys_command.rb. The ones here check
+# that relaying to the other node works through romad.
 class NewFuncChangingClusterTest < Test::Unit::TestCase
   self.test_order = :defined
   include RomaTestUtils
@@ -272,48 +274,6 @@ class NewFuncChangingClusterTest < Test::Unit::TestCase
     assert_equal(true, dump.grep(/vm/).empty?)
   end
 
-  def test_del_latency_avg_calc_cmd
-    @sock.write("del_latency_avg_calc_cmd set delete\r\n")
-    assert_equal('{"localhost_11212" => "DELETED", "localhost_11211" => "DELETED"}', @sock.gets.chomp)
-    @sock.write("stat latency_check_cmd\r\n")
-    assert_equal('stats.latency_check_cmd ["get"]', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-  end
-
-  def test_add_latency_avg_calc_cmd
-    @sock.write("add_latency_avg_calc_cmd add\r\n")
-    assert_equal('{"localhost_11212" => "SET", "localhost_11211" => "SET"}', @sock.gets.chomp)
-    @sock.write("stat latency_check_cmd\r\n")
-    assert_equal('stats.latency_check_cmd ["get", "set", "delete", "add"]', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-
-    @sock.write("add_latency_avg_calc_cmd get\r\n")
-    assert_equal('ALREADY SET [get] command', @sock.gets.chomp)
-    @sock.write("stat latency_check_cmd\r\n")
-    assert_equal('stats.latency_check_cmd ["get", "set", "delete", "add"]', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-
-    @sock.write("add_latency_avg_calc_cmd balse\r\n")
-    assert_equal('NOT SUPPORT [balse] command', @sock.gets.chomp)
-    @sock.write("stat latency_check_cmd\r\n")
-    assert_equal('stats.latency_check_cmd ["get", "set", "delete", "add"]', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-  end
-
-  def test_chg_latency_avg_calc_time_count
-    @sock.write("chg_latency_avg_calc_time_count 60\r\n")
-    assert_equal('{"localhost_11212" => "CHANGED", "localhost_11211" => "CHANGED"}', @sock.gets.chomp)
-    @sock.write("stat latency_check_time_count\r\n")
-    assert_equal('stats.latency_check_time_count 60', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-
-    @sock.write("chg_latency_avg_calc_time_count nil\r\n")
-    assert_equal('{"localhost_11212" => "CHANGED", "localhost_11211" => "CHANGED"}', @sock.gets.chomp)
-    @sock.write("stat latency_check_time_count\r\n")
-    assert_equal('stats.latency_check_time_count false', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-  end
-
   def test_set_latency_avg_calc_rule
     @sock.write("set_latency_avg_calc_rule off\r\n")
     assert_equal('{"localhost_11212" => "DEACTIVATED", "localhost_11211" => "DEACTIVATED"}', @sock.gets.chomp)
@@ -360,14 +320,6 @@ class NewFuncChangingClusterTest < Test::Unit::TestCase
     assert_equal("routing.auto_recover false", @sock.gets.chomp)
     assert_equal("routing.auto_recover_status waiting", @sock.gets.chomp)
     assert_equal("routing.auto_recover_time 180", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
-  end
-
-  def test_set_routing_trans_timeout
-    @sock.write("set_routing_trans_timeout 1\r\n")
-    assert_equal('{"localhost_11212" => "STORED", "localhost_11211" => "STORED"}', @sock.gets.chomp)
-    @sock.write("stat trans\r\n")
-    assert_equal("stats.routing_trans_timeout 1.0", @sock.gets.chomp)
     assert_equal("END", @sock.gets.chomp)
   end
 
