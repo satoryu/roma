@@ -16,14 +16,13 @@ module StorageCommandTests
   def teardown
     stop_roma
     Roma::Messaging::ConPool::instance.close_all
-   rescue => e
-    puts "#{e} #{$@}"
   end
 
   def test_set_expt_and_get
-    assert_equal("STORED", @rc.set("abc","value abc", 1))
+    assert_equal("STORED", @rc.set("abc","value abc", 100))
     assert_equal("value abc", @rc.get("abc"))
-    sleep 2
+    # An absolute time in the past makes the key expire immediately.
+    assert_equal("STORED", @rc.set("abc","value abc", Time.now.to_i - 1))
     assert_nil( @rc.get("abc") )
   end
 

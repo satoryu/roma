@@ -589,12 +589,12 @@ module ListPluginTests
   def push_a_vnode_stream(st, vn, nid)
     con = Roma::Messaging::ConPool.instance.get_connection(nid)
     con.write("alist_spushv roma #{vn}\r\n")
-    res = con.gets
+    con.gets # READY
     st.each_vn_dump(vn){|data|
       con.write(data)
     }
     con.write("\0"*20) # end of steram
-    res = con.gets # STORED\r\n or error string
+    con.gets # STORED\r\n or error string
     Roma::Messaging::ConPool.instance.return_connection(nid,con)
   end
   private :push_a_vnode_stream

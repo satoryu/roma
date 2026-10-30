@@ -14,8 +14,6 @@ class MHashTest < Test::Unit::TestCase
   def teardown
     stop_roma
     Roma::Messaging::ConPool.instance.close_all
-   rescue => e
-     puts "#{e} #{$ERROR_POSITION}"
   end
 
   def test_createhash
@@ -46,13 +44,13 @@ class MHashTest < Test::Unit::TestCase
 
     @rc.default_hash_name = 'not_exist_hash'
     [:get, :delete, :incr, :decr].each do |m|
-      assert_raise(RuntimeError, 'SERVER_ERROR not_exist_hash does not exists.') do
+      assert_raise(RuntimeError.new('SERVER_ERROR not_exist_hash does not exists.')) do
         @rc.send m, 'key'
       end
     end
 
     [:set, :add, :replace, :append, :prepend].each do |m|
-      assert_raise(RuntimeError, 'SERVER_ERROR not_exist_hash does not exists.') do
+      assert_raise(RuntimeError.new('SERVER_ERROR not_exist_hash does not exists.')) do
         @rc.send m, 'key', 'value'
       end
     end

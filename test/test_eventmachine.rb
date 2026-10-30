@@ -9,7 +9,7 @@ class EventMachineTest < Test::Unit::TestCase
 
   def test_context_switch
     EM.epoll
-    t = Thread.new do
+    Thread.new do
       LOOP_NUM.times do |i|
         100.times{ Thread.pass }
         sleep SLEEP_SEC
@@ -20,6 +20,7 @@ class EventMachineTest < Test::Unit::TestCase
     s = Time.now
     EventMachine::run
     e = Time.now
-    assert((e - s) < (LOOP_NUM + 1) * SLEEP_SEC)
+    # A thread blocked by the event loop would make it take far longer.
+    assert((e - s) < LOOP_NUM * SLEEP_SEC + 1)
   end
 end

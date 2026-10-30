@@ -75,7 +75,7 @@ def receive_dump(sok, len)
   else
     return nil
   end
-rescue => e
+rescue
   false
 end
 
@@ -173,17 +173,10 @@ class CopyDataTest < Test::Unit::TestCase
     assert_equal(1000, a)
   end
 
-  def wait(vn)
-    while $dat.key?(vn)
-      sleep 0.01
-    end
-    $dat[vn]
-  end
-
   # set dummy data of n count
   def make_dummy(n)
     n.times do |i|
-      assert(@rc.set(i.to_s, i.to_s) == 'STORED')
+      assert_equal('STORED', @rc.set(i.to_s, i.to_s))
     end
   end
 
@@ -200,30 +193,7 @@ class CopyDataTest < Test::Unit::TestCase
     assert_equal("PUSHED\r\n", res)
     con.close
 
-    until $dat.key?(vn)
-      Thread.pass
-      sleep 0.01
-    end
+    wait_for("vnode #{vn} to be pushed") { $dat.key?(vn) }
     $dat[vn]
-  rescue => e
-    p e
-    p $ERROR_POSITION
-    return nil
-  end
-
-  def receive_dump(sok, len)
-    dmp = ''
-    while (dmp.length != len.to_i)
-      dmp = dmp + sok.read(len.to_i - dmp.length)
-    end
-    sok.read(2)
-    if sok.gets == "END\r\n"
-      return Marshal.load(dmp)
-    else
-      return nil
-    end
-  rescue => e
-    @log.error("#{e}\n#{$ERROR_POSITION}")
-    false
   end
 end

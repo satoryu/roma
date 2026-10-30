@@ -1,4 +1,5 @@
 require 'test/unit'
+require 'English'
 require 'socket'
 
 # The tests poll nodes that are down, so avoid the occasional 5-second

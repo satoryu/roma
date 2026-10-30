@@ -34,7 +34,6 @@ class MapCountPluginTest < Test::Unit::TestCase
   def test_mapcount_get(n = 5)
     n.times do |i|
       @sk = "subkey#{i}"
-      expt = i
       
       retc = {"last_updated_date"=>@lt}
       (i+1).times do |j|
@@ -55,7 +54,6 @@ class MapCountPluginTest < Test::Unit::TestCase
   def test_mapcount_get_ms(n = 5)
     n.times do |i|
       @sk = "subkey#{i}"
-      expt = i
       
       retc = {"last_updated_date"=>@lt}
       (i+1).times do |j|
