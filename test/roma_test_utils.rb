@@ -159,6 +159,12 @@ module RomaTestUtils
     end
   end
 
+  # Parses a reply relayed to every node, such as
+  # {"localhost_11212" => "CREATED", "localhost_11211" => "CREATED"}.
+  def parse_node_replies(line)
+    line.scan(/"([^"]*)" => "([^"]*)"/).to_h
+  end
+
   # Waits until every node accepts connections.
   def wait_until_up(nodes)
     wait_for("#{nodes} to start") { nodes.all? { |node| listening?(node) } }

@@ -2,81 +2,91 @@ require 'test_helper'
 
 require 'roma/messaging/con_pool'
 
-TCP_SERVER_PORT = 11_219
-$dat = {}
+# A fake node that receives vnodes pushed by romad (pushv and spushv)
+# and keeps them by vnode id.
+class FakeNode
+  attr_reader :nid, :dat
 
-def receive_command_server
-  $gs = TCPServer.open(TCP_SERVER_PORT)
-  loop do
-    Thread.new($gs.accept) do |s|
-      begin
-        while res = s.gets
-          if res.start_with?('pushv')
-            ss = res.split(' ')
-            s.write("READY\r\n")
-            len = s.gets.chomp
-            $dat[ss[2].to_i] = receive_dump(s, len.to_i)
-            s.write("STORED\r\n")
-          elsif res.start_with?('spushv')
-            ss = res.split(' ')
-            s.write("READY\r\n")
-            $dat[ss[2].to_i] = receive_stream_dump(s)
-            s.write("STORED\r\n")
-          elsif res.start_with?('whoami')
-            s.write("ROMA\r\n")
-          elsif res.start_with?('rbalse')
-            s.write("BYE\r\n")
-            break
-          else
-            s.write("STORED\r\n")
-          end
-        end
-      rescue => e
-        p e
-        p $ERROR_POSITION
-      ensure
-        s.close if s
+  def initialize
+    @dat = {}
+    @server = TCPServer.new(0)
+    @nid = "localhost_#{@server.addr[1]}"
+    @thread = Thread.new { accept_loop }
+  end
+
+  def close
+    @thread.kill
+    @server.close
+  end
+
+  private
+
+  def accept_loop
+    loop do
+      Thread.new(@server.accept) { |s| serve(s) }
+    end
+  end
+
+  def serve(s)
+    while res = s.gets
+      if res.start_with?('pushv')
+        ss = res.split(' ')
+        s.write("READY\r\n")
+        len = s.gets.chomp
+        @dat[ss[2].to_i] = receive_dump(s, len.to_i)
+        s.write("STORED\r\n")
+      elsif res.start_with?('spushv')
+        ss = res.split(' ')
+        s.write("READY\r\n")
+        @dat[ss[2].to_i] = receive_stream_dump(s)
+        s.write("STORED\r\n")
+      elsif res.start_with?('whoami')
+        s.write("ROMA\r\n")
+      elsif res.start_with?('rbalse')
+        s.write("BYE\r\n")
+        break
+      else
+        s.write("STORED\r\n")
       end
     end
+  rescue => e
+    p e
+    p $ERROR_POSITION
+  ensure
+    s.close if s
   end
-rescue => e
-  p e
-end
 
-def receive_stream_dump(sok)
-  ret = {}
-  v = nil
-  loop do
-    context_bin = sok.read(20)
-    vn, last, clk, expt, klen = context_bin.unpack('NNNNN')
+  def receive_stream_dump(sok)
+    ret = {}
+    v = nil
+    loop do
+      context_bin = sok.read(20)
+      vn, last, clk, expt, klen = context_bin.unpack('NNNNN')
 
-    break if klen == 0 # end of dump ?
-    k = sok.read(klen)
-    vlen_bin = sok.read(4)
-    vlen, =  vlen_bin.unpack('N')
-    if vlen != 0
-      v = sok.read(vlen)
+      break if klen == 0 # end of dump ?
+      k = sok.read(klen)
+      vlen_bin = sok.read(4)
+      vlen, =  vlen_bin.unpack('N')
+      if vlen != 0
+        v = sok.read(vlen)
+      end
+      ret[k] = [vn, last, clk, expt, v].pack('NNNNa*')
     end
-    ret[k] = [vn, last, clk, expt, v].pack('NNNNa*')
+    ret
   end
-  ret
-rescue => e
-  p e
-end
 
-def receive_dump(sok, len)
-  dmp = ''
-  while (dmp.length != len.to_i)
-    dmp = dmp + sok.read(len.to_i - dmp.length)
+  def receive_dump(sok, len)
+    dmp = String.new
+    while (dmp.length != len.to_i)
+      dmp = dmp + sok.read(len.to_i - dmp.length)
+    end
+    sok.read(2)
+    if sok.gets == "END\r\n"
+      return Marshal.load(dmp)
+    else
+      return nil
+    end
   end
-  sok.read(2)
-  if sok.gets == "END\r\n"
-    return Marshal.load(dmp)
-  else
-    return nil
-  end
-rescue
-  false
 end
 
 # test of copying vnode
@@ -85,15 +95,14 @@ class CopyDataTest < Test::Unit::TestCase
   include RomaTestUtils
 
   def setup
-    @th = Thread.new { receive_command_server }
+    @node = FakeNode.new
     start_roma
     @rc = RomaTestClient.new(%w(localhost_11211 localhost_11212))
   end
 
   def teardown
     stop_roma
-    @th.kill
-    $gs.close
+    @node.close
     Roma::Messaging::ConPool.instance.close_all
   end
 
@@ -181,11 +190,11 @@ class CopyDataTest < Test::Unit::TestCase
   end
 
   def reqpushv(_hname, vn, is_primary = false)
-    $dat.delete(vn)
+    @node.dat.delete(vn)
     con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
     res = nil
     10.times do
-      con.write("reqpushv #{vn} localhost_#{TCP_SERVER_PORT} #{is_primary}\r\n")
+      con.write("reqpushv #{vn} #{@node.nid} #{is_primary}\r\n")
       res = con.gets
       break if res == "PUSHED\r\n"
       sleep 0.5
@@ -193,7 +202,7 @@ class CopyDataTest < Test::Unit::TestCase
     assert_equal("PUSHED\r\n", res)
     con.close
 
-    wait_for("vnode #{vn} to be pushed") { $dat.key?(vn) }
-    $dat[vn]
+    wait_for("vnode #{vn} to be pushed") { @node.dat.key?(vn) }
+    @node.dat[vn]
   end
 end

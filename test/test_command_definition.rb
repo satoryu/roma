@@ -147,13 +147,11 @@ class DefineCommandTest < Test::Unit::TestCase
   def test_defcmd
     # normal case
     res = @obj.ev_balse ['balse','arg1','arg2']
-    res = eval res.chomp
-    assert_equal ['balse','arg1','arg2'], res[:ap_str]
-    assert_equal "rbalse arg1 arg2\r\n", res[:broadcast_cmd]
+    expected = { ap_str: ['balse','arg1','arg2'], broadcast_cmd: "rbalse arg1 arg2\r\n" }
+    assert_equal "#{expected}\r\n", res
 
     res = @obj.ev_rbalse ['balse','arg1','arg2']
-    res = eval res.chomp
-    assert_equal ['balse','arg1','arg2'], res
+    assert_equal "#{['balse','arg1','arg2']}\r\n", res
 
     # case of argument error
     res = @obj.ev_balse ['balse','arg1']
@@ -196,9 +194,8 @@ class DefineCommandTest < Test::Unit::TestCase
     end
 
     res = @obj.ev_balse ['balse','arg1','arg2']
-    robj = eval res.chomp # String -> Hash
-    assert_equal "override", robj[:ap_str]
-    assert_equal "rbalse arg1 arg2\r\n", robj[:broadcast_cmd]
+    expected = { ap_str: 'override', broadcast_cmd: "rbalse arg1 arg2\r\n" }
+    assert_equal "#{expected}\r\n", res
 
     res = @obj.ev_rbalse ['balse','arg1','arg2']
     assert_equal "override\r\n", res

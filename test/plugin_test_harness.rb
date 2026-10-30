@@ -69,7 +69,7 @@ class PluginTestHarness
   attr_reader :stats, :storage, :redundant_calls, :sent_commands
 
   def initialize
-    $roma ||= Romad.new(ClusterReplicationWriter.new(false))
+    @romad = Romad.new(ClusterReplicationWriter.new(false))
     @nid = NID
     @defhash = HASH_NAME
     @rttable = RoutingTable.new
@@ -94,7 +94,14 @@ class PluginTestHarness
     @rbuf = rest.dup
     @wbuf = String.new
     s = line.split(/ /)
-    send("ev_#{s[0]}", s)
+    # Set $roma only while the command runs, so it doesn't leak into other tests.
+    saved_romad = defined?($roma) ? $roma : nil
+    $roma = @romad
+    begin
+      send("ev_#{s[0]}", s)
+    ensure
+      $roma = saved_romad
+    end
     @wbuf
   end
 
