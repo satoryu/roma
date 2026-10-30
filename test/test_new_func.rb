@@ -185,8 +185,6 @@ class NewFuncChangingClusterTest < Test::Unit::TestCase
   def teardown
     @sock.close if @sock
     stop_roma
-  rescue => e
-    puts "#{e} #{$@}"
   end
 
   def test_switch_dns_caching

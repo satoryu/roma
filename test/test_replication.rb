@@ -14,10 +14,9 @@ module StreamWriterTests
 
   def teardown
     stop_roma
+  ensure
     stop_roma_replica
     Roma::Messaging::ConPool.instance.close_all
-  rescue => e
-    puts "#{e} #{$ERROR_POSITION}"
   end
 
   def send_cmd(host, cmd)
@@ -40,7 +39,7 @@ class StreamWriterTest < Test::Unit::TestCase
 
      sw.update_mklhash('localhost_21211')
      pre_mklhash = sw.replica_mklhash
-     assert_match(/[\d\w]{40}/, pre_mklhash)
+     assert_match(/\h{40}/, pre_mklhash)
 
      sw.update_nodelist('localhost_21211')
      pre_nodelist = sw.replica_nodelist
@@ -85,7 +84,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
     assert_equal("write-behind.run_replication true\r\n", ret)
     # replica_mklhash
     pre_mklhash = send_cmd('localhost_11211', 'stat replica_mklhash')
-    assert_match(/write-behind\.replica_mklhash [\d\w]{40}\r\n/, pre_mklhash)
+    assert_match(/write-behind\.replica_mklhash \h{40}\r\n/, pre_mklhash)
     # replica_nodelist
     pre_mklhash = send_cmd('localhost_11211', 'stat replica_mklhash')
     ret = send_cmd('localhost_11211', 'stat replica_nodelist')
@@ -121,7 +120,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
     assert_equal("write-behind.run_replication true\r\n", ret)
     # replica_mklhash
     pre_mklhash = send_cmd('localhost_11211', 'stat replica_mklhash')
-    assert_match(/write-behind\.replica_mklhash [\d\w]{40}\r\n/, pre_mklhash)
+    assert_match(/write-behind\.replica_mklhash \h{40}\r\n/, pre_mklhash)
     # replica_nodelist
     pre_mklhash = send_cmd('localhost_11211', 'stat replica_mklhash')
     ret = send_cmd('localhost_11211', 'stat replica_nodelist')

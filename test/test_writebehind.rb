@@ -209,8 +209,6 @@ class WriteBehindTest < Test::Unit::TestCase
   def teardown
     stop_roma
     Roma::Messaging::ConPool.instance.close_all
-  rescue => e
-    puts "#{e} #{$ERROR_POSITION}"
   end
 
   def test_wb2_stat
@@ -270,7 +268,7 @@ class WriteBehindTest < Test::Unit::TestCase
     assert_equal('STORED', @rc.append('abc', '3'))
     assert_equal('STORED', @rc.prepend('abc', '1'))
     res = @rc.cas('abc', 0, true) do |_v|
-      v = '128'
+      '128'
     end
     assert_equal('STORED', res)
     assert_equal(129, @rc.incr('abc'))
@@ -310,7 +308,7 @@ class WriteBehindTest < Test::Unit::TestCase
     assert_equal('STORED', @rc.append('abc', '3'))
     assert_equal('STORED', @rc.prepend('abc', '1'))
     res = @rc.cas('abc', 0, true) do |_v|
-      v = '128'
+      '128'
     end
     assert_equal('STORED', res)
     assert_equal(129, @rc.incr('abc'))
@@ -480,7 +478,7 @@ class WriteBehindTest < Test::Unit::TestCase
   end
 
   def wb_path
-    path = "wb/#{wb_hostname}/roma/#{Time.now.strftime('%Y%m%d')}/"
+    "wb/#{wb_hostname}/roma/#{Time.now.strftime('%Y%m%d')}/"
   end
 
   def wb_hostname

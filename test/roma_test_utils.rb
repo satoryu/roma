@@ -80,7 +80,6 @@ module RomaTestUtils
   def wait_join(node)
     client = get_client
     wait_count = 0
-    retry_count = 0
     sleep 5
 
     until client.rttable.nodes.include?(node)

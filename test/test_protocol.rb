@@ -201,7 +201,5 @@ class ProtocolTest < Test::Unit::TestCase
   def teardown
     @sock.close if @sock
     stop_roma
-  rescue => e
-    puts "#{e} #{$@}"
   end
 end
