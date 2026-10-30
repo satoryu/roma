@@ -192,6 +192,8 @@ class FileWriterTest < Test::Unit::TestCase
   end
 end
 
+# Checks what romad writes to the write-behind files. The replies of the
+# write-behind commands are covered by test_sys_command*.rb.
 class WriteBehindTest < Test::Unit::TestCase
   self.test_order = :defined
   include FileWriterTests
@@ -209,17 +211,6 @@ class WriteBehindTest < Test::Unit::TestCase
   def teardown
     stop_roma
     Roma::Messaging::ConPool.instance.close_all
-  end
-
-  def test_wb2_stat
-    ret = send_cmd('localhost_11211', 'stat wb_command_map')
-    assert_equal("stats.wb_command_map {}\r\n", ret)
-  end
-
-  def test_wb2_command_map
-    send_cmd('localhost_11211', 'wb_command_map {:set=>1}')
-    ret = send_cmd('localhost_11211', 'stat wb_command_map')
-    assert_equal("stats.wb_command_map {set: 1}\r\n", ret)
   end
 
   def test_wb2_set

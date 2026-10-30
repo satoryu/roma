@@ -28,7 +28,6 @@ module StreamWriterTests
   end
 end # end of StreamWriterTests module
 
-
 class StreamWriterTest < Test::Unit::TestCase
   self.test_order = :defined
   include StreamWriterTests
@@ -56,24 +55,14 @@ class StreamWriterTest < Test::Unit::TestCase
      assert_equal(true, sw.change_mklhash?)
    end
 
-
 end #  end of StreamWriterTest class
 
+# Checks that data reaches the replica cluster. The replies and argument
+# checks of switch_replication are covered by test_sys_command_romad.rb.
 class ClusterReplicationTest < Test::Unit::TestCase
   self.test_order = :defined
   include StreamWriterTests
   include RomaTestUtils
-
-  def test_rc_status
-    ret = send_cmd('localhost_11211', 'stat run_replication')
-    assert_equal("write-behind.run_replication false\r\n", ret)
-
-    ret = send_cmd('localhost_11211', 'stat replica_mklhash')
-    assert_equal("write-behind.replica_mklhash \r\n", ret)
-
-    ret = send_cmd('localhost_11211', 'stat replica_nodelist')
-    assert_equal("write-behind.replica_nodelist []\r\n", ret)
-  end
 
   def test_rc_switch_replication_default
     # default activate
@@ -125,23 +114,6 @@ class ClusterReplicationTest < Test::Unit::TestCase
     pre_mklhash = send_cmd('localhost_11211', 'stat replica_mklhash')
     ret = send_cmd('localhost_11211', 'stat replica_nodelist')
     assert_equal("write-behind.replica_nodelist [\"localhost_21211\", \"localhost_21212\"]\r\n", ret)
-  end
-
-  def test_rc_switch_replication_error
-    ret = send_cmd('localhost_11211', 'switch_replication true localhost_21211 hoge fuga')
-    assert_equal("CLIENT_ERROR number of arguments\r\n", ret)
-
-    ret = send_cmd('localhost_11211', 'switch_replication true localhost_21211 false')
-    assert_equal("CLIENT_ERROR [copy target] must be all or nil\r\n", ret)
-
-    ret = send_cmd('localhost_11211', 'stat run_replication')
-    assert_equal("write-behind.run_replication false\r\n", ret)
-
-    ret = send_cmd('localhost_11211', 'switch_replication on localhost_21211')
-    assert_equal("CLIENT_ERROR value must be true or false\r\n", ret)
-
-    ret = send_cmd('localhost_11211', 'stat run_replication')
-    assert_equal("write-behind.run_replication false\r\n", ret)
   end
 
   def test_rc_store_cmd  # get/set/add/replace/append/prepend
