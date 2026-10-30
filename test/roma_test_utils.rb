@@ -1,6 +1,7 @@
 require 'pathname'
 require 'fileutils'
 require 'rbconfig'
+require 'socket'
 require 'roma/config'
 require 'roma/messaging/con_pool'
 require 'roma/logging/rlogger'
@@ -34,7 +35,7 @@ module RomaTestUtils
     DEFAULT_NODES.each do |node|
       do_command_romad(node, conf, replication_in_host)
     end
-    sleep 1
+    wait_until_up(DEFAULT_NODES)
   end
 
   def start_roma_replica(conf = DEFAULT_CONFIG, div_bits: 3, replication_in_host: true)
@@ -48,7 +49,7 @@ module RomaTestUtils
     REPLICA_NODES.each do |node|
       do_command_romad(node, conf, replication_in_host)
     end
-    sleep 1
+    wait_until_up(REPLICA_NODES)
   end
 
   def join_roma(node, conf = DEFAULT_CONFIG, replication_in_host: true)
@@ -124,6 +125,7 @@ module RomaTestUtils
     send_message(messages: balse_message)
     RomaTestClient.close_all
     Roma::Messaging::ConPool.instance.close_all
+    wait_until_down(DEFAULT_NODES)
   end
 
   def stop_roma_replica
@@ -131,19 +133,48 @@ module RomaTestUtils
     send_message(messages: balse_message, node: REPLICA_NODES[0])
     RomaTestClient.close_all
     Roma::Messaging::ConPool.instance.close_all
+    wait_until_down(REPLICA_NODES)
   end
 
   def stop_roma_node(node)
     send_message(messages: 'rbalse', node: node)
     RomaTestClient.close_all
     Roma::Messaging::ConPool.instance.close_all
+    wait_until_down([node])
   end
 
   def release_roma_node(node)
     send_message(messages: 'release', node: node)
   end
 
+  # Waits until every node accepts connections.
+  def wait_until_up(nodes)
+    wait_for("#{nodes} to start") { nodes.all? { |node| listening?(node) } }
+  end
+
+  # Waits until every node stops, so that the next romad can use its port.
+  # (romad exits at once if the same node is already running.)
+  def wait_until_down(nodes)
+    wait_for("#{nodes} to stop") { nodes.none? { |node| listening?(node) } }
+  end
+
   private
+
+  def wait_for(what)
+    deadline = Time.now + DEFAULT_TIMEOUT_SEC
+    until yield
+      fail "timed out waiting for #{what}" if Time.now > deadline
+      sleep 0.05
+    end
+  end
+
+  def listening?(node)
+    host, port = node.split('_')
+    TCPSocket.new(host, port).close
+    true
+  rescue SystemCallError
+    false
+  end
 
   def base_dir
     Pathname(__FILE__).dirname.parent.expand_path
