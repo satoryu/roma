@@ -23,7 +23,7 @@ class MHashTest < Test::Unit::TestCase
     assert_equal('roma', ret.chomp)
 
     con.write("createhash test\r\n")
-    ret = eval con.gets.chomp
+    ret = parse_node_replies(con.gets)
     assert_equal 2, ret.length
     assert_equal 'CREATED', ret['localhost_11211']
     assert_equal 'CREATED', ret['localhost_11212']
@@ -57,7 +57,7 @@ class MHashTest < Test::Unit::TestCase
 
     # delete hash
     con.write("deletehash test\r\n")
-    ret = eval con.gets.chomp
+    ret = parse_node_replies(con.gets)
     assert_equal 2, ret.length
     assert_equal 'DELETED', ret['localhost_11211']
     assert_equal 'DELETED', ret['localhost_11212']
@@ -73,7 +73,7 @@ class MHashTest < Test::Unit::TestCase
     assert_equal('roma', ret.chomp)
 
     con.write("createhash test\r\n")
-    ret = eval con.gets.chomp
+    ret = parse_node_replies(con.gets)
     assert_equal 2, ret.length
     assert_equal 'CREATED', ret['localhost_11211']
     assert_equal 'CREATED', ret['localhost_11212']
@@ -93,14 +93,14 @@ class MHashTest < Test::Unit::TestCase
 
     # delete hash to a nothing hash
     con.write("deletehash test\r\n")
-    ret = eval con.gets.chomp
+    ret = parse_node_replies(con.gets)
     assert_equal 2, ret.length
     assert_equal 'SERVER_ERROR test does not exists.', ret['localhost_11211']
     assert_equal 'SERVER_ERROR test does not exists.', ret['localhost_11212']
 
     # delete hash to default
     con.write("deletehash roma\r\n")
-    ret = eval con.gets.chomp
+    ret = parse_node_replies(con.gets)
     assert_equal 2, ret.length
     assert_equal "SERVER_ERROR default hash can't unmount.", ret['localhost_11211']
     assert_equal "SERVER_ERROR default hash can't unmount.", ret['localhost_11212']
@@ -109,7 +109,7 @@ class MHashTest < Test::Unit::TestCase
   def test_defhash
     con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
     con.write("defhash\r\n")
-    ret = eval con.gets.chomp
+    ret = parse_node_replies(con.gets)
     assert_equal 2, ret.length
     assert_equal 'roma', ret['localhost_11212']
     assert_equal 'roma', ret['localhost_11211']
