@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'roma/tcp_fast_fallback'
 require 'socket'
 require 'timeout'
 

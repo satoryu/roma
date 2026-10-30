@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+require 'roma/tcp_fast_fallback'
 require 'optparse'
 require 'date'
 require 'roma/client/rclient'
