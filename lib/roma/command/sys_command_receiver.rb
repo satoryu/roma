@@ -270,7 +270,7 @@ module Roma
       # rswitch_replication <true|false> [nid] [copy target]
       def ev_rswitch_replication(s)
         unless s.length.between?(2, 4)
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         unless s[1] =~ /^(true|false)$/
           return send_data("CLIENT_ERROR value must be true or false\n\r")
@@ -628,7 +628,7 @@ module Roma
           return send_data("CLIENT_ERROR number of arguments (0 for 2)\r\n")
         end
         s.each_index {|idx|
-          if idx >= 2 && (!Event::Handler::ev_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
+          if idx >= 1 && (!Event::Handler::ev_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
              return send_data("NOT SUPPORT [#{s[idx]}] command\r\n")
           end
           if idx >= 1 && @stats.latency_check_cmd.include?(s[idx])
@@ -694,7 +694,6 @@ module Roma
         if s.length != 2
           return send_data("CLIENT_ERROR number of arguments (0 for 2)\r\n")
         elsif s[1] != "nil" && s[1].to_i < 1
-          return send_data("s[1].class = #{s[1].class}\r\n")
           return send_data("<count> must be greater than zero or nil[DEACTIVATE]\r\n")
         end
 
@@ -725,7 +724,6 @@ module Roma
           @stats.latency_check_time_count = false
           @stats.latency_log = false
         end
-        @stats.latency_check_time_count = s[1].to_i
         send_data("CHANGED\r\n")
       end
 
@@ -954,7 +952,7 @@ module Roma
       # set_routing_trans_timeout <sec>
       def ev_set_routing_trans_timeout(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_f <= 0
           return send_data("CLIENT_ERROR time value must be lager than 0\r\n")
@@ -969,7 +967,7 @@ module Roma
       # rset_set_routing_trans_timeout <sec>
       def ev_rset_routing_trans_timeout(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_f <= 0
           return send_data("CLIENT_ERROR time value must be lager than 0\r\n")
@@ -982,7 +980,7 @@ module Roma
       # set_spushv_read_timeout <sec>
       def ev_set_spushv_read_timeout(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_i <= 0
           return send_data("CLIENT_ERROR time value must be lager than 0\r\n")
@@ -996,7 +994,7 @@ module Roma
       # rset_spushv_read_timeout <sec>
       def ev_rset_spushv_read_timeout(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_i <= 0
           return send_data("CLIENT_ERROR time value must be lager than 0\r\n")
@@ -1008,7 +1006,7 @@ module Roma
       # set_reqpushv_timeout_count <sec>
       def ev_set_reqpushv_timeout_count(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_i <= 0
           return send_data("CLIENT_ERROR time value must be lager than 0\r\n")
@@ -1022,7 +1020,7 @@ module Roma
       # ev_rset_reqpushv_timeout_count <sec>
       def ev_rset_reqpushv_timeout_count(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_i <= 0
           return send_data("CLIENT_ERROR time value must be lager than 0\r\n")
@@ -1034,7 +1032,7 @@ module Roma
       # set_spushv_klength_warn <byte>
       def ev_set_spushv_klength_warn(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_i <= 0
           return send_data("CLIENT_ERROR size value must be larger than 0 \r\n")
@@ -1048,7 +1046,7 @@ module Roma
       # rset_set_spushv_klength_warn <byte>
       def ev_rset_spushv_klength_warn(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_i <= 0
           return send_data("CLIENT_ERROR size value must be larger than 0 \r\n")
@@ -1060,7 +1058,7 @@ module Roma
       # set_spushv_vlength_warn <byte>
       def ev_set_spushv_vlength_warn(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_i <= 0
           return send_data("CLIENT_ERROR size value must be larger than 0 \r\n")
@@ -1074,7 +1072,7 @@ module Roma
       # rset_set_spushv_vlength_warn <byte>
       def ev_rset_spushv_vlength_warn(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1].to_i <= 0
           return send_data("CLIENT_ERROR size value must be larger than 0\r\n")
@@ -1195,7 +1193,7 @@ module Roma
       # set_gui_run_snapshot [true|false]
       def ev_set_gui_run_snapshot(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
 
         case s[1]
@@ -1213,7 +1211,7 @@ module Roma
       # set_gui_last_snapshot_date [%Y/%m/%d %H:%M:%S]
       def ev_set_gui_last_snapshot(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1] !~ /^\d+\/\d+\/\d+T\d+:\d+:\d+$/
           return send_data("CLIENT_ERROR format is [%Y/%m/%dT%H:%M:%S]\r\n")
@@ -1227,7 +1225,7 @@ module Roma
       # rset_gui_last_snapshot(s)
       def ev_rset_gui_last_snapshot(s)
         if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\n\r")
+          return send_data("CLIENT_ERROR number of arguments\r\n")
         end
         if s[1] !~ /^\d+\/\d+\/\d+T\d+:\d+:\d+$/
           return send_data("CLIENT_ERROR format is [%Y/%m/%dT%H:%M:%S]\r\n")

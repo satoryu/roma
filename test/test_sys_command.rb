@@ -36,10 +36,6 @@ class SysCommandTest < Test::Unit::TestCase
     'log_shift_size' => [:log_shift_size, '4096', 4096, '0'],
   }
 
-  # These reply "...\n\r" instead of "...\r\n" for a wrong number of arguments.
-  REVERSED_NEWLINE = %w(routing_trans_timeout spushv_read_timeout reqpushv_timeout_count
-                        spushv_klength_warn spushv_vlength_warn)
-
   data(STATS_SETTINGS)
   def test_set(data)
     name = data_label
@@ -73,17 +69,20 @@ class SysCommandTest < Test::Unit::TestCase
   data(STATS_SETTINGS)
   def test_wrong_number_of_arguments(data)
     name = data_label
-    check = lambda do
-      %W(set_#{name} rset_#{name} set_#{name}\s1\s2).each do |line|
-        assert_equal "CLIENT_ERROR number of arguments\r\n", @conn.request(line)
-      end
-    end
-    if REVERSED_NEWLINE.include?(name)
-      pend('BUG: the reply ends with "\n\r"', &check)
-    else
-      check.call
+    %W(set_#{name} rset_#{name} set_#{name}\s1\s2).each do |line|
+      assert_equal "CLIENT_ERROR number of arguments\r\n", @conn.request(line)
     end
     assert_equal [], @conn.broadcasts
+  end
+
+  # Other commands whose replies to a wrong number of arguments ended with
+  # "\n\r" instead of "\r\n".
+  data('rswitch_replication' => 'rswitch_replication',
+       'set_gui_run_snapshot' => 'set_gui_run_snapshot',
+       'set_gui_last_snapshot' => 'set_gui_last_snapshot',
+       'rset_gui_last_snapshot' => 'rset_gui_last_snapshot')
+  def test_number_of_arguments_error_ends_with_crlf(command)
+    assert_equal "CLIENT_ERROR number of arguments\r\n", @conn.request(command)
   end
 
   def test_log_shift_size_is_set_on_the_logger
@@ -266,9 +265,9 @@ class SysCommandLatencyTest < Test::Unit::TestCase
   end
 
   def test_radd_latency_avg_calc_cmd_checks_every_command
-    pend('BUG: rset checks only from the second command on') do
-      assert_equal "NOT SUPPORT [balse] command\r\n", @conn.request('radd_latency_avg_calc_cmd balse')
-    end
+    assert_equal "NOT SUPPORT [balse] command\r\n", @conn.request('radd_latency_avg_calc_cmd balse')
+    assert_equal "NOT SUPPORT [hoge] command\r\n", @conn.request('radd_latency_avg_calc_cmd hoge')
+    assert_equal %w(get set delete), @conn.stats.latency_check_cmd
   end
 
   def test_chg_latency_avg_calc_time_count
@@ -283,10 +282,9 @@ class SysCommandLatencyTest < Test::Unit::TestCase
   end
 
   def test_chg_latency_avg_calc_time_count_with_invalid_value
-    pend('BUG: replies a debug message "s[1].class = String"') do
-      assert_equal "<count> must be greater than zero or nil[DEACTIVATE]\r\n",
-                   @conn.request('chg_latency_avg_calc_time_count 0')
-    end
+    assert_equal "<count> must be greater than zero or nil[DEACTIVATE]\r\n",
+                 @conn.request('chg_latency_avg_calc_time_count 0')
+    assert_equal [], @conn.broadcasts
   end
 
   def test_rchg_latency_avg_calc_time_count
@@ -296,11 +294,11 @@ class SysCommandLatencyTest < Test::Unit::TestCase
   end
 
   def test_rchg_latency_avg_calc_time_count_nil
-    @conn.request('rchg_latency_avg_calc_time_count nil')
+    @conn.request('rchg_latency_avg_calc_time_count 60')
+    assert_equal "CHANGED\r\n", @conn.request('rchg_latency_avg_calc_time_count nil')
+    # The same as chg_latency_avg_calc_time_count nil on the relaying node.
+    assert_false @conn.stats.latency_check_time_count
     assert_false @conn.stats.latency_log
-    pend('BUG: sets 0 instead of false, unlike chg_latency_avg_calc_time_count') do
-      assert_false @conn.stats.latency_check_time_count
-    end
   end
 end
 
