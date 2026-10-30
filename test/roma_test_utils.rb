@@ -147,6 +147,17 @@ module RomaTestUtils
     send_message(messages: 'release', node: node)
   end
 
+  # Asserts that the block returns +expected+ within +timeout+ seconds.
+  # Use it to wait for asynchronous work, such as replication or expiry.
+  def assert_eventually_equal(expected, timeout: DEFAULT_TIMEOUT_SEC)
+    deadline = Time.now + timeout
+    loop do
+      actual = yield
+      return assert_equal(expected, actual) if actual == expected || Time.now > deadline
+      sleep 0.05
+    end
+  end
+
   # Waits until every node accepts connections.
   def wait_until_up(nodes)
     wait_for("#{nodes} to start") { nodes.all? { |node| listening?(node) } }

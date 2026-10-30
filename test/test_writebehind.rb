@@ -197,6 +197,9 @@ class WriteBehindTest < Test::Unit::TestCase
   include FileWriterTests
   include RomaTestUtils
 
+  # Only read_wb is used here; FileWriterTest runs these without romad.
+  FileWriterTests.public_instance_methods.grep(/\Atest_/).each { |t| undef_method(t) }
+
   def setup
     start_roma
     @rc = RomaTestClient.new(%w(localhost_11211 localhost_11212))
