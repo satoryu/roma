@@ -1,67 +1,46 @@
 require 'test_helper'
 
 require 'socket'
+require 'roma/plugin/plugin_storage'
+require 'plugin_test_harness'
 
-class ProtocolTest < Test::Unit::TestCase
-  self.test_order = :defined
-  include RomaTestUtils
-
-  def setup
-    start_roma
-    @sock = TCPSocket.new("localhost", 11211)
-  end
-
-  def teardown
-    @sock.close if @sock
-    stop_roma
-  rescue => e
-    puts "#{e} #{$@}"
-  end
+module ProtocolTests
 
   def test_set_get
-    sleep 10
 
     # Set data
     @sock.write("set key 0 0 5\r\nvalue\r\n")
-    sleep 1
     assert_equal("STORED", @sock.gets.chomp)
 
     # Get data
     @sock.write("get key\r\n")
-    sleep 1
     assert_equal("VALUE key 0 5", @sock.gets.chomp)
     assert_equal("value", @sock.gets.chomp)
     assert_equal("END", @sock.gets.chomp)
 
     # Update data
     @sock.write("set key 0 0 9\r\nnew_value\r\n")
-    sleep 1
     assert_equal("STORED", @sock.gets.chomp)
 
     # Confirm updated data
     @sock.write("get key\r\n")
-    sleep 1
     assert_equal("VALUE key 0 9", @sock.gets.chomp)
     assert_equal("new_value", @sock.gets.chomp)
     assert_equal("END", @sock.gets.chomp)
   end
 
   def test_delete
-    sleep 1
 
     # Set data
     @sock.write("set key 0 0 5\r\nvalue\r\n")
-    sleep 1
     assert_equal("STORED", @sock.gets.chomp)
 
     # Delete data
     @sock.write("delete key\r\n")
-    sleep 1
     assert_equal("DELETED", @sock.gets.chomp)
 
     # Confirm deleted data
     @sock.write("get key\r\n")
-    sleep 1
     assert_equal("END", @sock.gets.chomp)
   end
 
@@ -192,5 +171,37 @@ class ProtocolTest < Test::Unit::TestCase
     assert_equal("#{t2}", @sock.gets.chomp )
     assert_equal("END", @sock.gets.chomp )
   end
+end # ProtocolTests
 
+# Runs every test in-process, without romad.
+class ProtocolInProcessTest < Test::Unit::TestCase
+  self.test_order = :defined
+  include ProtocolTests
+
+  def setup
+    harness = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage).new
+    @sock = PluginTestHarness::Connection.new(harness)
+  end
+end
+
+# Runs a few tests through a socket to romad.
+class ProtocolTest < Test::Unit::TestCase
+  self.test_order = :defined
+  include RomaTestUtils
+  include ProtocolTests
+
+  E2E_TESTS = %i(test_set_get test_delete test_gets test_set_zero_byte_value)
+  (ProtocolTests.public_instance_methods.grep(/\Atest_/) - E2E_TESTS).each { |t| undef_method(t) }
+
+  def setup
+    start_roma
+    @sock = TCPSocket.new("localhost", 11211)
+  end
+
+  def teardown
+    @sock.close if @sock
+    stop_roma
+  rescue => e
+    puts "#{e} #{$@}"
+  end
 end

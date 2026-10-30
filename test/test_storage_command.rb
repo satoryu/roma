@@ -2,6 +2,8 @@ require 'test_helper'
 
 require 'roma/messaging/con_pool'
 require 'roma/config'
+require 'roma/plugin/plugin_storage'
+require 'plugin_test_harness'
 
 module StorageCommandTests
   include RomaTestUtils
@@ -174,18 +176,42 @@ module StorageCommandTests
   end
 end
 
+# Runs every test in-process, without romad.
+class StorageCommandInProcessTest < Test::Unit::TestCase
+  self.test_order = :defined
+  include StorageCommandTests
+
+  def setup
+    harness = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage).new
+    @rc = PluginTestHarness::Client.new(harness)
+  end
+
+  def teardown; end
+
+  # They use commands that are not in PluginStorage.
+  undef test_out
+  undef test_routingdump_bin
+end
+
+# Runs a few tests through romad: one for each kind of forwarded command
+# (fset, fget, fdelete, fgets, fcas, fincr), and the tests that need romad.
+E2E_STORAGE_COMMAND_TESTS = %i(test_set_get_delete test_set_gets test_cas test_incr test_out test_routingdump_bin)
+
 class StorageCommandTest < Test::Unit::TestCase
   self.test_order = :defined
   include StorageCommandTests
+
+  (StorageCommandTests.public_instance_methods.grep(/\Atest_/) - E2E_STORAGE_COMMAND_TESTS).each { |t| undef_method(t) }
 end
 
 class StorageCommandTestForceForward < Test::Unit::TestCase
   self.test_order = :defined
   include StorageCommandTests
 
+  (StorageCommandTests.public_instance_methods.grep(/\Atest_/) - E2E_STORAGE_COMMAND_TESTS).each { |t| undef_method(t) }
+
   def setup
     super
     @rc.rttable.force_forward = true
   end
-
 end
