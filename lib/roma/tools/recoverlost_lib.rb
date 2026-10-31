@@ -165,7 +165,7 @@ module Roma
         if nodes == nil || nodes.length == 0
           cmd = "setroute #{vn} #{@rd.v_clk[vn]} #{nids[0]}\r\n"
           exit unless send_cmd(nids[0] ,cmd)
-          broadcast_cmd(cmd, nids[0])
+          broadcast_cmd(cmd, [nids[0]])
         end
       }
     end
