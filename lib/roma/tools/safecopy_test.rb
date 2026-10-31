@@ -1,185 +1,158 @@
-#!/usr/bin/env ruby
-require 'roma/tcp_fast_fallback'
-require 'optparse'
-require 'date'
-require 'roma/client/rclient'
+require 'roma/tools/admin_client'
+require 'roma/tools/error'
+require 'roma/tools/text_client'
 
-@cnt = 0
-@tmax = 0
-@tmin = 100
+module Roma
+  module Tools
+    # Switches each divided file of a node to safecopy and back to normal
+    # while keys are set, and checks the keys.
+    class SafecopyTest
+      # Sets the keys to the number of the round, round after round in a
+      # thread, until it is stopped.
+      class Writer
+        attr_reader :prefix
 
-Thread.new do
-  sleep_time=10
-  while(true)
-    sleep sleep_time
-    printf("qps=%d max=%f min=%f ave=%f\n",@cnt/sleep_time,@tmax,@tmin,sleep_time/@cnt.to_f)
-    @cnt=0
-    @tmax=0
-    @tmin=100
-  end
-end
+        def initialize(client, prefix, keys)
+          @client = client
+          @prefix = prefix
+          @keys = keys
+          @round = 0
+          @done = -1 # the last key set in the round
+          @stop = false
+          @rounds = Queue.new
+        end
 
-def random_rquest_sender(ini_nodes, n)
-  puts __method__
-  rc=Roma::Client::RomaClient.new(ini_nodes)
+        def start
+          @thread = Thread.new do
+            until @stop
+              @round += 1
+              @done = -1
+              @keys.times do |i|
+                break unless set(i)
+                @done = i
+              end
+              @rounds << @round unless @stop
+            end
+          end
+          self
+        end
 
-  loop do
-    i=rand(n)
-    ts = DateTime.now
-    case rand(3)
-    when 0
-      res=rc.set(i.to_s,'hoge'+i.to_s)
-      puts "set k=#{i} #{res}" if res==nil || res.chomp != 'STORED'
-    when 1
-      res=rc.get(i.to_s)
-      puts "get k=#{i} #{res}" if res == :error
-    when 2
-      res=rc.delete(i.to_s)
-      puts "del k=#{i} #{res}" if res != 'DELETED' && res != 'NOT_FOUND'
+        # Waits until a round is done. Raises the error of the thread if it
+        # died.
+        def wait_round
+          until (round = @rounds.pop(timeout: 1))
+            @thread.join unless @thread.alive?
+          end
+          round
+        end
+
+        # Stops after the key that is being set.
+        def stop
+          @stop = true
+          @thread.join
+          @client.close
+        end
+
+        # The value that key +i+ should have.
+        def expected(i)
+          (i <= @done ? @round : @round - 1).to_s
+        end
+
+        private
+
+        # Tries again until it is stored, since the node may be busy, and
+        # returns false if it is stopped before that.
+        def set(i)
+          loop do
+            return false if @stop
+            begin
+              return true if @client.set("#{@prefix}_#{i}", @round.to_s) == 'STORED'
+            rescue Error
+              nil
+            end
+            sleep 0.1
+          end
+        end
+      end
+
+      # +client+ makes a client for the keys, and +admin+ sends the commands.
+      # The status is asked every +wait+ seconds.
+      def initialize(node_id, out: $stdout, client: -> { TextClient.new([node_id]) }, admin: AdminClient.new,
+                     wait: 5, hash_name: 'roma')
+        @node_id = node_id
+        @out = out
+        @client = client
+        @admin = admin
+        @wait = wait
+        @hash_name = hash_name
+      end
+
+      # Tests each divided file +count+ times on +keys+ keys of each kind,
+      # and returns the number of the keys that were wrong.
+      def run(keys: 1000, count: 1)
+        errors = 0
+        count.times do |c|
+          @out.puts "#{c + 1}th test #{'=' * 70}"
+          safecopy_stats.size.times { |n| errors += test_file(n, keys) }
+        end
+        errors
+      end
+
+      private
+
+      def test_file(n, keys)
+        @out.puts "#{n + 1}th file #{'*' * 70}"
+        flushing = while_writing('flushing_key', keys) do
+          change_status(n, 'safecopy', :safecopy_flushed)
+        end
+        caching = while_writing('caching_key', keys) do
+          change_status(n, 'normal', :normal)
+        end
+        check(flushing, keys) + check(caching, keys)
+      end
+
+      def while_writing(prefix, keys)
+        writer = Writer.new(@client.call, prefix, keys).start
+        writer.wait_round
+        yield
+        writer
+      ensure
+        writer&.stop
+      end
+
+      def change_status(n, status, to)
+        res = nil
+        10.times do
+          res = @admin.request(@node_id, "set_storage_status #{n} #{status} #{@hash_name}")
+          break if res == 'PUSHED'
+          @out.puts "  #{res}"
+          sleep @wait
+        end
+        raise Error, "set_storage_status #{n} #{status}: #{res}" unless res == 'PUSHED'
+        sleep @wait until safecopy_stats[n] == to
+        @out.puts "  #{safecopy_stats.inspect}"
+      end
+
+      # The statuses of the divided files, such as [:normal, :safecopy_flushed].
+      def safecopy_stats
+        key = "storages[#{@hash_name}].storage.safecopy_stats"
+        line = @admin.command(@node_id, "stats #{Regexp.escape(key)}").find { |l| l.start_with?("#{key} ") }
+        raise Error, "#{@node_id} has no #{@hash_name}." unless line
+        line.delete_prefix("#{key} ").scan(/:(\w+)/).flatten.map(&:to_sym)
+      end
+
+      def check(writer, keys)
+        client = @client.call
+        keys.times.count do |i|
+          key = "#{writer.prefix}_#{i}"
+          got = client.get(key)
+          next false if got == writer.expected(i)
+          @out.puts "error k=#{key} #{got.inspect} (expected #{writer.expected(i)})"
+          true
+        end
+      ensure
+        client&.close
+      end
     end
-    t=(DateTime.now - ts).to_f * 86400.0
-    @tmax=t if t > @tmax
-    @tmin=t if t < @tmin
-    @cnt+=1
   end
 end
-
-def set_counts(ini_nodes, range, c)
-  puts "#{__method__} #{range} #{c}"
-  rc=Roma::Client::RomaClient.new(ini_nodes)
-
-  range.each do |i|
-    ts = DateTime.now
-    res=rc.set("key_#{i}","#{c}")
-    puts "set k=#{i} #{res}" if res==nil || res.chomp != 'STORED'
-    t=(DateTime.now - ts).to_f * 86400.0
-    @tmax=t if t > @tmax
-    @tmin=t if t < @tmin
-    @cnt+=1
-  end
-end
-
-def check_count(ini_nodes, range, c)
-  puts "#{__method__} #{range} #{c}"
-  rc=Roma::Client::RomaClient.new(ini_nodes)
-
-  range.each do |i|
-    ts = DateTime.now
-    res = rc.get("key_#{i}")
-    if res != c.to_s
-      puts "error k=key_#{i} #{res}" 
-    end
-    t=(DateTime.now - ts).to_f * 86400.0
-    @tmax=t if t > @tmax
-    @tmin=t if t < @tmin
-    @cnt+=1
-  end
-end
-
-def send_cmd(nid, cmd)
-  conn = Roma::Client::ConPool.instance.get_connection(nid)
-  conn.write "#{cmd}\r\n"
-  ret = conn.gets
-  Roma::Client::ConPool.instance.return_connection(nid, conn)
-  ret
-rescue =>e
-  STDERR.puts "#{nid} #{cmd} #{e.inspect}"
-  nil
-end
-
-def stats(nid, regexp=nil)
-  conn = Roma::Client::ConPool.instance.get_connection(nid)
-  if regexp
-    conn.write "stats #{regexp}\r\n"
-  else
-    conn.write "stats\r\n"
-  end
-  ret = ""
-  while(conn.gets != "END\r\n")
-    ret << $_
-  end
-  Roma::Client::ConPool.instance.return_connection(nid, conn)
-  ret
-rescue =>e
-  STDERR.puts "#{nid} #{e.inspect}"
-  nil  
-end
-
-def safecopy_stats(nid)
-  ret = stats(nid, 'storage.safecopy_stats')
-  return eval $1 if ret =~ /^.+\s(\[.+\])/
-  nil
-end
-
-def set_storage_status(nid, fno, stat)
-  send_cmd(ARGV[0], "set_storage_status #{fno} #{stat}")
-end
-
-def wait_status(nid, fno, stat)
-  while safecopy_stats(nid)[fno] != stat
-    sleep 5
-  end
-  stat
-end
-
-
-def test_change_status
-
-  puts "write (0...10000) = 0"
-  set_counts(ARGV, 0...10000, 0)
-  Thread.new { random_rquest_sender(ARGV, 10000) }
-
-  nid = ARGV[0]
-
-  sleep(5)
-
-  10.times do |n|
-    t = Thread.new { set_counts(ARGV, (n * 1000)...(n * 1000 + 2000), n * 10 + 1) }
-    p set_storage_status(nid, n, 'safecopy')
-    p wait_status(nid, n, :safecopy_flushed)
-    t.join
-    p safecopy_stats(nid)
-  
-    #sleep(30)
-    t = Thread.new { set_counts(ARGV, (n * 1000 + 500)...(n * 1000 + 2000), n * 10 + 2) }
-    p set_storage_status(nid, n, 'normal')
-    p wait_status(nid, n, :normal)
-    t.join
-    p safecopy_stats(nid)
-    check_count(ARGV, (n * 1000)...(n * 1000 + 500), n * 10 + 1)
-    check_count(ARGV, (n * 1000 + 500)...(n * 1000 + 2000), n * 10 + 2)
-    if (n * 1000 + 2000) < 10000
-      check_count(ARGV, (n * 1000 + 2000)...10000, 0)
-    end
-  end
-end
-
-def test_round
-  n = 0
-  1000.times do |i|
-    set_counts(ARGV, 0...10000, i)
-    check_count(ARGV, 0...10000, i)
-  end
-end
-
-param = { :num=>10000, :th=>1 }
-
-opts = OptionParser.new
-
-opts.on("-r", "--round", "round request"){|v| param[:round] = v }
-
-opts.banner = "usage:#{File.basename($0)} [options] addr:port"
-opts.parse!(ARGV)
-
-if ARGV.length == 0
-  STDERR.puts opts.help
-  exit
-end
-
-if param.key?(:round)
-  test_round
-else
-  test_change_status
-end
-
-puts "#{File.basename($0)} has done."

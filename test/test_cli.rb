@@ -212,7 +212,8 @@ class CLITest < Test::Unit::TestCase
   def spy_tool(klass, *methods)
     calls = []
     spy = Object.new
-    methods.each { |m| spy.define_singleton_method(m) { |*args, **opts| calls << [m, args, opts] } }
+    # They return 0, such as the number of errors.
+    methods.each { |m| spy.define_singleton_method(m) { |*args, **opts| calls << [m, args, opts]; 0 } }
     klass.define_singleton_method(:new) { |*args, **opts| calls << [:new, *args, opts]; spy }
     yield
     calls
@@ -335,6 +336,21 @@ class CLITest < Test::Unit::TestCase
     _out, err, status = roma('consistency_test', kvs.nid, '-n', '2', '-r', '1')
     assert_equal 1, status
     assert_equal "2 keys were wrong.\n", err
+  end
+
+  data('defaults' => [[], { keys: 1000, count: 1 }, {}],
+       'options' => [%w(-n 5 -c 2 --hash_name h), { keys: 5, count: 2 }, { hash_name: 'h' }])
+  def test_safecopy_test(data)
+    args, run_opts, new_opts = data
+    require 'roma/tools/safecopy_test'
+    calls = spy_tool(Roma::Tools::SafecopyTest, :run) { roma('safecopy_test', 'host1_1', *args) }
+    assert_equal [[:new, 'host1_1', { hash_name: 'roma' }.merge(new_opts)], [:run, [], run_opts]], calls
+  end
+
+  def test_safecopy_test_node_down
+    _out, err, status = roma('safecopy_test', 'localhost_1')
+    assert_equal 1, status
+    assert_match(/\Alocalhost_1: /, err)
   end
 
   # Records how RecoverLost is called, instead of recovering.
