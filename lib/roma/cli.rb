@@ -102,6 +102,18 @@ module Roma
       raise Roma::Tools::Error, "#{errors} keys were wrong." if errors > 0
     end
 
+    desc 'safecopy_test NODE_ID',
+         'Switch each divided file of a node to safecopy and back while setting keys, and check them'
+    option :keys, aliases: '-n', type: :numeric, default: 1000, desc: 'Number of keys of each kind'
+    option :count, aliases: '-c', type: :numeric, default: 1, desc: 'Times of the test'
+    option :hash_name, default: 'roma', desc: 'The hash to test'
+    def safecopy_test(node_id)
+      require 'roma/tools/safecopy_test'
+      errors = Roma::Tools::SafecopyTest.new(node_id, hash_name: options[:hash_name])
+                                        .run(keys: options[:keys], count: options[:count])
+      raise Roma::Tools::Error, "#{errors} keys were wrong." if errors > 0
+    end
+
     desc 'check_nodes NODE_ID...', 'Check that the nodes answer and know the same nodes, or exit with 1'
     def check_nodes(node_id, *node_ids)
       require 'roma/tools/check_nodes'

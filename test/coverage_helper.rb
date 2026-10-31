@@ -12,7 +12,7 @@ module CoverageHelper
   # Tools that are themselves tests, benchmarks or samples. Testing them
   # would mean testing test code, so they are left out of the report.
   SCRIPTS = %w(
-    safecopy_integration_test safecopy_test test-scenario
+    test-scenario
   ).map { |name| "lib/roma/tools/#{name}.rb" }
 
   # The default message lists every process.
