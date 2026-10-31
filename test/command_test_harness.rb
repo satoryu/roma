@@ -14,7 +14,8 @@ require 'roma/storage/ruby_hash_storage'
 # It stands in for Roma::Command::Receiver, the event handler that mixes in
 # the command modules:
 #
-# - Replies are collected instead of sent.
+# - Replies are collected instead of sent. The connection isn't closed, and
+#   the event loop isn't stopped; the harness records that they would be.
 # - Commands relayed to the other nodes (broadcast_cmd) are recorded and
 #   answered with +relay_reply+.
 # - A fresh Roma::Stats and a real routing table of two nodes are made for
@@ -119,6 +120,8 @@ class CommandTestHarness
   end
 
   attr_reader :stats, :rttable, :log, :romad, :broadcasts, :storage
+  # How the last command closed the connection: :after_writing, :now or nil.
+  attr_reader :closed
   # What the other node answers to relayed commands.
   attr_accessor :relay_reply
 
@@ -149,10 +152,12 @@ class CommandTestHarness
   end
 
   # Runs a command line (without "\r\n") and returns everything it replied.
-  # +data+ is the data block that follows the command line, if any.
+  # +data+ is what the client sends after the command line, if any: a data
+  # block or the answer to a question.
   def request(line, data = nil)
     @rbuf = data ? "#{data}\r\n".b : String.new
     @wbuf = String.new
+    @closed = nil
     s = line.split(/ /)
     with_globals { send("ev_#{s[0]}", s) }
     @wbuf
@@ -164,6 +169,25 @@ class CommandTestHarness
 
   def read_bytes(size)
     @rbuf.slice!(0, size)
+  end
+
+  # Returns nil when the client sent nothing more. The real one waits.
+  def gets
+    idx = @rbuf.index("\n")
+    @rbuf.slice!(0, idx + 1) if idx
+  end
+
+  def close_connection_after_writing
+    @closed = :after_writing
+  end
+
+  def close_connection
+    @closed = :now
+  end
+
+  # Whether romad would stop when this connection closes.
+  def stop_event_loop?
+    !!@stop_event_loop
   end
 
   # The real one, in Event::Handler, asks EventMachine about connections.
