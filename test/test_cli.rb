@@ -289,6 +289,23 @@ class CLITest < Test::Unit::TestCase
     assert_match(message, err)
   end
 
+  def test_check_nodes
+    node = adm_node
+    node.replies['nodelist'] = "#{node.nid}\r\n"
+    out, _err, status = roma('check_nodes', node.nid)
+    assert_nil status
+    assert_equal "#{node.nid} => #{node.nid} (1 nodes)\n", out
+  end
+
+  def test_check_nodes_failed
+    node = adm_node
+    node.replies['nodelist'] = "#{node.nid}\r\n"
+    out, err, status = roma('check_nodes', node.nid, 'localhost_1')
+    assert_equal 1, status
+    assert_match(/\Aerror: localhost_1: /, out)
+    assert_equal "The nodes don't answer the same nodes.\n", err
+  end
+
   # Records how RecoverLost is called, instead of recovering.
   def spy_recoverlost
     calls = []

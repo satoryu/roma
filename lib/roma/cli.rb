@@ -75,6 +75,14 @@ module Roma
                                     value: options[:value], yes: options[:yes])
     end
 
+    desc 'check_nodes NODE_ID...', 'Check that the nodes answer and know the same nodes, or exit with 1'
+    def check_nodes(node_id, *node_ids)
+      require 'roma/tools/check_nodes'
+      return if Roma::Tools::CheckNodes.new.check([node_id, *node_ids])
+
+      raise Roma::Tools::Error, "The nodes don't answer the same nodes."
+    end
+
     desc 'chg_redundancy NUM NODE_ID',
          'Write the routing table of a node in YAML, with NUM nodes to hold each data'
     def chg_redundancy(num, node_id)
