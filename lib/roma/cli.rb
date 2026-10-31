@@ -64,6 +64,17 @@ module Roma
       Roma::Tools::Mkconfig.new.run(options[:with_menu] ? :with_menu : :no_menu)
     end
 
+    desc 'adm COMMAND...', 'Send a command to a node, and print the reply'
+    option :host, default: 'localhost', desc: 'The host of the node'
+    option :port, aliases: '-p', type: :numeric, default: 12000, desc: 'The port of the node'
+    option :value, aliases: '-v', desc: 'The value of a command that stores one, instead of asking for it'
+    option :yes, aliases: '-y', type: :boolean, default: false, desc: 'Stop nodes by balse or shutdown without asking'
+    def adm(command, *args)
+      require 'roma/tools/adm'
+      puts Roma::Tools::Adm.new.run("#{options[:host]}_#{options[:port]}", [command, *args].join(' '),
+                                    value: options[:value], yes: options[:yes])
+    end
+
     desc 'chg_redundancy NUM NODE_ID',
          'Write the routing table of a node in YAML, with NUM nodes to hold each data'
     def chg_redundancy(num, node_id)
