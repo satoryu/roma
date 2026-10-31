@@ -8,8 +8,8 @@ require 'roma/event/con_pool'
 require 'roma/routing/cb_rttable'
 require 'roma/storage/ruby_hash_storage'
 
-# Runs ROMA's own commands (stat, balse, set_*/rset_* and so on) in-process,
-# without romad or sockets.
+# Runs ROMA's own commands (stat, balse, set_*/rset_*, the routing commands
+# and so on) in-process, without romad or sockets.
 #
 # It stands in for Roma::Command::Receiver, the event handler that mixes in
 # the command modules:
@@ -30,9 +30,12 @@ require 'roma/storage/ruby_hash_storage'
 class CommandTestHarness
   include Roma::Command::UtilCommandReceiver
   include Roma::Command::SystemCommandReceiver
+  include Roma::Command::RoutingCommandReceiver
 
   NID = 'localhost_11211'
   OTHER_NID = 'localhost_11212'
+  # The address the client connects from.
+  CLIENT_ADDR = '127.0.0.1'
 
   # Commands that clients may send, and the system commands among them.
   # Some commands accept only clients' commands as arguments.
@@ -123,6 +126,7 @@ class CommandTestHarness
     @stats = Roma::Stats.send(:new)
     @stats.address, @stats.port = NID.split('_')
     @nid = NID
+    @addr = CLIENT_ADDR
     @defhash = 'roma'
     @log = Log.new
     @romad = Romad.new

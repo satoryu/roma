@@ -80,34 +80,6 @@ class NewFuncTest < Test::Unit::TestCase
     assert_nil(@sock.gets)
   end
 
-  def test_get_key_info
-    @sock.write("set key1 0 0 4\r\nval1\r\n")
-    assert_equal("STORED", @sock.gets.chomp)
-
-    @sock.write("get_key_info key1\r\n")
-    assert_match(/^d = \d+ 0x\h+$/, @sock.gets.chomp)
-    assert_match(/^vn = \d+ 0x\h+$/, @sock.gets.chomp)
-    assert_match(/^nodes = \["localhost_1121[1|2]", "localhost_1121[1|2]"\]$/, @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-  end
-
-  def test_enabled_repetition_in_routing
-    @sock.write("enabled_repetition_in_routing?\r\n")
-    assert_equal("true", @sock.gets.chomp)
-  end
-
-  def test_nid_brank
-    @sock.write("stat sub\r\n")
-    assert_equal('routing.sub_nid {}', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-    @sock.write("routingdump yaml\r\n")
-    dump = []
-    while select [@sock], nil, nil, 0.5
-      dump << @sock.gets.chomp!
-    end
-    assert_equal(true, dump.grep(/vm/).empty?)
-  end
-
   def test_stat_latency
     @sock.write("stat latency\r\n")
     assert_equal("stats.hilatency_warn_time 5.0", @sock.gets.chomp)
@@ -213,67 +185,6 @@ class NewFuncChangingClusterTest < Test::Unit::TestCase
     assert_equal("END", @sock.gets.chomp)
   end
 
-  def test_add_rttable_sub_nid
-    @sock.write("stat sub\r\n")
-    assert_equal('routing.sub_nid {}', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-
-    @sock.write("add_rttable_sub_nid 127.0.0.0/24 localhost vm\r\n")
-    assert_equal('{"localhost_11212" => "ADDED", "localhost_11211" => "ADDED"}', @sock.gets.chomp)
-
-    @sock.write("stat sub\r\n")
-    assert_equal('routing.sub_nid {"127.0.0.0/24" => {regexp: "localhost", replace: "vm"}}', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-
-    @sock.write("routingdump yaml\r\n")
-    dump = []
-    while select [@sock], nil, nil, 0.5
-      dump << @sock.gets.chomp!
-    end
-    assert_equal(false, dump.grep(/vm/).empty?)
-  end
-
-  def test_delete_rttable_sub_nid
-    @sock.write("add_rttable_sub_nid 127.0.0.0/24 localhost vm\r\n")
-    assert_equal('{"localhost_11212" => "ADDED", "localhost_11211" => "ADDED"}', @sock.gets.chomp)
-
-    @sock.write("delete_rttable_sub_nid 111.22.33.44/24\r\n")
-    assert_equal('{"localhost_11212" => "NOT_FOUND", "localhost_11211" => "NOT_FOUND"}', @sock.gets.chomp)
-
-    @sock.write("delete_rttable_sub_nid 127.0.0.0/24\r\n")
-    assert_equal('{"localhost_11212" => "DELETED", "localhost_11211" => "DELETED"}', @sock.gets.chomp)
-
-    @sock.write("stat sub\r\n")
-    assert_equal('routing.sub_nid {}', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-
-    @sock.write("routingdump yaml\r\n")
-    dump = []
-    while select [@sock], nil, nil, 0.5
-      dump << @sock.gets.chomp!
-    end
-    assert_equal(true, dump.grep(/vm/).empty?)
-  end
-
-  def test_clear_rttable_sub_nid
-    @sock.write("add_rttable_sub_nid 127.0.0.0/24 localhost vm\r\n")
-    assert_equal('{"localhost_11212" => "ADDED", "localhost_11211" => "ADDED"}', @sock.gets.chomp)
-
-    @sock.write("clear_rttable_sub_nid\r\n")
-    assert_equal('{"localhost_11212" => "CLEARED", "localhost_11211" => "CLEARED"}', @sock.gets.chomp)
-
-    @sock.write("stat sub\r\n")
-    assert_equal('routing.sub_nid {}', @sock.gets.chomp)
-    assert_equal('END', @sock.gets.chomp)
-
-    @sock.write("routingdump yaml\r\n")
-    dump = []
-    while select [@sock], nil, nil, 0.5
-      dump << @sock.gets.chomp!
-    end
-    assert_equal(true, dump.grep(/vm/).empty?)
-  end
-
   def test_set_latency_avg_calc_rule
     @sock.write("set_latency_avg_calc_rule off\r\n")
     assert_equal('{"localhost_11212" => "DEACTIVATED", "localhost_11211" => "DEACTIVATED"}', @sock.gets.chomp)
@@ -291,35 +202,6 @@ class NewFuncChangingClusterTest < Test::Unit::TestCase
     assert_equal("stats.latency_log true", @sock.gets.chomp)
     assert_equal('stats.latency_check_cmd ["get", "set"]', @sock.gets.chomp)
     assert_equal("stats.latency_check_time_count 30", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
-  end
-
-  def test_set_auto_recover
-    @sock.write("set_auto_recover true\r\n")
-    assert_equal('{"localhost_11212" => "STORED", "localhost_11211" => "STORED"}', @sock.gets.chomp)
-
-    @sock.write("stat auto_recover\r\n")
-    assert_equal("routing.auto_recover true", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_status waiting", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_time 1800", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
-
-    @sock.write("set_auto_recover true 180\r\n")
-    assert_equal('{"localhost_11212" => "STORED", "localhost_11211" => "STORED"}', @sock.gets.chomp)
-
-    @sock.write("stat auto_recover\r\n")
-    assert_equal("routing.auto_recover true", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_status waiting", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_time 180", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
-
-    @sock.write("set_auto_recover false\n")
-    assert_equal('{"localhost_11212" => "STORED", "localhost_11211" => "STORED"}', @sock.gets.chomp)
-
-    @sock.write("stat auto_recover\r\n")
-    assert_equal("routing.auto_recover false", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_status waiting", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_time 180", @sock.gets.chomp)
     assert_equal("END", @sock.gets.chomp)
   end
 
