@@ -65,6 +65,12 @@ module Roma
         @interval = interval
         @client = client
         @stats = Stats.new
+        @stop = false
+      end
+
+      # Stops the random requests of run, from another thread.
+      def stop
+        @stop = true
       end
 
       # Runs +modes+ in order in each of +threads+: :set sets key_0 ... and
@@ -114,7 +120,7 @@ module Roma
       def run_rand(client, num, value_size, duration)
         @out.puts 'random_request_sender'
         stop = duration && Process.clock_gettime(Process::CLOCK_MONOTONIC) + duration
-        until stop && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= stop
+        until @stop || (stop && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= stop)
           i = rand(num)
           case rand(3)
           when 0 then request(client, "set k=#{i}") { |c| c.set(i.to_s, value(i, value_size)) == 'STORED' }
