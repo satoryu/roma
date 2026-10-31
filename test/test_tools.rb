@@ -12,6 +12,9 @@ require 'roma/tools/log_merger'
 require 'roma/config'
 require 'roma/tools/mkconfig'
 require 'roma/tools/recoverlost'
+require 'roma/tools/key_list'
+require 'roma/tools/key_access'
+require 'roma/tools/mkrecent'
 require 'roma/tools/chg_redundancy'
 require 'roma/tools/multi_commander'
 require 'roma/tools/adm'
@@ -739,13 +742,26 @@ class RecoverLostTest < Test::Unit::TestCase
   end
 end
 
-# Opening the storage files.
-class RecoverLostStorageTest < Test::Unit::TestCase
+class StorageFilesTest < Test::Unit::TestCase
   include ToolTestHelper
 
-  def open_storage(*files)
+  def open_storage(*files, **opts)
     files.each { |f| File.write(File.join(@dir, f), '') }
-    Roma::Tools::RecoverLost.new.send(:open_storage, @dir, [0])
+    Roma::Tools::StorageFiles.open(@dir, [0], **opts)
+  end
+
+  def test_each_hash
+    %w(roma2 roma1).each { |h| FileUtils.mkdir_p(File.join(@dir, h)) }
+    File.write(File.join(@dir, 'file'), '')
+    hashes = []
+    Roma::Tools::StorageFiles.each_hash(@dir) { |hname, dir| hashes << [hname, dir] }
+    assert_equal [['roma1', File.join(@dir, 'roma1')], ['roma2', File.join(@dir, 'roma2')]], hashes
+  end
+
+  def test_no_hashes
+    assert_raise_message("#{@dir} has no directories of storage files.") do
+      Roma::Tools::StorageFiles.each_hash(@dir) { flunk }
+    end
   end
 
   def test_no_files
@@ -764,21 +780,229 @@ class RecoverLostStorageTest < Test::Unit::TestCase
 
   # With a storage of a test, which keeps the data on memory.
   def test_open
-    files = %w(0.mem 1.mem 0.cache.mem 0.mem-journal)
-    storage = with_storage('mem' => ['roma/storage/ruby_hash_storage', :RubyHashStorage, 'roma-storage']) do
-      open_storage(*files)
-    end
-    assert_equal [2, @dir], [storage.divnum, storage.instance_variable_get(:@storage_path)]
+    storage = with_mem_storage { open_storage('0.mem', '1.mem', '0.cache.mem', '0.mem-journal') }
+    assert_equal [Roma::Storage::RubyHashStorage, 2, @dir],
+                 [storage.class, storage.divnum, storage.instance_variable_get(:@storage_path)]
     assert_equal({ 0 => 0 }, storage.hdiv)
   end
 
-  def with_storage(storages)
-    saved = Roma::Tools::RecoverLost::STORAGES
-    Roma::Tools::RecoverLost.send(:remove_const, :STORAGES)
-    Roma::Tools::RecoverLost.const_set(:STORAGES, saved.merge(storages))
+  def test_open_with_divnum
+    storage = with_mem_storage { open_storage('0.mem', divnum: 3) }
+    assert_equal 3, storage.divnum
+  end
+
+  # New files, of the storage given.
+  def test_open_new
+    storage = open_storage(divnum: 4, storage_class: Roma::Storage::RubyHashStorage)
+    assert_equal [Roma::Storage::RubyHashStorage, 4], [storage.class, storage.divnum]
+  end
+
+  def with_mem_storage
+    saved = Roma::Tools::StorageFiles::STORAGES
+    Roma::Tools::StorageFiles.send(:remove_const, :STORAGES)
+    Roma::Tools::StorageFiles.const_set(:STORAGES,
+                                        saved.merge('mem' => ['roma/storage/ruby_hash_storage', :RubyHashStorage, 'roma-storage']))
     yield
   ensure
-    Roma::Tools::RecoverLost.send(:remove_const, :STORAGES)
-    Roma::Tools::RecoverLost.const_set(:STORAGES, saved)
+    Roma::Tools::StorageFiles.send(:remove_const, :STORAGES)
+    Roma::Tools::StorageFiles.const_set(:STORAGES, saved)
+  end
+end
+
+# The storages are on memory, instead of the files.
+module MemStorageHelper
+  def setup
+    super
+    @storages = {}
+    @closed = []
+  end
+
+  # A storage in +dir+, with +data+ as {key => [value, clock, expt]}.
+  def mem_storage(dir, data = {}, divnum: 2, vnodes: [0, 1 << 31])
+    FileUtils.mkdir_p(dir)
+    storage = Roma::Storage::RubyHashStorage.new
+    storage.divnum = divnum
+    storage.vn_list = vnodes
+    storage.each_vn_dump_sleep = 0
+    storage.opendb
+    data.each do |key, (value, clk, expt)|
+      vn = vnodes[key.sum % vnodes.size]
+      storage.set(vn, key, 0, expt || 0x7fffffff, value)
+      storage.instance_variable_get(:@hdb)[storage.hdiv[vn]].tap do |hdb|
+        vn_, last, _clk, ex, val = hdb[key].unpack('NNNNa*')
+        hdb[key] = [vn_, last, clk || 0, ex, val].pack('NNNNa*')
+      end
+    end
+    closed = @closed
+    storage.define_singleton_method(:closedb) { closed << dir }
+    @storages[dir] = storage
+  end
+
+  # Makes +tool+ open the storages of mem_storage.
+  def use_mem_storages(tool)
+    storages = @storages
+    tool.define_singleton_method(:open_storage) { |dir, *| storages.fetch(dir) { raise Roma::Tools::Error, "#{dir} has no storage files." } }
+    tool
+  end
+end
+
+class KeyListTest < Test::Unit::TestCase
+  include ToolTestHelper
+  include MemStorageHelper
+
+  def test_list
+    mem_storage(File.join(@dir, 'roma'), { 'key1' => ['v1'], 'key2' => ['v2'], 'expired' => ['v3', 0, 1] })
+    mem_storage(File.join(@dir, 'roma2'), { 'key3' => ['v4'] })
+    out = StringIO.new
+    err = StringIO.new
+    use_mem_storages(Roma::Tools::KeyList.new(out: out, err: err, wait: 0)).list(@dir)
+    assert_equal %w(key1 key2 key3), out.string.lines.map(&:chomp).sort
+    assert_match(/\A### roma #{@dir}\/roma\n.*done\n### roma2 #{@dir}\/roma2\n.*done\n\z/m, err.string)
+    assert_match(%r{1/3\r2/3\r}, err.string)
+    assert_equal [File.join(@dir, 'roma'), File.join(@dir, 'roma2')], @closed
+  end
+
+  # The storage is closed even then.
+  def test_error
+    storage = mem_storage(File.join(@dir, 'roma'), { 'key1' => ['v1'] })
+    def storage.true_length
+      raise Roma::Tools::Error, 'broken'
+    end
+    tool = use_mem_storages(Roma::Tools::KeyList.new(out: StringIO.new, err: StringIO.new))
+    assert_raise_message('broken') { tool.list(@dir) }
+    assert_equal [File.join(@dir, 'roma')], @closed
+  end
+end
+
+class KeyAccessTest < Test::Unit::TestCase
+  include ToolTestHelper
+  include MemStorageHelper
+
+  def setup
+    super
+    mem_storage(File.join(@dir, 'roma'), { 'key1' => ['v1', 3], 'expired' => ['v2', 0, 1] })
+    mem_storage(File.join(@dir, 'roma2'), { 'key2' => ['v3'] })
+    @out = StringIO.new
+  end
+
+  def access(key, **opts)
+    use_mem_storages(Roma::Tools::KeyAccess.new(out: @out)).access(@dir, key, **opts)
+  end
+
+  def test_exist
+    assert_true access('key1')
+    assert_equal "hash : roma\nexist\n", @out.string
+    assert_equal [File.join(@dir, 'roma')], @closed
+  end
+
+  def test_in_another_hash
+    assert_true access('key2')
+    assert_equal "hash : roma\nhash : roma2\nexist\n", @out.string
+  end
+
+  def test_value
+    access('key1', value: true)
+    assert_match(/\Ahash : roma\nvnode: \d+\nlast : .+\nclock: 3\nexpt : .+\nvalue: v1\n\z/, @out.string)
+  end
+
+  data('missing' => 'key3', 'expired' => 'expired')
+  def test_not_exist(key)
+    assert_false access(key)
+    assert_equal "hash : roma\nhash : roma2\nnot exist\n", @out.string
+  end
+
+  # A deleted key leaves a mark, whose expt is 0.
+  def test_deleted
+    storage = @storages[File.join(@dir, 'roma')]
+    vn = [0, 1 << 31]['key1'.sum % 2]
+    storage.delete(vn, 'key1', 0)
+    assert_false access('key1')
+  end
+end
+
+class MkRecentTest < Test::Unit::TestCase
+  include ToolTestHelper
+  include MemStorageHelper
+
+  def setup
+    super
+    @vnodes = [0, 1 << 31]
+    @recent = File.join(@dir, 'recent')
+    @out = StringIO.new
+  end
+
+  def tool
+    tool = use_mem_storages(Roma::Tools::MkRecent.new(out: @out))
+    storages = @storages
+    closed = @closed
+    real = Roma::Tools::StorageFiles
+    # The new files are on memory too.
+    tool.define_singleton_method(:open_storage) do |dir, vnodes, divnum: nil, storage_class: nil|
+      next storages.fetch(dir) { raise Roma::Tools::Error, "#{dir} has no storage files." } unless storage_class
+      real.open(dir, vnodes, divnum: divnum, storage_class: storage_class).tap do |st|
+        st.define_singleton_method(:closedb) { closed << dir }
+        storages[dir] = st
+      end
+    end
+    tool
+  end
+
+  def make(**opts)
+    tool.make(File.join(@dir, 'a'), File.join(@dir, 'b'), @recent, hash_bits: 32, divide_bits: 1, **opts)
+  end
+
+  def get(storage, key)
+    storage.get_raw2(key)&.values_at(2, 4)
+  end
+
+  # The newer data of a key, by its clock, is kept.
+  def test_make
+    mem_storage(File.join(@dir, 'a', 'roma'), { 'key1' => ['old', 1], 'key2' => ['a2', 5] })
+    mem_storage(File.join(@dir, 'b', 'roma'), { 'key1' => ['new', 2], 'key3' => ['b3', 1] })
+    make(divnum: 3)
+    recent = @storages.fetch(File.join(@recent, 'roma'))
+    assert_equal 3, recent.divnum
+    assert_equal [[2, 'new'], [5, 'a2'], [1, 'b3']], %w(key1 key2 key3).map { |k| get(recent, k) }
+    assert_equal [File.join(@dir, 'a', 'roma'), File.join(@dir, 'b', 'roma'), File.join(@recent, 'roma')].sort, @closed.sort
+    assert_match(/\AOpen .*a\/roma\nOpen .*b\/roma\nOpen .*recent\/roma\nroma:0\/2\rroma:1\/2\r\n\z/, @out.string)
+  end
+
+  def test_recent_path_exists
+    Dir.mkdir(@recent)
+    assert_raise_message("#{@recent} exists.") { make }
+  end
+
+  def test_divide_bits_too_many
+    assert_raise_message('The hash bits should be divide bits or more.') do
+      tool.make('a', 'b', @recent, hash_bits: 8, divide_bits: 9)
+    end
+    assert_false File.exist?(@recent)
+  end
+
+  # Nothing is made then.
+  def test_no_hashes
+    assert_raise_message("#{File.join(@dir, 'a')} has no directories of storage files.") { make }
+    assert_false File.exist?(@recent)
+  end
+
+  # The storages opened are closed.
+  def test_missing_in_the_other
+    mem_storage(File.join(@dir, 'a', 'roma'))
+    assert_raise_message("#{File.join(@dir, 'b', 'roma')} has no storage files.") { make }
+    assert_equal [File.join(@dir, 'a', 'roma')], @closed
+  end
+
+  def test_different_storages
+    mem_storage(File.join(@dir, 'a', 'roma'))
+    other = Class.new(Roma::Storage::RubyHashStorage)
+    @storages[File.join(@dir, 'b', 'roma')] = other.new.tap do |st|
+      st.divnum = 1
+      st.vn_list = @vnodes
+      st.opendb
+      closed = @closed
+      st.define_singleton_method(:closedb) { closed << :other }
+    end
+    assert_raise_message(/have different storages/) { make }
+    assert_equal [File.join(@dir, 'a', 'roma'), :other], @closed
   end
 end

@@ -207,6 +207,52 @@ class CLITest < Test::Unit::TestCase
     assert_match(/\Alocalhost_1: /, err)
   end
 
+  # Records how the class of a tool is made and called, instead of running it.
+  def spy_tool(klass, *methods)
+    calls = []
+    spy = Object.new
+    methods.each { |m| spy.define_singleton_method(m) { |*args, **opts| calls << [m, args, opts] } }
+    klass.define_singleton_method(:new) { |**opts| calls << [:new, opts]; spy }
+    yield
+    calls
+  ensure
+    klass.singleton_class.send(:remove_method, :new)
+  end
+
+  def test_key_list
+    require 'roma/tools/key_list'
+    calls = spy_tool(Roma::Tools::KeyList, :list) { roma('key_list', 'path', '-w', '0') }
+    assert_equal [[:new, { wait: 0 }], [:list, ['path'], {}]], calls
+  end
+
+  data('short' => '-v', 'long' => '--value')
+  def test_key_access(option)
+    require 'roma/tools/key_access'
+    calls = spy_tool(Roma::Tools::KeyAccess, :access) { roma('key_access', 'path', 'key1', option) }
+    assert_equal [[:new, {}], [:access, %w(path key1), { value: true }]], calls
+  end
+
+  def test_mkrecent
+    require 'roma/tools/mkrecent'
+    out = nil
+    calls = spy_tool(Roma::Tools::MkRecent, :make) do
+      out, = roma('mkrecent', 'a', 'b', 'recent', '-h', '16', '-d', '4', '-n', '5')
+    end
+    assert_equal [[:new, {}], [:make, %w(a b recent), { hash_bits: 16, divide_bits: 4, divnum: 5 }]], calls
+    assert_equal "Make recent data process has succeed.\n", out
+  end
+
+  data('key_list' => [%w(key_list), /has no directories of storage files/],
+       'key_access' => [%w(key_access key1), /has no directories of storage files/],
+       'mkrecent' => [%w(mkrecent b recent), /has no directories of storage files/])
+  def test_storage_tool_errors(data)
+    args, message = data
+    out, err, status = roma(args[0], @dir, *args[1..])
+    assert_equal 1, status
+    assert_equal '', out
+    assert_match(message, err)
+  end
+
   # Records how RecoverLost is called, instead of recovering.
   def spy_recoverlost
     calls = []
