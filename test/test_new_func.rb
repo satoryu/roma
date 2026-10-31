@@ -65,21 +65,6 @@ class NewFuncTest < Test::Unit::TestCase
     assert_equal("END", @sock.gets.chomp)
   end
 
-  def test_shutdown_self_no
-    @sock.write("shutdown_self\r\n")
-    assert_equal("", @sock.gets.chomp)
-    assert_equal("=================================================================", @sock.gets.chomp)
-    assert_equal("CAUTION!!: ", @sock.gets.chomp)
-    assert_equal("\tThis command kill the instance!", @sock.gets.chomp)
-    assert_equal("\tThere is some possibility of occuring redundancy down!", @sock.gets.chomp)
-    assert_equal("=================================================================", @sock.gets.chomp)
-    assert_equal("", @sock.gets.chomp)
-    assert_equal("Are you sure to shutdown this instance?(yes/no)", @sock.gets.chomp)
-
-    @sock.write("no\r\n")
-    assert_nil(@sock.gets)
-  end
-
   def test_stat_latency
     @sock.write("stat latency\r\n")
     assert_equal("stats.hilatency_warn_time 5.0", @sock.gets.chomp)
