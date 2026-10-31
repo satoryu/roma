@@ -1,91 +1,52 @@
-#!/usr/bin/env ruby
-#
-# usage:key_list storage-path [param_sleep(sec)]
-#
+require 'roma/tools/storage_files'
+
 module Roma
-  module Storage
-  end
-  Storage::autoload(:DbmStorage,'roma/storage/dbm')
-  Storage::autoload(:SQLite3Storage,'roma/storage/sqlite3')
-
-  class KeyList
-
-    def initialize(strgpath, param_sleep)
-      each_hash(strgpath){|hname, dir|
-        STDERR.puts "### #{hname} #{dir}"
-        st = open_storage(dir)
-
-        c = 0
-        n = st.true_length
-        m = n / 100
-        m = 1 if m < 1
-        st.divnum.times{|i|
-          st.each_hdb_dump(i){|data|
-            c += 1
-            STDERR.print "#{c}/#{n}\r" if c % m == 0
-            vn, last, clk, expt, klen = data.unpack('NNNNN')
-            key, = data[20..-1].unpack("a#{klen}")
-            STDOUT.puts key
-            sleep param_sleep
-          }
-        }
-
-        st.closedb
-        STDERR.puts "\ndone"
-      }
-    end
-
-    def each_hash(path)
-      Dir::glob("#{path}/*").each{|dir|
-        next unless File::directory?(dir)
-        hname = dir[dir.rindex('/')+1..-1]
-        yield hname,dir
-      }
-    end
-
-    def open_storage(path)
-      unless File::directory?(path)
-        STDERR.puts "#{path} does not found."
-        return nil
+  module Tools
+    # Lists the keys in the storage files of a node.
+    class KeyList
+      # The keys go to +out+, and the progress to +err+. +wait+ is the
+      # seconds to wait after each key, not to load the machine.
+      def initialize(out: $stdout, err: $stderr, wait: 0.001)
+        @out = out
+        @err = err
+        @wait = wait
       end
 
-      # get a file extension
-      ext = File::extname(Dir::glob("#{path}/0.*")[0])[1..-1]
-      # count a number of divided files
-      divnum = Dir::glob("#{path}/*.#{ext}").length
+      # Writes the keys under +storage_path+, one in each line. Expired and
+      # deleted ones are left out. Raises Error if the files can't be opened.
+      def list(storage_path)
+        StorageFiles.each_hash(storage_path) do |hname, dir|
+          @err.puts "### #{hname} #{dir}"
+          storage = open_storage(dir)
+          begin
+            write_keys(storage)
+          ensure
+            storage.closedb
+          end
+          @err.puts "\ndone"
+        end
+      end
 
-      st = new_storage(ext)
-      st.divnum = divnum
-      st.vn_list = []
-      st.storage_path = path
-      st.opendb
-      st
-    end
+      private
 
-    def new_storage(ext)
-      case(ext)
-      when 'dbm'
-        return Roma::Storage::DbmStorage.new
-      when 'sql3'
-        return Roma::Storage::SQLite3Storage.new
-      else
-        return nil
+      def open_storage(dir)
+        StorageFiles.open(dir, [])
+      end
+
+      def write_keys(storage)
+        count = 0
+        total = storage.true_length
+        step = [total / 100, 1].max
+        storage.divnum.times do |i|
+          storage.each_hdb_dump(i) do |data|
+            count += 1
+            @err.print "#{count}/#{total}\r" if count % step == 0
+            # vn, last, clock, expt, the key length, the key, ...
+            @out.puts data[20, data.unpack1('@16N')]
+            sleep @wait
+          end
+        end
       end
     end
-
   end
-
 end
-
-if ARGV.length < 1
-  STDERR.puts "usage:key_list storage-path [param_sleep(sec)]"
-  exit
-end
-
-if ARGV[1]
-  param_sleep = ARGV[1].to_f
-else
-  param_sleep = 0.001
-end
-
-Roma::KeyList.new(ARGV[0], param_sleep)

@@ -1,20 +1,13 @@
 require 'digest/sha1'
 require 'roma/tools/admin_client'
 require 'roma/tools/error'
+require 'roma/tools/storage_files'
 
 module Roma
   module Tools
     # Pushes the data in the storage files of a node back to the cluster,
     # for the vnodes whose data was lost.
     class RecoverLost
-      # The storages by the extension of their files: the file to require,
-      # the class and the gem.
-      STORAGES = {
-        'dbm' => ['roma/storage/dbm', :DbmStorage, 'roma-storage-dbm'],
-        'sql3' => ['roma/storage/sqlite3', :SQLite3Storage, 'roma-storage-sqlite3'],
-        'grn' => ['roma/storage/groonga', :GroongaStorage, 'roma-storage-groonga']
-      }.freeze
-
       # +out+ is where the progress goes. With +alist+, the data is pushed
       # by alist_spushv for the list plugin. +push_wait+ is the seconds to
       # wait after each data, and +random+ chooses the node for a vnode that
@@ -70,10 +63,7 @@ module Roma
       end
 
       def each_storage(path, vnodes)
-        dirs = Dir.glob(File.join(path, '*')).select { |dir| File.directory?(dir) }.sort
-        raise Error, "#{path} has no directories of storage files." if dirs.empty?
-        dirs.each do |dir|
-          hname = File.basename(dir)
+        StorageFiles.each_hash(path) do |hname, dir|
           @out.puts "#{hname} #{dir}"
           storage = open_storage(dir, vnodes)
           begin
@@ -85,24 +75,7 @@ module Roma
       end
 
       def open_storage(dir, vnodes)
-        file = Dir.glob(File.join(dir, '0.*')).first
-        raise Error, "#{dir} has no storage files." unless file
-        ext = File.extname(file).delete_prefix('.')
-        path, name, gem = STORAGES[ext]
-        raise Error, "#{dir} has files of an unknown storage: #{ext}" unless path
-        begin
-          require path
-        rescue LoadError
-          raise Error, "The files in #{dir} need #{gem}. Install it by gem install #{gem}."
-        end
-        storage = Roma::Storage.const_get(name).new
-        # The files are 0.dbm, 1.dbm, ..., and maybe others such as
-        # 0.cache.dbm and 0.sql3-journal.
-        storage.divnum = Dir.children(dir).count { |f| f.match?(/\A\d+\.#{ext}\z/) }
-        storage.vn_list = vnodes
-        storage.storage_path = dir
-        storage.opendb
-        storage
+        StorageFiles.open(dir, vnodes)
       end
 
       # A vnode without nodes is given to a node, which the others are told.

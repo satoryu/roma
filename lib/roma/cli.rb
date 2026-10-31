@@ -110,6 +110,32 @@ module Roma
       puts 'Recover process has succeed.'
     end
 
+    desc 'key_list STORAGE_PATH', 'Write the keys in the storage files under STORAGE_PATH'
+    option :wait, aliases: '-w', type: :numeric, default: 0.001, banner: 'SEC', desc: 'Seconds to wait after each key'
+    def key_list(storage_path)
+      require 'roma/tools/key_list'
+      Roma::Tools::KeyList.new(wait: options[:wait]).list(storage_path)
+    end
+
+    desc 'key_access STORAGE_PATH KEY', 'Tell if a key is in the storage files under STORAGE_PATH'
+    option :value, aliases: '-v', type: :boolean, default: false, desc: 'Tell the data of the key'
+    def key_access(storage_path, key)
+      require 'roma/tools/key_access'
+      Roma::Tools::KeyAccess.new.access(storage_path, key, value: options[:value])
+    end
+
+    desc 'mkrecent STORAGE_PATH1 STORAGE_PATH2 RECENT_PATH',
+         'Merge the storage files of two nodes into RECENT_PATH, keeping the newer data of each key'
+    option :hash, aliases: '-h', type: :numeric, default: 32, banner: 'BITS', desc: 'Digest bit count'
+    option :divide, aliases: '-d', type: :numeric, default: 9, banner: 'BITS', desc: 'Dividing bit count'
+    option :divnum, aliases: '-n', type: :numeric, default: 10, banner: 'NUM', desc: 'Number of the new divided files'
+    def mkrecent(path1, path2, recent_path)
+      require 'roma/tools/mkrecent'
+      Roma::Tools::MkRecent.new.make(path1, path2, recent_path, hash_bits: options[:hash],
+                                     divide_bits: options[:divide], divnum: options[:divnum])
+      puts 'Make recent data process has succeed.'
+    end
+
     desc 'log_merger LOG_FILE...', 'Merge the log files of romad in time order'
     option :output, aliases: '-o', banner: 'FILE', desc: 'Write into FILE instead of the standard output'
     option :level, aliases: '-l', enum: Roma::Tools::LogMerger::LEVEL_LETTERS.keys, default: 'TRACE',
