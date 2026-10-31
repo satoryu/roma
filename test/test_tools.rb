@@ -280,9 +280,7 @@ class RecoverLostTest < Test::Unit::TestCase
     r.define_singleton_method(:broadcast_cmd) { |cmd, without| broadcasts << without; real.call(cmd, without) }
     capture_stdout { r.suite }
     assert_include other.commands, "setroute #{vn} 0 #{@node.nid}"
-    pend('the node not to tell is given as a String, which matches node ids it is a part of') do
-      assert_equal [[@node.nid]], broadcasts
-    end
+    assert_equal [[@node.nid]], broadcasts
   end
 
   def test_history_of_lost
