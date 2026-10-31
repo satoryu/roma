@@ -64,6 +64,19 @@ module Roma
       Roma::Tools::Mkconfig.new.run(options[:with_menu] ? :with_menu : :no_menu)
     end
 
+    desc 'chg_redundancy NUM NODE_ID',
+         'Write the routing table of a node in YAML, with NUM nodes to hold each data'
+    def chg_redundancy(num, node_id)
+      require 'roma/tools/chg_redundancy'
+      Roma::Tools::ChgRedundancy.new.change(node_id, Integer(num, exception: false) || 0)
+    end
+
+    desc 'multi_commander NODE_ID COMMAND...', 'Send a command to every node in the routing table of a node'
+    def multi_commander(node_id, command, *args)
+      require 'roma/tools/multi_commander'
+      puts Roma::Tools::MultiCommander.new(node_id).send_cmd_all([command, *args].join(' '))
+    end
+
     desc 'log_merger LOG_FILE...', 'Merge the log files of romad in time order'
     option :output, aliases: '-o', banner: 'FILE', desc: 'Write into FILE instead of the standard output'
     option :level, aliases: '-l', enum: Roma::Tools::LogMerger::LEVEL_LETTERS.keys, default: 'TRACE',

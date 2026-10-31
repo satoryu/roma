@@ -171,19 +171,19 @@ module Roma
       end
 
       def send_recover addr, port
-        commander = Roma::MultiCommander.new "#{addr}_#{port}"
+        commander = Roma::Tools::MultiCommander.new "#{addr}_#{port}"
         res = commander.send_cmd "recover", "#{addr}_#{port}"
         puts res
       end
 
       def send_stats addr, port
-        commander = Roma::MultiCommander.new "#{addr}_#{port}"
+        commander = Roma::Tools::MultiCommander.new "#{addr}_#{port}"
         res = commander.send_cmd "stats run", "#{addr}_#{port}"
         puts res
       end
 
       def send_stats_routing_nodes_length addr, port
-        commander = Roma::MultiCommander.new "#{addr}_#{port}"
+        commander = Roma::Tools::MultiCommander.new "#{addr}_#{port}"
         res = commander.send_cmd "stats routing.nodes.length", "#{addr}_#{port}"
         splited = res.split(' ')
         splited.each_with_index { |w, i|
@@ -195,7 +195,7 @@ module Roma
       end
       
       def send_stats_run_acquire_vnodes addr, port
-        commander = Roma::MultiCommander.new "#{addr}_#{port}"
+        commander = Roma::Tools::MultiCommander.new "#{addr}_#{port}"
         res = commander.send_cmd "stats stats.run_acquire_vnodes", "#{addr}_#{port}"
         splited = res.split(' ')
         splited.each_with_index { |w, i|

@@ -3,6 +3,7 @@ require 'open3'
 require 'rbconfig'
 require 'stringio'
 require 'tmpdir'
+require 'fake_node'
 require 'roma/cli'
 require 'roma/routing/routing_data'
 
@@ -11,9 +12,11 @@ class CLITest < Test::Unit::TestCase
 
   def setup
     @dir = Dir.mktmpdir('roma_cli')
+    @fake_nodes = []
   end
 
   def teardown
+    @fake_nodes.each(&:close)
     FileUtils.rm_rf(@dir)
   end
 
@@ -113,6 +116,55 @@ class CLITest < Test::Unit::TestCase
     assert_match(/\Aerror:No such file or directory/, err)
   end
 
+  # A FakeNode that answers routingdump with the routing table of itself and
+  # +others+.
+  def routing_node(*others, redundancy: 1)
+    node = FakeNode.new
+    @fake_nodes << node
+    @rd = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.nid, *others], true)
+    dump = Marshal.dump(@rd)
+    node.replies['routingdump'] = "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
+    node
+  end
+
+  def test_chg_redundancy
+    node = routing_node('localhost_1', redundancy: 2)
+    out, _err, status = roma('chg_redundancy', '1', node.nid)
+    assert_nil status
+    rd = YAML.unsafe_load(out)
+    assert_equal 1, rd.rn
+    assert_equal [1], rd.v_idx.values.map(&:size).uniq
+  end
+
+  data('not a number' => [%w(one localhost_1), /The redundancy should be 1 or more/],
+       'zero' => [%w(0 localhost_1), /The redundancy should be 1 or more/],
+       'node down' => [%w(1 localhost_1), /\Alocalhost_1: /],
+       'missing node' => [%w(1), /"roma chg_redundancy" was called with arguments \["1"\]/])
+  def test_chg_redundancy_errors(data)
+    args, message = data
+    out, err, status = roma('chg_redundancy', *args)
+    assert_equal 1, status
+    assert_equal '', out
+    assert_match(message, err)
+  end
+
+  def test_multi_commander
+    other = FakeNode.new
+    @fake_nodes << other
+    node = routing_node(other.nid)
+    out, _err, status = roma('multi_commander', node.nid, 'stats', 'run')
+    assert_nil status
+    assert_equal @rd.nodes.map { |nid| "****** #{nid}\r\nSTORED\r\n" }.join, out
+    assert_equal ['stats run'], other.commands
+  end
+
+  def test_multi_commander_error
+    out, err, status = roma('multi_commander', 'localhost_1', 'whoami')
+    assert_equal 1, status
+    assert_equal '', out
+    assert_match(/\Alocalhost_1: /, err)
+  end
+
   def write_logs
     File.write(File.join(@dir, 'a.log'), "W, [2026-01-01T00:00:01.000001 #1]  WARN -- : a1\n" \
                                          "E, [2026-01-01T00:00:03.000001 #1] ERROR -- : a2\n" \
@@ -181,6 +233,14 @@ class CLITest < Test::Unit::TestCase
   end
 
   # bin/roma runs the CLI and exits with its status.
+  # Without Roma::Config, which the tests load but the roma command doesn't.
+  def test_command_to_nodes
+    node = routing_node
+    out, err, status = run_roma('multi_commander', node.nid, 'whoami')
+    assert_true status.success?, err
+    assert_equal "****** #{node.nid}\r\nROMA\r\n", out
+  end
+
   def test_command
     out, _err, status = run_roma('mkroute', '-d', '3', 'host1_1', 'host2_1')
     assert_true status.success?
