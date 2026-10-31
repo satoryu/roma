@@ -138,6 +138,7 @@ end
 # Every key belongs to the owner, so this node forwards commands to it.
 class ListPluginForwardTest < Test::Unit::TestCase
   HARNESS = ListPluginCommandTest::HARNESS
+  NID = PluginTestHarness::NID
   OWNER_NID = PluginTestHarness::REPLICA_NID
   OTHER_NID = 'localhost_11213'
 
@@ -154,10 +155,14 @@ class ListPluginForwardTest < Test::Unit::TestCase
     assert_equal "END\r\n", @conn.request('alist_gets key2')
   end
 
-  # A command forwarded to this node, though it doesn't have the key.
+  # The node it forwards to thinks another node has the key. It doesn't
+  # forward the command again.
   def test_forwarded_to_the_wrong_node
-    assert_equal "SERVER_ERROR Routing table is inconsistent.\r\n", @conn.request('alist_length key1 forward')
-    assert_equal "SERVER_ERROR Routing table is inconsistent.\r\n", @conn.request('alist_push key1 1 forward', 'a')
+    wrong = HARNESS.new(nid: OWNER_NID, nodes: [OTHER_NID, NID]).forward_to(@owner)
+    @conn.forward_to(wrong)
+    # A command with a multi-line reply, and one with a one-line reply.
+    assert_equal "SERVER_ERROR Routing table is inconsistent.\r\n", @conn.request('alist_gets key1')
+    assert_equal "SERVER_ERROR Routing table is inconsistent.\r\n", @conn.request('alist_push key1 1', 'a')
   end
 
   # Stands in for a node that replies ERROR, or can't be reached.
