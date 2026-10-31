@@ -4,6 +4,7 @@ require 'rbconfig'
 require 'stringio'
 require 'tmpdir'
 require 'fake_node'
+require 'fake_kvs'
 require 'roma/cli'
 require 'roma/routing/routing_data'
 
@@ -212,7 +213,7 @@ class CLITest < Test::Unit::TestCase
     calls = []
     spy = Object.new
     methods.each { |m| spy.define_singleton_method(m) { |*args, **opts| calls << [m, args, opts] } }
-    klass.define_singleton_method(:new) { |**opts| calls << [:new, opts]; spy }
+    klass.define_singleton_method(:new) { |*args, **opts| calls << [:new, *args, opts]; spy }
     yield
     calls
   ensure
@@ -304,6 +305,36 @@ class CLITest < Test::Unit::TestCase
     assert_equal 1, status
     assert_match(/\Aerror: localhost_1: /, out)
     assert_equal "The nodes don't answer the same nodes.\n", err
+  end
+
+  data('default' => [[], [:rand], {}],
+       'set and get' => [%w(-g -s), %i(set get), {}],
+       'set and rand' => [%w(--set --rand), %i(set rand), {}],
+       'options' => [%w(-s -n 5 -t 2 -v 100 -D 3), [:set], { num: 5, threads: 2, value_size: 100, duration: 3 }])
+  def test_bench(data)
+    args, modes, opts = data
+    require 'roma/tools/bench'
+    calls = spy_tool(Roma::Tools::Bench, :run) { roma('bench', 'host1_1', 'host2_1', *args) }
+    expected = { num: 10_000, threads: 1, value_size: nil, duration: nil }.merge(opts)
+    assert_equal [[:new, %w(host1_1 host2_1), {}], [:run, [modes], expected]], calls
+  end
+
+  def test_consistency_test
+    kvs = FakeKVS.new
+    @fake_nodes << kvs
+    out, _err, status = roma('consistency_test', kvs.nid, '-n', '2', '-r', '3')
+    assert_nil status
+    assert_equal '', out
+    assert_equal({ 'key_0' => '3', 'key_1' => '3' }, kvs.data)
+  end
+
+  def test_consistency_test_errors
+    kvs = FakeKVS.new
+    @fake_nodes << kvs
+    kvs.replies['set'] = "NOT_STORED\r\n"
+    _out, err, status = roma('consistency_test', kvs.nid, '-n', '2', '-r', '1')
+    assert_equal 1, status
+    assert_equal "2 keys were wrong.\n", err
   end
 
   # Records how RecoverLost is called, instead of recovering.

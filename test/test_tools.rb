@@ -4,6 +4,7 @@ require 'rbconfig'
 require 'tmpdir'
 require 'stringio'
 require 'fake_node'
+require 'fake_kvs'
 require 'roma/routing/routing_data'
 require 'roma/storage/ruby_hash_storage'
 require 'roma/tools/mkroute'
@@ -18,6 +19,8 @@ require 'roma/tools/mkrecent'
 require 'roma/tools/roma_watcher'
 require 'roma/tools/tribunus'
 require 'roma/tools/check_nodes'
+require 'roma/tools/bench'
+require 'roma/tools/consistency_test'
 require 'roma/tools/chg_redundancy'
 require 'roma/tools/multi_commander'
 require 'roma/tools/adm'
@@ -1249,5 +1252,189 @@ class CheckNodesTest < Test::Unit::TestCase
     down = down_node
     assert_false check(node.nid, down)
     assert_match(/\Aerror: #{down}: .*\n#{node.nid} => a \(1 nodes\)\n\z/, @out.string)
+  end
+end
+
+module FakeKVSHelper
+  def fake_kvs
+    FakeKVS.new.tap { |kvs| @nodes << kvs }
+  end
+end
+
+class TextClientTest < Test::Unit::TestCase
+  include ToolTestHelper
+  include FakeKVSHelper
+
+  def setup
+    super
+    @kvs = fake_kvs
+    @client = Roma::Tools::TextClient.new([@kvs.nid], timeout: 0.5)
+  end
+
+  def teardown
+    @client.close
+    super
+  end
+
+  def test_set_get_delete
+    assert_equal 'STORED', @client.set('key1', "va\r\nlue")
+    assert_equal "va\r\nlue", @client.get('key1')
+    assert_equal 'DELETED', @client.delete('key1')
+    assert_nil @client.get('key1')
+    assert_equal 'NOT_FOUND', @client.delete('key1')
+    # One connection.
+    assert_equal ['set key1 0 0 7', 'get key1', 'delete key1', 'get key1', 'delete key1'], @kvs.commands
+  end
+
+  def test_multibyte_value
+    @client.set('key1', '値')
+    assert_equal '値'.b, @client.get('key1')
+  end
+
+  def test_expt
+    @client.set('key1', 'v', 100)
+    assert_equal 'set key1 0 100 1', @kvs.commands[0]
+  end
+
+  def test_get_error
+    @kvs.replies['get'] = "SERVER_ERROR busy\r\n"
+    assert_raise_message('get key1: SERVER_ERROR busy') { @client.get('key1') }
+  end
+
+  def test_get_without_end
+    @kvs.replies['get'] = "VALUE key1 0 1\r\nv\r\nVALUE\r\n"
+    assert_raise_message('get key1: VALUE') { @client.get('key1') }
+  end
+
+  def test_closed
+    @kvs.replies['set'] = :close
+    assert_raise_message('The connection was closed.') { @client.set('key1', 'v') }
+  end
+
+  def test_no_reply
+    @kvs.replies['delete'] = ''
+    assert_raise_message(/execution expired/) { @client.delete('key1') }
+  end
+
+  # The next node is used after an error.
+  def test_next_node
+    down = down_node
+    client = Roma::Tools::TextClient.new([down, @kvs.nid], timeout: 0.5)
+    assert_raise_message(/\A#{down}: /) { client.set('key1', 'v') }
+    assert_equal 'STORED', client.set('key1', 'v')
+  ensure
+    client.close
+  end
+
+  def test_no_node
+    assert_raise_message('No node is given.') { Roma::Tools::TextClient.new([]) }
+  end
+end
+
+class BenchTest < Test::Unit::TestCase
+  include ToolTestHelper
+  include FakeKVSHelper
+
+  def setup
+    super
+    @kvs = fake_kvs
+    @out = StringIO.new
+  end
+
+  def bench(interval: 10)
+    Roma::Tools::Bench.new([@kvs.nid], out: @out, interval: interval)
+  end
+
+  def test_set_and_get
+    bench.run(%i(set get), num: 3, threads: 2)
+    assert_equal({ 'key_0' => 'value_0', 'key_1' => 'value_1', 'key_2' => 'value_2' }, @kvs.data)
+    assert_equal 6, @kvs.commands.grep(/\Aget /).size
+    assert_equal "Start thread 0\nStart thread 1\n", @out.string.lines.grep(/Start/).join
+    assert_empty @out.string.lines.grep(/failed/)
+  end
+
+  def test_value_size
+    bench.run(%i(set get), num: 2, value_size: 5)
+    assert_equal [5, 5], @kvs.data.values.map(&:size)
+    assert_match(/\A[a-z]{5}\z/, @kvs.data['key_0'])
+    assert_empty @out.string.lines.grep(/failed/)
+  end
+
+  def test_wrong_values
+    @kvs.data['key_0'] = 'other'
+    bench.run(%i(get), num: 2)
+    assert_equal ["get k=0 failed\n", "get k=1 failed\n"], @out.string.lines.grep(/failed/)
+  end
+
+  def test_set_failed
+    @kvs.replies['set'] = "SERVER_ERROR busy\r\n"
+    bench.run(%i(set), num: 1)
+    assert_include @out.string, "set k=0 failed\n"
+  end
+
+  def test_node_down
+    Roma::Tools::Bench.new([down_node], out: @out).run(%i(get), num: 1)
+    assert_match(/^get k=0 localhost_\d+: .*refused/i, @out.string)
+  end
+
+  def test_rand
+    bench.run(%i(rand), num: 5, duration: 0.2)
+    names = @kvs.commands.map { |c| c.split.first }.uniq.sort
+    assert_equal %w(delete get set), names
+    assert_empty @out.string.lines.grep(/failed/)
+  end
+
+  def test_report
+    bench(interval: 0.1).run(%i(rand), num: 5, duration: 0.35)
+    assert_match(/^qps=\d+ max=\d+\.\d+ min=\d+\.\d+ ave=\d+\.\d+$/, @out.string)
+  end
+
+  def test_stats
+    stats = Roma::Tools::Bench::Stats.new
+    assert_equal 'qps=0 max=0.000000 min=0.000000 ave=0.000000', stats.report(10)
+    [0.5, 0.1, 0.3].each { |t| stats.record(t) }
+    assert_equal 'qps=1 max=0.500000 min=0.100000 ave=0.666667', stats.report(2)
+    # It starts over.
+    assert_equal 'qps=0 max=0.000000 min=0.000000 ave=0.000000', stats.report(10)
+  end
+end
+
+class ConsistencyTestTest < Test::Unit::TestCase
+  include ToolTestHelper
+  include FakeKVSHelper
+
+  def setup
+    super
+    @kvs = fake_kvs
+    @out = StringIO.new
+  end
+
+  def consistency(**opts)
+    Roma::Tools::ConsistencyTest.new([@kvs.nid], out: @out).run(**opts)
+  end
+
+  def test_rounds
+    assert_equal 0, consistency(keys: 3, rounds: 2)
+    assert_equal({ 'key_0' => '2', 'key_1' => '2', 'key_2' => '2' }, @kvs.data)
+    assert_equal '', @out.string
+  end
+
+  def test_hundred_rounds
+    consistency(keys: 1, rounds: 100)
+    assert_equal "100 loop has finished.\n", @out.string
+  end
+
+  # The values are kept by the node, but not stored.
+  def test_errors
+    @kvs.replies['set'] = "NOT_STORED\r\n"
+    assert_equal 2, consistency(keys: 2, rounds: 1)
+    assert_match(/^set k=key_0 NOT_STORED$/, @out.string)
+    assert_match(/^error k=key_1 nil$/, @out.string)
+  end
+
+  def test_node_down
+    assert_equal 1, Roma::Tools::ConsistencyTest.new([down_node], out: @out).run(keys: 1, rounds: 1)
+    assert_match(/^set k=key_0 localhost_\d+: /, @out.string)
+    assert_match(/^error k=key_0 localhost_\d+: /, @out.string)
   end
 end
