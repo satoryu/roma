@@ -454,7 +454,7 @@ module Roma
       @rttable.set_recover_proc{|action|
         if (@rttable.lost_action == :shutdown || @rttable.lost_action == :auto_assign) && @rttable.auto_recover == true
           Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new("#{action}"))
-        elsif
+        else
           @log.error("AUTO_RECOVER is off or Unavailable value is set to [DEFAULT_LOST_ACTION] => #{@rttable.lost_action}")
         end
       }

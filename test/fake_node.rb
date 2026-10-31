@@ -7,7 +7,9 @@ class FakeNode
   # Every command line received, without "\r\n".
   attr_reader :commands
   # Replies to use instead of the usual ones: 'reqpushv' (PUSHED), 'spushv'
-  # (READY; the stream isn't read then) and 'spushv result' (STORED).
+  # (READY; the stream isn't read then) and 'spushv result' (STORED). Other
+  # commands are answered by their name; a Proc is called with the line, and
+  # :close closes the connection.
   attr_reader :replies
 
   def initialize
@@ -52,6 +54,9 @@ class FakeNode
         s.write("READY\r\n")
         @dat[ss[2].to_i] = receive_stream_dump(s)
         s.write(@replies['spushv result'] || "STORED\r\n")
+      elsif (reply = @replies[res.split(' ').first])
+        break if reply == :close
+        s.write(reply.respond_to?(:call) ? reply.call(res) : reply)
       elsif res.start_with?('whoami')
         s.write("ROMA\r\n")
       elsif res.start_with?('rbalse')
