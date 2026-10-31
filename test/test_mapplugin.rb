@@ -8,12 +8,11 @@ module MapPluginTests
   include RomaTestUtils
 
   def setup
-    start_roma
     @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
   end
 
   def teardown
-    stop_roma
+    @rc.delete_used_keys
     Roma::Messaging::ConPool::instance.close_all
   end
 
@@ -74,11 +73,13 @@ end # MapPluginTests
 
 class MapPluginTest < Test::Unit::TestCase
   self.test_order = :defined
+  extend RomaTestUtils::RomaPerClass
   include MapPluginTests
 end
 
 class MapPluginTestForceForward < Test::Unit::TestCase
   self.test_order = :defined
+  extend RomaTestUtils::RomaPerClass
   include MapPluginTests
 
   def setup

@@ -8,12 +8,11 @@ module ListPluginTests
   include RomaTestUtils
 
   def setup
-    start_roma
     @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
   end
 
   def teardown
-    stop_roma
+    @rc.delete_used_keys
     Roma::Messaging::ConPool::instance.close_all
   end
 
@@ -624,6 +623,7 @@ E2E_LIST_PLUGIN_TESTS = %i(test_at test_delete test_gets test_alist_spushv)
 
 class ListPluginTest < Test::Unit::TestCase
   self.test_order = :defined
+  extend RomaTestUtils::RomaPerClass
   include ListPluginTests
 
   (ListPluginTests.public_instance_methods.grep(/\Atest_/) - E2E_LIST_PLUGIN_TESTS).each { |t| undef_method(t) }
@@ -631,6 +631,7 @@ end
 
 class ListPluginTestForceForward < Test::Unit::TestCase
   self.test_order = :defined
+  extend RomaTestUtils::RomaPerClass
   include ListPluginTests
 
   (ListPluginTests.public_instance_methods.grep(/\Atest_/) - E2E_LIST_PLUGIN_TESTS).each { |t| undef_method(t) }

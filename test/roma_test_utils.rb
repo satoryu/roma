@@ -18,6 +18,23 @@ module RomaTestUtils
   REPLICA_NODES = REPLICA_PORTS.map { |port| "#{DEFAULT_HOST}_#{port}" }
   SHELL_LOG = 'roma_test_outputs.log'
 
+  # Extend a test class with it to start romad once for the class instead of
+  # once for each test. The tests then share the data stored in romad, so
+  # each test must not depend on what the others store.
+  module RomaPerClass
+    def self.extended(test_class)
+      test_class.singleton_class.include(RomaTestUtils)
+    end
+
+    def startup
+      start_roma
+    end
+
+    def shutdown
+      stop_roma
+    end
+  end
+
   Roma::Logging::RLogger.create_singleton_instance("#{Roma::Config::LOG_PATH}/roma_test.log",
                                                    Roma::Config::LOG_SHIFT_AGE,
                                                    Roma::Config::LOG_SHIFT_SIZE)

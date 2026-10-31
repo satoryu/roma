@@ -141,6 +141,7 @@ class PluginTestHarness
   class Client < RomaTestClient
     def initialize(harness)
       @default_hash_name = HASH_NAME
+      @used_keys = []
       @connection = Connection.new(harness)
       @rttable = RomaTestClient::RoutingTable.new(Roma::Routing::RoutingData.create(32, 3, 2, [NID, REPLICA_NID]))
     end

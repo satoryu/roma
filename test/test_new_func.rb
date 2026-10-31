@@ -6,18 +6,7 @@ require 'socket'
 class NewFuncTest < Test::Unit::TestCase
   self.test_order = :defined
   include RomaTestUtils
-
-  class << self
-    include RomaTestUtils
-
-    def startup
-      start_roma
-    end
-
-    def shutdown
-      stop_roma
-    end
-  end
+  extend RomaTestUtils::RomaPerClass
 
   def setup
     @sock = TCPSocket.new("localhost", 11211)

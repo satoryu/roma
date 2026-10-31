@@ -121,42 +121,37 @@ class ClusterReplicationTest < Test::Unit::TestCase
 
     # set/get
     @rc.set('key1', 'val1')
-    sleep 0.1
-    assert_equal('val1', @rc_replica.get('key1'))
+    assert_eventually_equal('val1') { @rc_replica.get('key1') }
 
     # add
     @rc.add('key2', 'val2')
-    sleep 0.1
-    assert_equal('val2', @rc_replica.get('key2'))
+    assert_eventually_equal('val2') { @rc_replica.get('key2') }
     @rc.add("key2", "val3")
+    # Nothing should change; give replication a moment to do something wrong.
     sleep 0.1
     assert_equal('val2', @rc_replica.get('key2'))
 
     # replace
     @rc.set('key3', 'val3')
-    sleep 0.1
+    assert_eventually_equal('val3') { @rc_replica.get('key3') }
     @rc.replace('key3', 'val4')
-    sleep 0.1
-    assert_equal('val4', @rc_replica.get('key3'))
+    assert_eventually_equal('val4') { @rc_replica.get('key3') }
     @rc.replace('key4', 'val4')
+    # Nothing should change; give replication a moment to do something wrong.
     sleep 0.1
     assert_nil( @rc_replica.get('key4'))
 
     # append
     @rc.set('key5','value5', 0, true)
-    sleep 0.1
-    assert_equal('value5', @rc_replica.get('key5', true))
+    assert_eventually_equal('value5') { @rc_replica.get('key5', true) }
     @rc.append("key5","_end")
-    sleep 0.1
-    assert_equal("value5_end", @rc_replica.get('key5',true))
+    assert_eventually_equal("value5_end") { @rc_replica.get('key5',true) }
 
     # prepend
     @rc.set('key6','value6', 0, true)
-    sleep 0.1
-    assert_equal('value6', @rc_replica.get('key6', true))
+    assert_eventually_equal('value6') { @rc_replica.get('key6', true) }
     @rc.prepend("key6","start_")
-    sleep 0.1
-    assert_equal("start_value6", @rc_replica.get('key6',true))
+    assert_eventually_equal("start_value6") { @rc_replica.get('key6',true) }
   end
 
   def test_rc_other_store_cmd # delete/incr/decr/set_expt/cas
@@ -164,48 +159,35 @@ class ClusterReplicationTest < Test::Unit::TestCase
 
     # delete
     @rc.set('key1', 'val1')
-    sleep 0.1
-    assert_equal('val1', @rc_replica.get('key1'))
+    assert_eventually_equal('val1') { @rc_replica.get('key1') }
     @rc.delete('key1')
-    sleep 0.1
-    assert_nil(@rc_replica.get('key1'))
+    assert_eventually_equal(nil) { @rc_replica.get('key1') }
 
     # incr
     @rc.set('key2','100',0,true)
-    sleep 0.1
-    assert_equal('100', @rc_replica.get('key2', true))
+    assert_eventually_equal('100') { @rc_replica.get('key2', true) }
     @rc.incr('key2')
-    sleep 0.1
-    assert_equal('101', @rc_replica.get('key2', true))
+    assert_eventually_equal('101') { @rc_replica.get('key2', true) }
     @rc.incr('key2', 10)
-    sleep 0.1
-    assert_equal('111', @rc_replica.get('key2', true))
+    assert_eventually_equal('111') { @rc_replica.get('key2', true) }
 
     # decr
     @rc.set('key3','100', 0, true)
-    sleep 0.1
-    assert_equal('100', @rc_replica.get('key3', true))
+    assert_eventually_equal('100') { @rc_replica.get('key3', true) }
 
     @rc.decr('key3')
-    sleep 0.1
-    assert_equal('99', @rc_replica.get('key3', true))
+    assert_eventually_equal('99') { @rc_replica.get('key3', true) }
 
     @rc.decr('key3', 10)
-    sleep 0.1
-    assert_equal('89', @rc_replica.get('key3', true))
+    assert_eventually_equal('89') { @rc_replica.get('key3', true) }
 
-    # expt
+    # expt and set_expt. Both keys expire in 1 second; wait for them together.
     @rc.set('key4', 'val4', 1)
-    sleep 0.1
-    assert_equal('val4', @rc_replica.get('key4'))
-    assert_eventually_equal(nil) { @rc_replica.get('key4') }
-
-    # set_expt
     @rc.set('key5', 'val5')
-    sleep 0.1
-    assert_equal('val5', @rc_replica.get('key5'))
+    assert_eventually_equal('val4') { @rc_replica.get('key4') }
+    assert_eventually_equal('val5') { @rc_replica.get('key5') }
     send_cmd('localhost_11211', 'set_expt key5 1')
-    assert_eventually_equal(nil) { @rc_replica.get('key5') }
+    assert_eventually_equal([nil, nil]) { [@rc_replica.get('key4'), @rc_replica.get('key5')] }
 
     # cas
     @rc.set("cnt", 1)
@@ -213,8 +195,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
       assert_equal(1, v)
       v += 1
     }
-    sleep 0.1
-    assert_equal(2, @rc_replica.get("cnt"))
+    assert_eventually_equal(2) { @rc_replica.get("cnt") }
 
     res = @rc.cas("cnt"){|v|
       res2 = @rc.cas("cnt"){|v2|
@@ -224,7 +205,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
       v += 1
     }
     assert_equal("EXISTS", res)
-    assert_equal(4, @rc_replica.get("cnt"))
+    assert_eventually_equal(4) { @rc_replica.get("cnt") }
   end
 
   def test_rc_background_copy_activate
@@ -245,7 +226,11 @@ class ClusterReplicationTest < Test::Unit::TestCase
     @rc.set('key3', 'val3')
 
     send_cmd('localhost_11211', 'switch_replication true localhost_21211')
-    sleep 1
+    # New data is replicated, but the data stored before isn't.
+    @rc.set('key4', 'val4')
+    assert_eventually_equal('val4') { @rc_replica.get('key4') }
+    assert_equal("write-behind.run_existing_data_replication false\r\n",
+                 send_cmd('localhost_11211', 'stat run_existing_data_replication'))
 
     assert_nil(@rc_replica.get('key1'))
     assert_nil(@rc_replica.get('key2'))
@@ -258,7 +243,9 @@ class ClusterReplicationTest < Test::Unit::TestCase
     @rc_replica.set('key1', 'replica1') # clk = 1
 
     send_cmd('localhost_11211', 'switch_replication true localhost_21211 all')
-    sleep 1
+    assert_eventually_equal("write-behind.run_existing_data_replication false\r\n") do
+      send_cmd('localhost_11211', 'stat run_existing_data_replication')
+    end
 
     assert_equal('replica1', @rc_replica.get('key1'))
   end
