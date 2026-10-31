@@ -35,17 +35,21 @@ desc 'Run the tests and report the coverage of lib in coverage/index.html'
 task :coverage do
   rm_rf 'coverage'
   ENV['COVERAGE'] = '1'
+  # Report the coverage even when tests fail. Not from an ensure clause:
+  # SimpleCov skips the rest of the report while an exception is raised.
   begin
     Rake::Task[:test].invoke
-  ensure
-    # The last romad processes may still be writing their results.
-    romad = File.expand_path('bin/romad', __dir__)
-    deadline = Time.now + 30
-    sleep 0.1 while system('pgrep', '-f', romad, out: File::NULL) && Time.now < deadline
-
-    require_relative 'test/coverage_helper'
-    CoverageHelper.report
+  rescue => test_failure
   end
+
+  # The last romad processes may still be writing their results.
+  romad = File.expand_path('bin/romad', __dir__)
+  deadline = Time.now + 30
+  sleep 0.1 while system('pgrep', '-f', romad, out: File::NULL) && Time.now < deadline
+
+  require_relative 'test/coverage_helper'
+  CoverageHelper.report
+  raise test_failure if test_failure
 end
 
 namespace :changelog do

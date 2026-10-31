@@ -20,8 +20,11 @@ module CoverageHelper
     configure
     SimpleCov.command_name "#{name} #{Process.pid}"
     SimpleCov.coverage_dir "#{RESULTS_DIR}/#{name}-#{Process.pid}"
-    # The report is made once, from all the results.
+    # The report is made once, from all the results. When tests fail,
+    # SimpleCov says it skips the report of this process; it still saves the
+    # result, which is all that's needed.
     SimpleCov.formatter SimpleCov::Formatter::MultiFormatter.new([])
+    SimpleCov.print_errors false
     SimpleCov.start
   end
 
