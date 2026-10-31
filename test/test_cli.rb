@@ -353,6 +353,21 @@ class CLITest < Test::Unit::TestCase
     assert_match(/\Alocalhost_1: /, err)
   end
 
+  data('defaults' => [[], { work_dir: '.', hostname: 'localhost', port: 11211, nodes: 3, timeout: 60 }],
+       'options' => [%w(-n 4 --host h --port 1 -w d --timeout 5), { work_dir: 'd', hostname: 'h', port: 1, nodes: 4, timeout: 5 }])
+  def test_test_scenario(data)
+    args, opts = data
+    require 'roma/tools/test_scenario'
+    calls = spy_tool(Roma::Tools::TestScenario, :run) { roma('test_scenario', *args) }
+    assert_equal [[:new, opts], [:run, [], {}]], calls
+  end
+
+  def test_test_scenario_one_node
+    _out, err, status = roma('test_scenario', '-n', '1')
+    assert_equal 1, status
+    assert_equal "The scenario needs 2 nodes or more.\n", err
+  end
+
   # Records how RecoverLost is called, instead of recovering.
   def spy_recoverlost
     calls = []

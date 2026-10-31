@@ -19,10 +19,12 @@ module Roma
         @con = nil
       end
 
-      # Returns the reply, such as STORED.
+      # Returns the reply, STORED or NOT_STORED. Raises Error for another
+      # reply, such as SERVER_ERROR, after which the node may read the value
+      # as a command, so the connection is closed.
       def set(key, value, expt = 0)
         value = value.to_s.b
-        request("set #{key} 0 #{expt} #{value.bytesize}\r\n#{value}\r\n") { |con| line(con) }
+        request("set #{key} 0 #{expt} #{value.bytesize}\r\n#{value}\r\n") { |con| reply(con, "set #{key}", %w(STORED NOT_STORED)) }
       end
 
       # Returns the value, or nil if there is none.
@@ -39,9 +41,9 @@ module Roma
         end
       end
 
-      # Returns the reply, DELETED or NOT_FOUND.
+      # Returns the reply, DELETED or NOT_FOUND. Raises Error for another.
       def delete(key)
-        request("delete #{key}\r\n") { |con| line(con) }
+        request("delete #{key}\r\n") { |con| reply(con, "delete #{key}", %w(DELETED NOT_FOUND)) }
       end
 
       def close
@@ -71,6 +73,12 @@ module Roma
         @next += 1
         host, port = nid.split(/[:_]/)
         @con = TCPSocket.new(host, port)
+      end
+
+      def reply(con, cmd, expected)
+        res = line(con)
+        raise Error, "#{cmd}: #{res}" unless expected.include?(res)
+        res
       end
 
       def line(con)

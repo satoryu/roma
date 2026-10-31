@@ -9,12 +9,6 @@ require 'simplecov-cobertura'
 module CoverageHelper
   RESULTS_DIR = 'coverage/results'
 
-  # Tools that are themselves tests, benchmarks or samples. Testing them
-  # would mean testing test code, so they are left out of the report.
-  SCRIPTS = %w(
-    test-scenario
-  ).map { |name| "lib/roma/tools/#{name}.rb" }
-
   # The default message lists every process.
   class CoberturaFormatter < SimpleCov::Formatter::CoberturaFormatter
     def output_message(_result, result_path)
@@ -27,7 +21,6 @@ module CoverageHelper
   def configure
     SimpleCov.root(File.expand_path('..', __dir__))
     SimpleCov.cover 'lib/**/*.rb'
-    SCRIPTS.each { |path| SimpleCov.skip(path) }
     SimpleCov.enable_coverage :branch
   end
 

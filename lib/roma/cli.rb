@@ -114,6 +114,18 @@ module Roma
       raise Roma::Tools::Error, "#{errors} keys were wrong." if errors > 0
     end
 
+    desc 'test_scenario', 'Start romads, send requests, kill a node, and check that the others find it down'
+    option :nodes, aliases: '-n', type: :numeric, default: 3, desc: 'Number of the romads'
+    option :host, default: 'localhost', desc: 'The host of the romads'
+    option :port, type: :numeric, default: 11211, desc: 'The port of the first romad'
+    option :work_dir, aliases: '-w', default: '.', banner: 'DIR', desc: 'The directory where the romads run'
+    option :timeout, type: :numeric, default: 60, banner: 'SEC', desc: 'Seconds to wait for the nodes'
+    def test_scenario
+      require 'roma/tools/test_scenario'
+      Roma::Tools::TestScenario.new(work_dir: options[:work_dir], hostname: options[:host], port: options[:port],
+                                    nodes: options[:nodes], timeout: options[:timeout]).run
+    end
+
     desc 'check_nodes NODE_ID...', 'Check that the nodes answer and know the same nodes, or exit with 1'
     def check_nodes(node_id, *node_ids)
       require 'roma/tools/check_nodes'
