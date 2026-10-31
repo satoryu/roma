@@ -1,11 +1,20 @@
 require 'json'
 require 'simplecov'
+require 'simplecov-cobertura'
 
 # Measures the coverage of lib, both in the test process and in every romad
 # the end-to-end tests start. Each process writes its own result under
-# coverage/results, and `rake coverage` merges them into coverage/index.html.
+# coverage/results, and `rake coverage` merges them into coverage/index.html,
+# and into coverage/coverage.xml (Cobertura) for Codecov.
 module CoverageHelper
   RESULTS_DIR = 'coverage/results'
+
+  # The default message lists every process.
+  class CoberturaFormatter < SimpleCov::Formatter::CoberturaFormatter
+    def output_message(_result, result_path)
+      "Cobertura report for Codecov: #{Pathname(result_path).relative_path_from(SimpleCov.root)}"
+    end
+  end
 
   module_function
 
@@ -35,7 +44,10 @@ module CoverageHelper
     SimpleCov.collate(results) do
       CoverageHelper.configure
       coverage_dir 'coverage'
-      formatter SimpleCov::Formatter::HTMLFormatter.new(silent: true)
+      formatter SimpleCov::Formatter::MultiFormatter.new([
+        SimpleCov::Formatter::HTMLFormatter.new(silent: true),
+        CoverageHelper::CoberturaFormatter
+      ])
     end
 
     total = JSON.parse(File.read('coverage/coverage.json'))['total']

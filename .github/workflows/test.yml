@@ -7,6 +7,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Codecov authenticates the upload with an OIDC token instead of a secret.
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -18,6 +22,12 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
       - run: bundle exec rake coverage
+      - uses: codecov/codecov-action@v7
+        if: always()
+        with:
+          files: coverage/coverage.xml
+          disable_search: true
+          use_oidc: true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
