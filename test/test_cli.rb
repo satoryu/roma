@@ -253,6 +253,31 @@ class CLITest < Test::Unit::TestCase
     assert_match(message, err)
   end
 
+  # The config is loaded, and a node down is mailed by its mailer.
+  def test_roma_watcher
+    sendmail = File.join(@dir, 'sendmail')
+    File.write(sendmail, "#!/bin/sh\ncat > #{@dir}/mail\n")
+    File.chmod(0o755, sendmail)
+    File.write(File.join(@dir, 'watcher.yml'), <<~YAML)
+      roma: ["localhost:1"]
+      log: { path: #{@dir}/watcher.log }
+      timeout: 1
+      retry: { count: 1, period: 0 }
+      mail: { from: from@example.com, to: to@example.com, mailer: #{sendmail}, subject_prefix: "ROMA " }
+    YAML
+    out, _err, status = roma('roma_watcher', 'watcher.yml')
+    assert_nil status
+    assert_equal '', out
+    assert_match(/^Subject: ROMA A node down$/, File.read(File.join(@dir, 'mail')))
+    assert_match(/start watching a ROMA/, File.read(File.join(@dir, 'watcher.log')))
+  end
+
+  def test_roma_watcher_no_config
+    _out, err, status = roma('roma_watcher', 'missing.yml')
+    assert_equal 1, status
+    assert_match(/No such file or directory/, err)
+  end
+
   # Records how RecoverLost is called, instead of recovering.
   def spy_recoverlost
     calls = []
