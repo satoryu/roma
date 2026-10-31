@@ -9,12 +9,11 @@ module StorageCommandTests
   include RomaTestUtils
 
   def setup
-    start_roma
     @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
   end
 
   def teardown
-    stop_roma
+    @rc.delete_used_keys
     Roma::Messaging::ConPool::instance.close_all
   end
 
@@ -198,6 +197,7 @@ E2E_STORAGE_COMMAND_TESTS = %i(test_set_get_delete test_set_gets test_cas test_i
 
 class StorageCommandTest < Test::Unit::TestCase
   self.test_order = :defined
+  extend RomaTestUtils::RomaPerClass
   include StorageCommandTests
 
   (StorageCommandTests.public_instance_methods.grep(/\Atest_/) - E2E_STORAGE_COMMAND_TESTS).each { |t| undef_method(t) }
@@ -205,6 +205,7 @@ end
 
 class StorageCommandTestForceForward < Test::Unit::TestCase
   self.test_order = :defined
+  extend RomaTestUtils::RomaPerClass
   include StorageCommandTests
 
   (StorageCommandTests.public_instance_methods.grep(/\Atest_/) - E2E_STORAGE_COMMAND_TESTS).each { |t| undef_method(t) }

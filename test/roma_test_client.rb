@@ -58,7 +58,16 @@ class RomaTestClient
 
   def initialize(nodes)
     @default_hash_name = 'roma'
+    @used_keys = []
     update_rttable(nodes)
+  end
+
+  # Deletes every key this client has sent a command for, so that tests
+  # sharing romad don't see each other's data.
+  def delete_used_keys
+    keys = @used_keys.dup
+    keys.each { |key| delete(key) }
+    @used_keys.clear
   end
 
   def update_rttable(nodes = @rttable.nodes)
@@ -406,6 +415,7 @@ class RomaTestClient
   end
 
   def request(key, cmd, value = nil, receiver = :oneline_receiver)
+    @used_keys << key unless @used_keys.include?(key)
     nid, _d = @rttable.search_node(key)
     send_command(nid, cmd, value, receiver)
   end

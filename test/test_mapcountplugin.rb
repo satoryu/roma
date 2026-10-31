@@ -4,12 +4,11 @@ require 'test_helper'
 # Each command's behavior is covered by test_mapcountplugin_command.rb.
 class MapCountPluginTest < Test::Unit::TestCase
   self.test_order = :defined
-  include RomaTestUtils
+  extend RomaTestUtils::RomaPerClass
 
   DATE_FORMAT = "%Y-%m-%dT%H:%M:%S +00"
 
   def setup
-    start_roma
     @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
     @k = "key1"
     @sk = "subkey1"
@@ -18,7 +17,8 @@ class MapCountPluginTest < Test::Unit::TestCase
   end
 
   def teardown
-    stop_roma
+    @rc.delete_used_keys
+    Roma::Messaging::ConPool.instance.close_all
   end
 
   def check_roma_value(h, res)

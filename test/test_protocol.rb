@@ -187,19 +187,17 @@ end
 # Runs a few tests through a socket to romad.
 class ProtocolTest < Test::Unit::TestCase
   self.test_order = :defined
-  include RomaTestUtils
+  extend RomaTestUtils::RomaPerClass
   include ProtocolTests
 
   E2E_TESTS = %i(test_set_get test_delete test_gets test_set_zero_byte_value)
   (ProtocolTests.public_instance_methods.grep(/\Atest_/) - E2E_TESTS).each { |t| undef_method(t) }
 
   def setup
-    start_roma
     @sock = TCPSocket.new("localhost", 11211)
   end
 
   def teardown
     @sock.close if @sock
-    stop_roma
   end
 end
