@@ -6,6 +6,7 @@ require 'stringio'
 require 'fake_node'
 require 'roma/routing/routing_data'
 require 'roma/storage/ruby_hash_storage'
+require 'roma/tools/mkroute'
 require 'roma/tools/recoverlost_lib'
 require 'roma/tools/multi_commander'
 require 'roma/tools/roma-adm'
@@ -57,35 +58,85 @@ end
 class MkrouteTest < Test::Unit::TestCase
   include ToolTestHelper
 
+  def mkroute(*args)
+    out = StringIO.new
+    err = StringIO.new
+    status = Roma::Tools::Mkroute.new(out: out, err: err, dir: @dir).run(args)
+    [out.string, err.string, status]
+  end
+
+  def load_route(nid)
+    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{nid}.route"))
+  end
+
   def test_mkroute
-    out, _err, status = run_tool('mkroute', '-d', '3', 'host1:11211', 'host2_11211')
-    assert_true status.success?
+    out, _err, status = mkroute('-d', '3', 'host1:11211', 'host2_11211')
+    assert_equal 0, status
     assert_match(/Routing table has created/, out)
     %w(host1_11211 host2_11211).each do |nid|
-      rd = Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{nid}.route"))
+      rd = load_route(nid)
       assert_equal %w(host1_11211 host2_11211), rd.nodes
       assert_equal 8, rd.v_idx.size
       assert_equal 2, rd.rn
+      assert_equal 32, rd.dgst_bits
     end
   end
 
-  def test_mkroute_with_replication_in_host
-    out, _err, status = run_tool('mkroute', '-d', '3', '-r', '2', '--replication_in_host', 'host1_1', 'host1_2')
-    assert_true status.success?, out
-    rd = Roma::Routing::RoutingData.load_snapshot(File.join(@dir, 'host1_1.route'))
-    rd.v_idx.each_value { |nids| assert_equal 2, nids.size }
+  def test_options
+    _out, _err, status = mkroute('-h', '16', '-d', '4', '-r', '3', 'host1_1', 'host2_1', 'host3_1')
+    assert_equal 0, status
+    rd = load_route('host1_1')
+    assert_equal [16, 4, 3], [rd.dgst_bits, rd.div_bits, rd.rn]
+  end
+
+  data('replication_in_host' => [%w(--replication_in_host), ''],
+       'enabled_repeathost' => [%w(--enabled_repeathost), 'Warning: "--enabled_repeathost" is deprecated.'])
+  def test_replication_in_host(data)
+    option, warning = data
+    out, _err, status = mkroute('-d', '3', '-r', '2', *option, 'host1_1', 'host1_2')
+    assert_equal 0, status
+    assert_true out.start_with?(warning), out
+    load_route('host1_1').v_idx.each_value { |nids| assert_equal 2, nids.size }
+  end
+
+  # Without the option, a host doesn't hold the same data twice.
+  def test_without_replication_in_host
+    mkroute('-d', '3', '-r', '2', 'host1_1', 'host1_2', 'host2_1')
+    load_route('host1_1').v_idx.each_value do |nids|
+      assert_equal nids.size, nids.map { |nid| nid.split('_').first }.uniq.size
+    end
+  end
+
+  def test_help
+    out, _err, status = mkroute('--help')
+    assert_equal 0, status
+    assert_match(/usage:.*--replication_in_host/m, out)
+    assert_equal [], Dir.children(@dir)
   end
 
   data('no nodes' => [[], /usage:/],
+       'unknown option' => [%w(--unknown host1_1 host2_1), /invalid option: --unknown.*usage:/m],
        'hash bits less than divide bits' => [%w(-h 8 -d 9 host1_1 host2_1), /hash bits should be divide bits or more/],
        'divide bits over 32' => [%w(-h 40 -d 33 host1_1 host2_1), /upper bound of divide bits is 32/],
        'fewer nodes than redundancy' => [%w(-r 3 host1_1 host2_1), /node-id number should be redundant number or more/])
   def test_invalid_arguments(data)
     args, message = data
-    _out, err, status = run_tool('mkroute', *args)
-    assert_false status.success?
+    out, err, status = mkroute(*args)
+    assert_equal 1, status
+    assert_equal '', out
     assert_match(message, err)
     assert_equal [], Dir.children(@dir)
+  end
+
+  # bin/mkroute runs the tool and exits with its status.
+  def test_command
+    out, _err, status = run_tool('mkroute', '-d', '3', 'host1_1', 'host2_1')
+    assert_true status.success?
+    assert_match(/Routing table has created/, out)
+    assert_equal %w(host1_1.route host2_1.route), Dir.children(@dir).sort
+    _out, err, status = run_tool('mkroute')
+    assert_equal 1, status.exitstatus
+    assert_match(/usage:/, err)
   end
 end
 
