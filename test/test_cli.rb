@@ -159,15 +159,53 @@ class CLITest < Test::Unit::TestCase
     assert_match(message, err)
   end
 
-  # bin/roma runs the CLI and exits with its status.
-  def test_command
+  def test_check_tc_flag
+    FileUtils.mkdir_p(["#{@dir}/tc/bin", "#{@dir}/ds"])
+    File.write("#{@dir}/tc/bin/tchmgr", "#!/bin/sh\nprintf 'additional flags: open\\n'\n")
+    File.chmod(0o755, "#{@dir}/tc/bin/tchmgr")
+    FileUtils.touch("#{@dir}/ds/a.tc")
+    out, _err, status = roma('check_tc_flag', '--storage', 'ds', '--library', 'tc')
+    assert_nil status
+    assert_equal "ds/a.tc :  open\n", out
+  end
+
+  # By default, both are the current directory.
+  def test_check_tc_flag_defaults
+    FileUtils.touch("#{@dir}/a.tc")
+    out, err, status = roma('check_tc_flag')
+    assert_equal 1, status
+    assert_equal '', out
+    assert_match(%r{No such file or directory - \./bin/tchmgr}, err)
+  end
+
+  def run_roma(*args, stdin: '')
     cmd = [RbConfig.ruby]
     cmd.push('-r', File.expand_path('start_coverage', __dir__)) if ENV['COVERAGE']
-    out, _err, status = Open3.capture3(*cmd, ROMA, 'mkroute', '-d', '3', 'host1_1', 'host2_1', chdir: @dir)
+    Open3.capture3(*cmd, ROMA, *args, stdin_data: stdin, chdir: @dir)
+  end
+
+  # It reads the answers from the standard input.
+  def test_mkconfig
+    _out, err, status = run_roma('mkconfig', stdin: "1\n\n2\n1\n\n\n")
+    assert_true status.success?, err
+    assert_match(/^    STORAGE_CLASS = Roma::Storage::RubyHashStorage$/, File.read(File.join(@dir, 'config.rb')))
+  end
+
+  data('short' => '-m', 'long' => '--with-menu', 'underscore' => '--with_menu')
+  def test_mkconfig_with_menu(option)
+    out, err, status = run_roma('mkconfig', option, stdin: "4\n")
+    assert_true status.success?, err
+    assert_match(/Please select by number/, out)
+    assert_true File.exist?(File.join(@dir, 'config.rb'))
+  end
+
+  # bin/roma runs the CLI and exits with its status.
+  def test_command
+    out, _err, status = run_roma('mkroute', '-d', '3', 'host1_1', 'host2_1')
     assert_true status.success?
     assert_match(/Routing table has created/, out)
     assert_equal %w(host1_1.route host2_1.route), Dir.children(@dir).sort
-    _out, err, status = Open3.capture3(*cmd, ROMA, 'mkroute', chdir: @dir)
+    _out, err, status = run_roma('mkroute')
     assert_equal 1, status.exitstatus
     assert_match(/called with no arguments/, err)
   end
