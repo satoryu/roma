@@ -165,6 +165,48 @@ class CLITest < Test::Unit::TestCase
     assert_match(/\Alocalhost_1: /, err)
   end
 
+  def adm_node
+    FakeNode.new.tap { |node| @fake_nodes << node }
+  end
+
+  def test_adm
+    node = adm_node
+    # FakeNode answers the line of the value.
+    node.replies['set'] = proc { '' }
+    out, _err, status = roma('adm', 'set', 'key1', '0', '0', '5', '-p', node.nid.split('_')[1], '-v', 'value')
+    assert_nil status
+    assert_equal "STORED\n", out
+    assert_equal ['set key1 0 0 5', 'value'], node.commands
+  end
+
+  def test_adm_host
+    node = adm_node
+    out, _err, _status = roma('adm', 'whoami', '--host', '127.0.0.1', '--port', node.nid.split('_')[1])
+    assert_equal "ROMA\n", out
+  end
+
+  def test_adm_balse
+    node = adm_node
+    node.replies['balse'] = "BYE\r\n"
+    out, _err, status = roma('adm', 'balse', '-y', '-p', node.nid.split('_')[1])
+    assert_nil status
+    assert_equal "BYE\nSTORED\nSTORED\n", out
+  end
+
+  # The confirmation is read from the standard input.
+  def test_adm_rejected
+    out, err, status = run_roma('adm', 'balse', '-p', '1', stdin: "no\n")
+    assert_equal 1, status.exitstatus
+    assert_equal "Are you sure?(yes/no)\n", out
+    assert_equal "The confirmation was rejected.\n", err
+  end
+
+  def test_adm_node_down
+    _out, err, status = roma('adm', 'whoami', '-p', '1')
+    assert_equal 1, status
+    assert_match(/\Alocalhost_1: /, err)
+  end
+
   # Records how RecoverLost is called, instead of recovering.
   def spy_recoverlost
     calls = []

@@ -14,7 +14,7 @@ require 'roma/tools/mkconfig'
 require 'roma/tools/recoverlost'
 require 'roma/tools/chg_redundancy'
 require 'roma/tools/multi_commander'
-require 'roma/tools/roma-adm'
+require 'roma/tools/adm'
 
 module ToolTestHelper
   BIN_DIR = File.expand_path('../bin', __dir__)
@@ -500,38 +500,70 @@ class MultiCommanderTest < Test::Unit::TestCase
   end
 end
 
-class RomaAdmTest < Test::Unit::TestCase
+class AdmTest < Test::Unit::TestCase
   include ToolTestHelper
 
-  def test_send_command
-    node = fake_node
-    adm = Roma::Adm.new('whoami', node.nid.split('_')[1])
-    assert_equal ['ROMA'], adm.send_command
+  def run_adm(cmd, input: '', **opts)
+    @out = StringIO.new
+    Roma::Tools::Adm.new(input: StringIO.new(input), out: @out).run(@node.nid, cmd, **opts)
+  end
+
+  def setup
+    super
+    @node = fake_node
+  end
+
+  def test_command
+    assert_equal ['ROMA'], run_adm('whoami')
+    assert_equal '', @out.string
   end
 
   # Commands that store a value ask for it.
-  def test_command_with_a_value
-    node = fake_node
-    adm = Roma::Adm.new('set key1 0 0 5', node.nid.split('_')[1])
-    with_stdin("value\n") { capture_stdout { adm.check_type } }
-    adm.send_command
-    assert_equal ['set key1 0 0 5', 'value'], node.commands
+  data('set' => 'set', 'alist_include?' => 'alist_include?')
+  def test_value(name)
+    # FakeNode answers the line of the value.
+    @node.replies[name] = proc { '' }
+    assert_equal ['STORED'], run_adm("#{name} key1 0 0 5", input: "value\n")
+    assert_equal "Please input value.\n", @out.string
+    assert_equal ["#{name} key1 0 0 5", 'value'], @node.commands
   end
 
-  def test_halt_command_rejected
-    adm = Roma::Adm.new('balse', '1')
-    out = capture_stdout do
-      assert_raise_message('confirmation was rejected') { with_stdin("no\n") { adm.check_type } }
-    end
-    assert_match(/Are you sure/, out)
+  def test_value_given
+    run_adm('set key1 0 0 5', value: 'value')
+    assert_equal '', @out.string
+    assert_equal ['set key1 0 0 5', 'value'], @node.commands
   end
 
-  def with_stdin(input)
-    io = StringIO.new(input)
-    STDIN.define_singleton_method(:gets) { |*args| io.gets(*args) }
-    yield
-  ensure
-    STDIN.singleton_class.send(:remove_method, :gets)
+  def test_no_value
+    assert_raise_message('No value was given.') { run_adm('set key1 0 0 5') }
+    assert_empty @node.commands
+  end
+
+  # Not a command that stores a value, though it begins with one.
+  def test_value_command_prefix
+    @node.replies['settings'] = "OK\r\n"
+    assert_equal ['OK'], run_adm('settings')
+  end
+
+  data('balse' => 'balse', 'shutdown' => 'shutdown')
+  def test_halt(name)
+    @node.replies[name] = "BYE\r\n"
+    assert_equal %w(BYE STORED STORED), run_adm(name, input: "yes\n")
+    assert_equal "Are you sure?(yes/no)\n", @out.string
+    assert_equal [name, 'yes', 'yes'], @node.commands
+  end
+
+  def test_halt_with_yes
+    @node.replies['balse'] = "BYE\r\n"
+    run_adm('balse', yes: true)
+    assert_equal '', @out.string
+    assert_equal %w(balse yes yes), @node.commands
+  end
+
+  data('no' => "no\n", 'end of input' => '')
+  def test_halt_rejected(input)
+    assert_raise_message('The confirmation was rejected.') { run_adm('balse', input: input) }
+    assert_empty @node.commands
   end
 end
 

@@ -85,14 +85,8 @@ class NewFuncTest < Test::Unit::TestCase
   end
 
   def test_adm_tool_sendcmd
-    res = `#{bin_dir}/roma-adm`
-    assert_equal('Argument Error: roma-adm [adm-command] [port No.]', res.chomp)
-
-    res = `#{bin_dir}/roma-adm -h`
-    assert_match(/usage:roma-adm \[command\] \[port No.\]\n\s+-h, --help\s+Show this message/, res.chomp)
-
-    res = `#{bin_dir}/roma-adm whoami 11211`
-    assert_equal(".\r\nROMA", res.chomp)
+    res = `#{bin_dir}/roma adm whoami -p 11211`
+    assert_equal("ROMA\n", res)
   end
 
   def test_romad_option
