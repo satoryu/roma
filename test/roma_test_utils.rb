@@ -45,7 +45,7 @@ module RomaTestUtils
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_NODES[0][0..-2]}?*"))
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_IP}_#{DEFAULT_PORTS[0][0..-2]}?*"))
 
-    system("#{ruby_path} #{mkroute_path} #{DEFAULT_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
+    system("#{ruby_path} #{roma_path} mkroute #{DEFAULT_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
     boot_nodes(DEFAULT_NODES, conf, replication_in_host)
   end
 
@@ -53,7 +53,7 @@ module RomaTestUtils
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{REPLICA_NODES[0][0..-2]}?*"))
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_IP}_#{REPLICA_PORTS[0][0..-2]}?*"))
 
-    system("#{ruby_path} #{mkroute_path} #{REPLICA_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
+    system("#{ruby_path} #{roma_path} mkroute #{REPLICA_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
     boot_nodes(REPLICA_NODES, conf, replication_in_host)
   end
 
@@ -233,8 +233,8 @@ module RomaTestUtils
     base_dir + 'test'
   end
 
-  def mkroute_path
-    (bin_dir + 'mkroute').to_s
+  def roma_path
+    (bin_dir + 'roma').to_s
   end
 
   def romad_path

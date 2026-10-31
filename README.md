@@ -40,7 +40,7 @@ ROMA is required to make the routing files before starting up.
 The routing file is stored the routing information of each processes.
 
 ```
-$ mkroute localhost_10001 localhost_10002 --replication_in_host
+$ roma mkroute localhost_10001 localhost_10002 --replication-in-host
 ```
 
 If succeeded, two new files which named localhost_10001.route and localhost_10002.route created in the current directory.  
