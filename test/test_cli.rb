@@ -165,6 +165,54 @@ class CLITest < Test::Unit::TestCase
     assert_match(/\Alocalhost_1: /, err)
   end
 
+  # Records how RecoverLost is called, instead of recovering.
+  def spy_recoverlost
+    calls = []
+    spy = Object.new
+    spy.define_singleton_method(:recover) { |*args, **opts| calls << [:recover, args, opts] }
+    spy.define_singleton_method(:recover_keys) { |*args| calls << [:recover_keys, args] }
+    require 'roma/tools/recoverlost'
+    Roma::Tools::RecoverLost.define_singleton_method(:new) { |**opts| calls << [:new, opts]; spy }
+    yield
+    calls
+  ensure
+    Roma::Tools::RecoverLost.singleton_class.send(:remove_method, :new)
+  end
+
+  data('lost' => [[], [:recover, ['host1_1', 'path'], { since: nil, all: false }]],
+       'since' => [%w(-s 20260101000000), [:recover, ['host1_1', 'path'], { since: '20260101000000', all: false }]],
+       'all' => [%w(--all --alist), [:recover, ['host1_1', 'path'], { since: nil, all: true }]],
+       'keys' => [%w(--keys keys.txt), [:recover_keys, ['host1_1', 'path', %w(key1 key2)]]])
+  def test_recoverlost(data)
+    args, call = data
+    File.write(File.join(@dir, 'keys.txt'), "key1\n\nkey2\n")
+    out = nil
+    calls = spy_recoverlost { out, _err, _status = roma('recoverlost', 'host1_1', 'path', *args) }
+    assert_equal [[:new, { alist: args.include?('--alist') }], call], calls
+    assert_equal "Recover process has succeed.\n", out
+  end
+
+  def test_recoverlost_keys_from_stdin
+    saved = $stdin
+    $stdin = StringIO.new("key1\n")
+    calls = spy_recoverlost { roma('recoverlost', 'host1_1', 'path', '-k', '-') }
+    assert_equal [:recover_keys, ['host1_1', 'path', %w(key1)]], calls.last
+  ensure
+    $stdin = saved
+  end
+
+  data('since and all' => [%w(-s 20260101000000 -a), /--since and --all can't be used together/],
+       'all and keys' => [%w(-a -k -), /--all and --keys can't be used together/],
+       'wrong time' => [%w(-s 2026), /The time should be YYYYMMDDHHMMSS/],
+       'node down' => [[], /\Alocalhost_1: /])
+  def test_recoverlost_errors(data)
+    args, message = data
+    out, err, status = roma('recoverlost', 'localhost_1', 'path', *args)
+    assert_equal 1, status
+    assert_equal '', out
+    assert_match(message, err)
+  end
+
   def write_logs
     File.write(File.join(@dir, 'a.log'), "W, [2026-01-01T00:00:01.000001 #1]  WARN -- : a1\n" \
                                          "E, [2026-01-01T00:00:03.000001 #1] ERROR -- : a2\n" \

@@ -47,8 +47,19 @@ module Roma
         end
       end
 
-      private
+      # Sends +cmd+ to the node +nid+, and returns the first line of the
+      # reply without "\r\n". Raises Error if it doesn't come.
+      def request(nid, cmd)
+        connect(nid) do |con|
+          con.write("#{cmd}\r\n")
+          line = Timeout.timeout(@timeout) { con.gets }
+          raise Error, "#{nid} closed the connection." unless line
+          line.chomp
+        end
+      end
 
+      # Connects to the node +nid+, and yields the connection, which is
+      # closed after the block. Errors of the connection are raised as Error.
       def connect(nid)
         host, port = nid.split(/[:_]/)
         con = Timeout.timeout(@timeout) { TCPSocket.new(host, port) }

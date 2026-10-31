@@ -11,7 +11,7 @@ require 'roma/tools/ssroute'
 require 'roma/tools/log_merger'
 require 'roma/config'
 require 'roma/tools/mkconfig'
-require 'roma/tools/recoverlost_lib'
+require 'roma/tools/recoverlost'
 require 'roma/tools/chg_redundancy'
 require 'roma/tools/multi_commander'
 require 'roma/tools/roma-adm'
@@ -406,6 +406,21 @@ class AdminClientTest < Test::Unit::TestCase
     assert_raise_message("#{node.nid} didn't reply to stats.") { client.command(node.nid, 'stats') }
   end
 
+  def test_request
+    node = fake_node
+    node.replies['stats'] = "a 1\r\nb 2\r\nEND\r\n"
+    assert_equal 'a 1', client.request(node.nid, 'stats')
+  end
+
+  data('closed' => [:close, /closed the connection/],
+       'no reply' => [proc { '' }, /execution expired/])
+  def test_request_errors(data)
+    reply, message = data
+    node = fake_node
+    node.replies['stats'] = reply
+    assert_raise_message(message) { client.request(node.nid, 'stats') }
+  end
+
   def test_node_down
     nid = down_node
     error = assert_raise(Roma::Tools::Error) { client.command(nid, 'whoami') }
@@ -523,157 +538,215 @@ end
 class RecoverLostTest < Test::Unit::TestCase
   include ToolTestHelper
 
+  # Chooses the first node.
+  class FirstNode
+    def self.rand(_max)
+      0
+    end
+  end
+
   def setup
     super
     @node = fake_node
     @node.replies['setroute'] = "STORED\r\n"
-    @host, @port = @node.nid.split('_')
     @rd = Roma::Routing::RoutingData.create(32, 3, 1, [@node.nid])
     serve_routing(@node, @rd)
     @storage = Roma::Storage::RubyHashStorage.new
     @storage.vn_list = @rd.v_idx.keys
     @storage.each_vn_dump_sleep = 0
     @storage.opendb
-    # A hash directory, as recoverlost finds in the storage path.
+    # A directory of a hash, as recoverlost finds in the storage path.
     FileUtils.mkdir_p(File.join(@dir, 'roma'))
+    @out = StringIO.new
   end
 
-  def recover_lost(args = [@host, @port, @dir, '20260101000000'], alldata: false)
-    r = Roma::RecoverLost.new('recoverlost', 'spushv', args, alldata)
+  # The real one opens the storage files (dbm, sqlite3 or groonga).
+  def tool(alist: false)
+    tool = Roma::Tools::RecoverLost.new(out: @out, alist: alist, push_wait: 0, random: FirstNode)
     storage = @storage
-    # The real one opens a file storage (tc, dbm or sqlite3).
-    r.define_singleton_method(:open_storage) { |_path, _vn_list| storage }
-    def storage.closedb; end
-    r
+    opened = @opened = []
+    closed = @closed = []
+    tool.define_singleton_method(:open_storage) { |dir, _vnodes| storage.tap { opened << dir } }
+    storage.define_singleton_method(:closedb) { closed << :closed }
+    tool
   end
 
+  # Set twice, so that the clock is not 0.
   def store(key, value)
     d = Digest::SHA1.hexdigest(key).hex % (2**32)
     vn = d & @rd.search_mask
-    @storage.set(vn, key, d, 0x7fffffff, value)
+    2.times { @storage.set(vn, key, d, 0x7fffffff, value) }
+    assert_equal 1, @storage.get_raw(vn, key, d)[2]
+    vn
+  end
+
+  def lose(vn)
+    @rd.v_idx[vn] = []
+    serve_routing(@node, @rd)
     vn
   end
 
   def test_recover_lost_vnodes
-    vn = store('key1', 'value1')
-    @rd.v_idx[vn] = []
-    serve_routing(@node, @rd)
-    @node.replies['history_of_lost'] = "END\r\n"
-    out = capture_stdout { recover_lost.suite }
-    assert_match(/1 vnodes where data was lost/, out)
+    vn = lose(store('key1', 'value1'))
+    tool.recover(@node.nid, @dir)
+    assert_match(/\A1 vnodes where data was lost\.\nroma #{@dir}\/roma\n0\/1 #{vn} assign to \["#{@node.nid}"\]\n\z/, @out.string)
     # The vnode is pushed to a node, and it is told to own the vnode.
     assert_equal ['key1'], @node.dat[vn].keys
     # The clock of the data is reset.
-    assert_equal 0, @node.dat[vn]['key1'].unpack('NNNN')[2]
-    # Only one node, so the broadcast to the others sends nothing.
+    assert_equal [vn, 0, 'value1'], @node.dat[vn]['key1'].unpack('NNNNa*').values_at(0, 2, 4)
     assert_equal ["setroute #{vn} 0 #{@node.nid}"], @node.commands.grep(/\Asetroute/)
+    assert_equal [File.join(@dir, 'roma')], @opened
+    assert_equal [:closed], @closed
   end
 
-  # The other nodes are told that the node now owns the vnode.
-  def test_recover_lost_vnodes_tells_the_other_nodes
+  # The other nodes are told that the node now owns the vnode, even if one
+  # of them is down.
+  def test_tell_the_other_nodes
     other = fake_node
-    vn = store('key1', 'value1')
-    @rd.nodes << other.nid
-    @rd.v_idx[vn] = []
-    serve_routing(@node, @rd)
-    @node.replies['history_of_lost'] = "END\r\n"
-    r = recover_lost
-    # Assign the vnode to the first node.
-    r.define_singleton_method(:rand) { |_n| 0 }
-    broadcasts = []
-    real = r.method(:broadcast_cmd)
-    r.define_singleton_method(:broadcast_cmd) { |cmd, without| broadcasts << without; real.call(cmd, without) }
-    capture_stdout { r.suite }
+    down = down_node
+    @rd.nodes.push(other.nid, down)
+    vn = lose(store('key1', 'value1'))
+    tool.recover(@node.nid, @dir)
     assert_include other.commands, "setroute #{vn} 0 #{@node.nid}"
-    assert_equal [[@node.nid]], broadcasts
+    assert_match(/^#{down}: .*refused/i, @out.string)
   end
 
-  def test_history_of_lost
+  def test_setroute_refused
+    @node.replies['setroute'] = "SERVER_ERROR busy\r\n"
+    vn = lose(store('key1', 'value1'))
+    assert_raise_message("#{@node.nid} replied to setroute #{vn} 0 #{@node.nid}: SERVER_ERROR busy") do
+      tool.recover(@node.nid, @dir)
+    end
+  end
+
+  # A vnode that has a node now, but lost data since the time.
+  def test_since
     vn = store('key1', 'value1')
     @node.replies['history_of_lost'] = "#{vn}\r\nEND\r\n"
-    capture_stdout { recover_lost.suite }
+    tool.recover(@node.nid, @dir, since: '20260101000000')
     assert_include @node.commands, 'history_of_lost 20260101000000'
-    # The vnode has a node now; the data is pushed there.
+    assert_match(/^0\/1 #{vn} was auto assigned at \["#{@node.nid}"\]$/, @out.string)
     assert_equal ['key1'], @node.dat[vn].keys
+    assert_empty @node.commands.grep(/\Asetroute/)
+  end
+
+  data('short' => '2026', 'not digits' => '2026010100000x')
+  def test_since_format(since)
+    assert_raise_message('The time should be YYYYMMDDHHMMSS.') { tool.recover(@node.nid, @dir, since: since) }
+    assert_empty @node.commands
+  end
+
+  def test_history_of_lost_error
+    @node.replies['history_of_lost'] = "CLIENT_ERROR\r\n"
+    assert_raise_message("#{@node.nid} replied to history_of_lost: CLIENT_ERROR") do
+      tool.recover(@node.nid, @dir, since: '20260101000000')
+    end
   end
 
   def test_nothing_lost
-    @node.replies['history_of_lost'] = "END\r\n"
-    out = capture_stdout { assert_raise(SystemExit) { recover_lost.suite } }
-    assert_match(/0 vnodes/, out)
+    tool.recover(@node.nid, @dir)
+    assert_equal "0 vnodes where data was lost.\n", @out.string
+    assert_empty @opened
   end
 
-  def test_all_data
+  def test_all
     vn = store('key1', 'value1')
-    capture_stdout { recover_lost([@host, @port, @dir], alldata: true).suite }
+    tool.recover(@node.nid, @dir, all: true)
     assert_equal ['key1'], @node.dat[vn].keys
     assert_equal @rd.v_idx.keys.sort, @node.dat.keys.sort
+    assert_not_match(/vnodes where data was lost/, @out.string)
   end
 
+  # The storage is closed even then.
   def test_push_failed
     @node.replies['spushv'] = "SERVER_ERROR busy\r\n"
-    out = capture_stdout { assert_raise(SystemExit) { recover_lost([@host, @port, @dir], alldata: true).suite } }
-    assert_match(/roma/, out)
-  end
-
-  def test_suite_with_keys
-    vn = store('key1', 'value1')
-    out = capture_stdout { recover_lost([@host, @port, @dir], alldata: true).suite_with_keys(%w(key1 key2)) }
-    assert_match(/hit => key1/, out)
-    assert_not_match(/key2/, out)
-    assert_equal ['key1'], @node.dat[vn].keys
-  end
-
-  def test_recover_with_keys_by_node
-    vn = store('key1', 'value1')
-    r = recover_lost([@host, @port, @dir], alldata: true)
-    r.instance_variable_set(:@rd, @rd)
-    r.instance_variable_set(:@storage, @storage)
-    capture_stdout { r.start_recover_width_keys2('roma', %w(key1 key2)) }
-    # Every key is sent in one stream, with its own vnode.
-    assert_equal ['key1'], @node.dat[0].keys
-    assert_equal vn, @node.dat[0]['key1'].unpack('N')[0]
-  end
-
-  def test_upload_refused
-    @node.replies['spushv'] = "SERVER_ERROR busy\r\n"
-    r = recover_lost([@host, @port, @dir], alldata: true)
-    assert_equal 'SERVER_ERROR busy', r.upload_data('roma', 0, @node.nid, 'key1', [0, 0, 0, 0, 'v'])
-    r.instance_variable_set(:@rd, @rd)
-    assert_equal 'SERVER_ERROR busy', r.upload_data2('roma', @node.nid, ['key1'])
-  end
-
-  def test_send_cmd_to_a_node_that_is_down
-    r = recover_lost([@host, @port, @dir], alldata: true)
-    r.instance_variable_set(:@rd, @rd)
-    assert_nil r.send_cmd('localhost_1', "whoami\r\n")
-    assert_equal({ @node.nid => 'ROMA' }, r.broadcast_cmd("whoami\r\n"))
-  end
-
-  def test_clk_to_zero
-    r = recover_lost([@host, @port, @dir], alldata: true)
-    data = [1, 2, 3, 4, 2, 'k1', 1, 'v'].pack('NNNNNa2Na1')
-    assert_equal [1, 2, 0, 4, 2, 'k1', 1, 'v'], r.clk_to_zero(data).unpack('NNNNNa2Na1')
-    deleted = [1, 2, 3, 0, 2, 'k1', 0].pack('NNNNNa2N')
-    assert_equal [1, 2, 0, 0, 2, 'k1', 0], r.clk_to_zero(deleted).unpack('NNNNNa2N')
-  end
-
-  data('too few arguments' => [%w(localhost 1), false],
-       'all data with a time' => [%w(localhost 1 path 20260101000000), true])
-  def test_usage(data)
-    args, alldata = data
-    out = capture_stdout do
-      assert_raise(SystemExit) { Roma::RecoverLost.new('recoverlost', 'spushv', args, alldata) }
+    assert_raise_message("Pushing vnode 0 to #{@node.nid} failed: SERVER_ERROR busy") do
+      tool.recover(@node.nid, @dir, all: true)
     end
-    assert_match(/usage:recoverlost/, out)
+    assert_equal [:closed], @closed
   end
 
-  # They are told on STDERR. (It exits with 0.)
-  data('port not numeric' => [%w(localhost abc path 20260101000000), /port was not numeric/],
-       'wrong time' => [%w(localhost 1 path 2026), /format mismatch/])
-  def test_invalid_arguments(data)
-    args, message = data
-    _out, err, _status = run_tool('recoverlost', *args)
-    assert_match(message, err)
+  def test_alist
+    @node.replies['alist_spushv'] = "SERVER_ERROR busy\r\n"
+    assert_raise(Roma::Tools::Error) { tool(alist: true).recover(@node.nid, @dir, all: true) }
+    assert_equal ['alist_spushv roma 0'], @node.commands.grep(/spushv/)
+  end
+
+  def test_recover_keys
+    vn = store('key1', 'value1')
+    lost = lose(store('キー', 'value2'))
+    tool.recover_keys(@node.nid, @dir, %w(key1 key2 キー))
+    assert_equal "roma #{@dir}/roma\nhit => key1\n#{@node.nid}=>STORED\nhit => キー\n", @out.string
+    assert_equal ['key1'], @node.dat[vn].keys
+    # The data is pushed with the clock reset.
+    assert_equal [vn, 0, 0x7fffffff, 'value1'], @node.dat[vn]['key1'].unpack('NNNNa*').values_at(0, 2, 3, 4)
+    assert_nil @node.dat[lost]
+  end
+
+  # A multibyte key is packed by its bytes.
+  def test_recover_multibyte_key
+    vn = store('キー', '値')
+    tool.recover_keys(@node.nid, @dir, ['キー'])
+    assert_equal ['キー'.b], @node.dat[vn].keys
+  end
+
+  def test_recover_keys_refused
+    store('key1', 'value1')
+    @node.replies['spushv'] = "SERVER_ERROR busy\r\n"
+    tool.recover_keys(@node.nid, @dir, ['key1'])
+    assert_match(/^#{@node.nid}=>SERVER_ERROR busy$/, @out.string)
+  end
+
+  def test_no_directories
+    FileUtils.rm_rf(File.join(@dir, 'roma'))
+    assert_raise_message("#{@dir} has no directories of storage files.") { tool.recover(@node.nid, @dir, all: true) }
+  end
+
+  def test_node_down
+    assert_raise_message(/\Alocalhost_1: /) { tool.recover('localhost_1', @dir) }
+  end
+end
+
+# Opening the storage files.
+class RecoverLostStorageTest < Test::Unit::TestCase
+  include ToolTestHelper
+
+  def open_storage(*files)
+    files.each { |f| File.write(File.join(@dir, f), '') }
+    Roma::Tools::RecoverLost.new.send(:open_storage, @dir, [0])
+  end
+
+  def test_no_files
+    assert_raise_message("#{@dir} has no storage files.") { open_storage }
+  end
+
+  def test_unknown_storage
+    assert_raise_message("#{@dir} has files of an unknown storage: tc") { open_storage('0.tc', '1.tc') }
+  end
+
+  # The cache file is not the storage.
+  def test_storage_gem_missing
+    message = "The files in #{@dir} need roma-storage-dbm. Install it by gem install roma-storage-dbm."
+    assert_raise_message(message) { open_storage('0.cache.dbm', '0.dbm') }
+  end
+
+  # With a storage of a test, which keeps the data on memory.
+  def test_open
+    files = %w(0.mem 1.mem 0.cache.mem 0.mem-journal)
+    storage = with_storage('mem' => ['roma/storage/ruby_hash_storage', :RubyHashStorage, 'roma-storage']) do
+      open_storage(*files)
+    end
+    assert_equal [2, @dir], [storage.divnum, storage.instance_variable_get(:@storage_path)]
+    assert_equal({ 0 => 0 }, storage.hdiv)
+  end
+
+  def with_storage(storages)
+    saved = Roma::Tools::RecoverLost::STORAGES
+    Roma::Tools::RecoverLost.send(:remove_const, :STORAGES)
+    Roma::Tools::RecoverLost.const_set(:STORAGES, saved.merge(storages))
+    yield
+  ensure
+    Roma::Tools::RecoverLost.send(:remove_const, :STORAGES)
+    Roma::Tools::RecoverLost.const_set(:STORAGES, saved)
   end
 end
