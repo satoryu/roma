@@ -1,11 +1,10 @@
 require 'roma/routing/routing_data'
+require 'roma/tools/error'
 
 module Roma
   module Tools
     # Makes the routing table and writes it into <node-id>.route for each node.
     class Mkroute
-      class Error < StandardError; end
-
       # +out+ is where messages go, and +dir+ is where the files are written.
       def initialize(out: $stdout, dir: '.')
         @out = out

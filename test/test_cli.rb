@@ -96,6 +96,69 @@ class CLITest < Test::Unit::TestCase
     assert_equal [], Dir.children(@dir)
   end
 
+  def test_ssroute
+    rd = Roma::Routing::RoutingData.create(32, 3, 1, ['host1_1'])
+    rd.save(File.join(@dir, 'host1_1.route'))
+    2.times { |i| File.write(File.join(@dir, "host1_1.route.#{i + 1}"), "2026-01-01T00:00:00.1 join host#{i + 2}_1\n") }
+    out, _err, status = roma('ssroute', 'host1_1')
+    assert_nil status
+    assert_equal "succeed\n", out
+    assert_equal %w(host1_1 host2_1), load_route('host1_1').nodes
+  end
+
+  def test_ssroute_error
+    out, err, status = roma('ssroute', 'host1_1')
+    assert_equal 1, status
+    assert_equal '', out
+    assert_match(/\Aerror:No such file or directory/, err)
+  end
+
+  def write_logs
+    File.write(File.join(@dir, 'a.log'), "W, [2026-01-01T00:00:01.000001 #1]  WARN -- : a1\n" \
+                                         "E, [2026-01-01T00:00:03.000001 #1] ERROR -- : a2\n" \
+                                         "E, [2026-01-01T00:00:05.000001 #1] ERROR -- : a3\n")
+    File.write(File.join(@dir, 'b.log'), "W, [2026-01-01T00:00:02.000001 #2]  WARN -- : b1\n" \
+                                         "I, [2026-01-01T00:00:04.000001 #2]  INFO -- : b2\n")
+  end
+
+  def test_log_merger
+    write_logs
+    out, _err, status = roma('log_merger', 'a.log', 'b.log')
+    assert_nil status
+    assert_equal %w(a1 b1 a2 b2 a3), out.lines.map { |l| l.split.last }
+  end
+
+  # Each option leaves out a line: a1 by the start, b2 by the level and a3
+  # by the end.
+  data('short' => %w(-l WARN -s 20260101000002 -e 20260101000004),
+       'long' => %w(--level=WARN --start=20260101000002 --end=20260101000004))
+  def test_log_merger_options(options)
+    write_logs
+    out, _err, _status = roma('log_merger', 'a.log', 'b.log', *options)
+    assert_equal %w(b1 a2), out.lines.map { |l| l.split.last }
+  end
+
+  data('short' => '-o', 'long' => '--output')
+  def test_log_merger_output(option)
+    write_logs
+    out, _err, status = roma('log_merger', 'a.log', option, 'merged.log')
+    assert_nil status
+    assert_equal '', out
+    assert_equal %w(a1 a2 a3), File.readlines(File.join(@dir, 'merged.log')).map { |l| l.split.last }
+  end
+
+  data('no files' => [%w(), /"roma log_merger" was called with no arguments/],
+       'missing file' => [%w(nofile.log), /\ANo such file or directory @ rb_sysopen - nofile.log\n\z/],
+       'unknown level' => [%w(-l BOGUS a.log), /Expected '--level' to be one of TRACE, DEBUG, .*; got BOGUS/])
+  def test_log_merger_invalid_arguments(data)
+    args, message = data
+    write_logs
+    out, err, status = roma('log_merger', *args)
+    assert_equal 1, status
+    assert_equal '', out
+    assert_match(message, err)
+  end
+
   # bin/roma runs the CLI and exits with its status.
   def test_command
     cmd = [RbConfig.ruby]
