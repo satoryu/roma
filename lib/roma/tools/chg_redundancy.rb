@@ -1,37 +1,30 @@
-#!/usr/bin/env ruby
-#
-# usage:chg_redundancy n address port > routingfile
-#
-require 'roma/tcp_fast_fallback'
-require 'roma/logging/rlogger'
-require 'roma/messaging/con_pool'
-require 'roma/routing/routing_data'
-require 'roma/client/sender'
+require 'yaml'
+require 'roma/tools/admin_client'
+require 'roma/tools/error'
 
-def get_routing_data(nid)
-  sender = Roma::Client::Sender.new
-  sender.send_routedump_command(nid)
+module Roma
+  module Tools
+    # Makes a routing table with another redundancy from the one of a node,
+    # and writes it in YAML, the format of the routing files.
+    class ChgRedundancy
+      # +out+ is where the routing table goes.
+      def initialize(out: $stdout, client: AdminClient.new)
+        @out = out
+        @client = client
+      end
+
+      # Raises Error if +redundancy+ is less than 1, or the routing table of
+      # +node_id+ can't be got. A lower redundancy drops the last nodes of
+      # each virtual node. The clocks start over.
+      def change(node_id, redundancy)
+        raise Error, "The redundancy should be 1 or more." if redundancy < 1
+        rd = @client.routing_data(node_id)
+        rd.v_clk.each_key { |vn| rd.v_clk[vn] = 0 }
+        rd.v_idx.each_key { |vn| rd.v_idx[vn] = rd.v_idx[vn].first(redundancy) }
+        rd.rn = redundancy
+        rd.nodes.sort!
+        @out.puts YAML.dump(rd)
+      end
+    end
+  end
 end
-
-if ARGV.length != 3
-  STDERR.puts "usage:#{File.basename($0)} n address port";exit
-end
-
-rn = ARGV[0].to_i
-STDERR.puts "must be n >= 1.";exit if rn < 1
-
-rd = get_routing_data("#{ARGV[1]}_#{ARGV[2]}")
-STDERR.puts "can not get the routing data.";exit unless rd
-
-# clear logic clock
-rd.v_clk.keys.each{|k| rd.v_clk[k] = 0 }
-
-if rd.rn > rn
-  rd.v_idx.keys.each{|k|
-    rd.v_idx[k] = rd.v_idx[k][0..(rn - 1)]
-  }
-end
-
-rd.rn = rn
-rd.nodes.sort!
-STDOUT.puts YAML.dump(rd)

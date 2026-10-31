@@ -12,6 +12,7 @@ require 'roma/tools/log_merger'
 require 'roma/config'
 require 'roma/tools/mkconfig'
 require 'roma/tools/recoverlost_lib'
+require 'roma/tools/chg_redundancy'
 require 'roma/tools/multi_commander'
 require 'roma/tools/roma-adm'
 
@@ -47,6 +48,14 @@ module ToolTestHelper
   def serve_routing(node, rd)
     dump = Marshal.dump(rd)
     node.replies['routingdump'] = "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
+  end
+
+  # A node id that nothing listens on.
+  def down_node
+    server = TCPServer.new(0)
+    "localhost_#{server.addr[1]}"
+  ensure
+    server.close
   end
 
   def capture_stdout
@@ -343,31 +352,106 @@ class MkconfigTest < Test::Unit::TestCase
   end
 end
 
+class AdminClientTest < Test::Unit::TestCase
+  include ToolTestHelper
+
+  def client
+    Roma::Tools::AdminClient.new(timeout: 0.5)
+  end
+
+  def test_routing_data
+    node = fake_node
+    rd = Roma::Routing::RoutingData.create(32, 3, 1, [node.nid])
+    serve_routing(node, rd)
+    assert_equal rd.v_idx, client.routing_data(node.nid).v_idx
+  end
+
+  data('no routing data' => ["0\r\n", /has no routing data/],
+       'closed' => [:close, /has no routing data/],
+       'stops sending' => ["10\r\nabc", /execution expired/],
+       'no reply' => [proc { '' }, /execution expired/])
+  def test_routing_data_errors(data)
+    reply, message = data
+    node = fake_node
+    node.replies['routingdump'] = reply
+    assert_raise_message(message) { client.routing_data(node.nid) }
+  end
+
+  def test_routing_data_cut
+    server = TCPServer.new(0)
+    thread = Thread.new do
+      s = server.accept
+      s.gets
+      s.write("10\r\nabc")
+      s.close
+    end
+    nid = "localhost_#{server.addr[1]}"
+    assert_raise_message("#{nid} closed the connection.") { client.routing_data(nid) }
+  ensure
+    thread.join
+    server.close
+  end
+
+  # The reply ends when no line comes for a while.
+  def test_command
+    node = fake_node
+    node.replies['stats'] = "a 1\r\nb 2\r\nEND\r\n"
+    assert_equal ['a 1', 'b 2', 'END'], client.command(node.nid, 'stats')
+    assert_equal ['stats'], node.commands
+  end
+
+  def test_command_without_reply
+    node = fake_node
+    node.replies['stats'] = proc { '' }
+    assert_raise_message("#{node.nid} didn't reply to stats.") { client.command(node.nid, 'stats') }
+  end
+
+  def test_node_down
+    nid = down_node
+    error = assert_raise(Roma::Tools::Error) { client.command(nid, 'whoami') }
+    assert_match(/\A#{nid}: .*refused/i, error.message)
+  end
+end
+
 class ChgRedundancyTest < Test::Unit::TestCase
   include ToolTestHelper
 
-  def test_chg_redundancy
-    node = fake_node
-    rd = Roma::Routing::RoutingData.create(32, 3, 2, [node.nid, 'localhost_1'])
-    rd.v_clk.each_key { |vn| rd.v_clk[vn] = 5 }
-    serve_routing(node, rd)
-    host, port = node.nid.split('_')
-    out, err, status = run_tool('chg_redundancy', '1', host, port)
-    assert_true status.success?, err
-    changed = YAML.unsafe_load(out)
-    assert_equal 1, changed.rn
-    changed.v_idx.each_value { |nids| assert_equal 1, nids.size }
-    # The clocks start over.
-    assert_equal [0], changed.v_clk.values.uniq
+  def change(node_id, redundancy)
+    out = StringIO.new
+    Roma::Tools::ChgRedundancy.new(out: out).change(node_id, redundancy)
+    YAML.unsafe_load(out.string)
   end
 
-  data('wrong number of arguments' => [%w(1 localhost), /usage:/],
-       'redundancy less than 1' => [%w(0 localhost 1), /must be n >= 1/],
-       'no routing data' => [%w(1 localhost 1), /can not get the routing data/])
-  def test_errors(data)
-    args, message = data
-    _out, err, _status = run_tool('chg_redundancy', *args)
-    assert_match(message, err)
+  def serve(redundancy)
+    node = fake_node
+    rd = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.nid, 'localhost_1', 'localhost_0'], true)
+    rd.v_clk.each_key { |vn| rd.v_clk[vn] = 5 }
+    serve_routing(node, rd)
+    [node, rd]
+  end
+
+  def test_lower
+    node, rd = serve(2)
+    assert_equal [2], rd.v_idx.values.map(&:size).uniq
+    changed = change(node.nid.sub('_', ':'), 1)
+    assert_equal 1, changed.rn
+    assert_equal rd.v_idx.transform_values { |nids| nids.first(1) }, changed.v_idx
+    # The clocks start over.
+    assert_equal [0], changed.v_clk.values.uniq
+    assert_equal rd.nodes.sort, changed.nodes
+  end
+
+  # The nodes are added by romad later.
+  def test_higher
+    node, rd = serve(1)
+    changed = change(node.nid, 3)
+    assert_equal 3, changed.rn
+    assert_equal rd.v_idx, changed.v_idx
+  end
+
+  data('zero' => 0, 'negative' => -1)
+  def test_redundancy_less_than_one(redundancy)
+    assert_raise_message('The redundancy should be 1 or more.') { change('localhost_1', redundancy) }
   end
 end
 
@@ -378,10 +462,26 @@ class MultiCommanderTest < Test::Unit::TestCase
     nodes = [fake_node, fake_node]
     rd = Roma::Routing::RoutingData.create(32, 3, 1, nodes.map(&:nid))
     serve_routing(nodes[0], rd)
-    commander = Roma::MultiCommander.new(nodes[0].nid)
+    commander = Roma::Tools::MultiCommander.new(nodes[0].nid.sub('_', ':'))
     assert_equal "ROMA\r\n", commander.send_cmd('whoami')
+    assert_equal "ROMA\r\n", commander.send_cmd('whoami', nodes[1].nid)
     expected = rd.nodes.map { |nid| "****** #{nid}\r\nROMA\r\n" }.join
     assert_equal expected, commander.send_cmd_all('whoami')
+  end
+
+  # The other nodes still get the command.
+  def test_node_down
+    node = fake_node
+    nid = down_node
+    rd = Roma::Routing::RoutingData.create(32, 3, 1, [nid, node.nid])
+    serve_routing(node, rd)
+    out = Roma::Tools::MultiCommander.new(node.nid).send_cmd_all('whoami')
+    assert_match(/\A\*{6} #{nid}\r\nERROR: #{nid}: .*\r\n\*{6} #{node.nid}\r\nROMA\r\n\z/, out)
+  end
+
+  def test_no_routing_data
+    nid = down_node
+    assert_raise(Roma::Tools::Error) { Roma::Tools::MultiCommander.new(nid) }
   end
 end
 
