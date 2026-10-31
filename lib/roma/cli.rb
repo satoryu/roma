@@ -136,6 +136,14 @@ module Roma
       puts 'Make recent data process has succeed.'
     end
 
+    desc 'roma_watcher CONFIG_FILE',
+         'Mail if a node is down or the nodes are split, as the YAML config file says'
+    def roma_watcher(config_file)
+      require 'yaml'
+      require 'roma/tools/roma_watcher'
+      Roma::Tools::RomaWatcher.new(YAML.load_file(config_file)).watch
+    end
+
     desc 'log_merger LOG_FILE...', 'Merge the log files of romad in time order'
     option :output, aliases: '-o', banner: 'FILE', desc: 'Write into FILE instead of the standard output'
     option :level, aliases: '-l', enum: Roma::Tools::LogMerger::LEVEL_LETTERS.keys, default: 'TRACE',

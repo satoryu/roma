@@ -1,150 +1,86 @@
-#!/usr/bin/env ruby
-
-require 'roma/tcp_fast_fallback'
-require 'kconv'
 require 'logger'
-require 'socket'
-require 'timeout'
-require 'yaml'
+require 'roma/tools/admin_client'
+require 'roma/tools/error'
 
 module Roma
-  module Watch
-    module Message
-      ERROR_NODE_DOWN = 'A node down'
-      ERROR_SPLIT_BRAIN = 'Split brain'
-      COMMAND_NODELIST = 'nodelist'
-      COMMAND_QUIT = 'quit'
-    end
+  module Tools
+    # Asks each node for the nodes it knows, and mails if a node doesn't
+    # answer, or the nodes don't know the same nodes (split brain).
+    # roma_watcher_config.yml.example is an example of the config.
+    class RomaWatcher
+      ERROR_NODE_DOWN = 'A node down'.freeze
+      ERROR_SPLIT_BRAIN = 'Split brain'.freeze
 
-    class Mailer
-      MAILER = '/usr/lib/sendmail'
-
-      attr :from
-      attr :to
-      attr :mailer
-
-      def initialize(from, to, mailer = nil)
-        @from = from
-        @to = to
-        @mailer = mailer
-        @mailer ||= MAILER
-      end
-
-      def send_mail(sub, msg)
-        open("| #{@mailer} -f #{@from} -t", 'w') do |f|
-          f.puts "From: #{@from}"
-          f.puts "To: #{@to}"
-          #f.puts "Subject: #{sub.tojis}"
-          f.puts "Subject: #{sub}"
-          f.puts "Reply-To: #{@from}"
-          f.puts
-          f.puts msg.tojis
-          2.times{ f.puts }
-          f.puts "."
+      # Sends a mail by sendmail.
+      class Mailer
+        def initialize(from, to, mailer = '/usr/lib/sendmail')
+          @from = from
+          @to = to
+          @mailer = mailer
         end
-      end
-    end # Mailer
 
-    class Main
-      attr :conf
-      attr :log
-      attr :nodelist_inf
-      attr :errors
-      attr :mailer
-
-      def initialize config
-        @conf = config
-        @log = Logger.new @conf['log']['path'], @conf['log']['rotate']
-        @nodelist_inf = {}
-        @errors = {}
-        @subject_prefix = @conf['mail']['subject_prefix']
-        @mailer = Mailer.new @conf['mail']['from'], @conf['mail']['to'], @conf['mail']['mailer']
-      end
-
-      def watch
-        @log.info "start watching a ROMA"
-        watch_nodes
-        @log.info "end watching"
-        @log.info "start checking a ROMA"
-        check_nodes
-        @log.info "end checking"
-      end
-
-      def watch_nodes
-        @conf['roma'].each { |node|
-          nodes = watch_node node
-          @nodelist_inf[node] = nodes if nodes
-        }
-      end
-
-      def watch_node node
-        @log.debug "start watching a node: #{node}"
-        host, port = node.split(':')
-        sock = nil
-        begin
-          Timeout.timeout(@conf['timeout'].to_i) {
-            line = nil
-            TCPSocket.open(host, port) do |sock|
-              sock.puts Message::COMMAND_NODELIST
-              line = sock.gets.chomp!
-              sock.puts Message::COMMAND_QUIT
-            end
-            @log.debug "end watching a node: #{node}"
-            line.split(' ')
-          }
-        rescue Exception => e
-          emsg = "Catch an error when checking a node #{node}: #{e.to_s}"
-          @log.error emsg
-          if (cnt ||= 0; cnt += 1) < @conf['retry']['count'].to_i
-            @log.info "retry: #{cnt} times"
-            sleep @conf['retry']['period'].to_i
-            retry
+        def send_mail(subject, body)
+          IO.popen([@mailer, '-f', @from, '-t'], 'w') do |io|
+            io.puts "From: #{@from}", "To: #{@to}", "Subject: #{subject}", "Reply-To: #{@from}", '', body
           end
-          @errors[node] = emsg
-          nil
+          raise Error, "#{@mailer} failed: #{$?}" unless $?.success?
         end
       end
 
-      def check_nodes
-        check_vital
-        check_splitbrain
+      # +config+ is the loaded YAML. The nodes are asked by +client+, and
+      # the mails are sent by +mailer+.
+      def initialize(config, logger: nil, mailer: nil, client: nil)
+        @config = config
+        @logger = logger || Logger.new(config['log']['path'], config['log']['rotate'])
+        mail = config['mail']
+        @mailer = mailer || Mailer.new(mail['from'], mail['to'], *mail['mailer'])
+        @subject_prefix = mail['subject_prefix'].to_s
+        @client = client || AdminClient.new(timeout: config['timeout'].to_f)
       end
 
-      def check_vital
-        @log.debug "start checking the vital"
-        @errors.each { |node, emsg|
-          @mailer.send_mail(@subject_prefix + Message::ERROR_NODE_DOWN, emsg)
-        }
-        @log.debug "end checking the vital"
-      end
-
-      def check_splitbrain
-        @log.debug "start checking a splitbrain"
-        all_ring = []
-        @nodelist_inf.each { |node, ring|
-          all_ring << ring unless all_ring.include? ring
-        }
-
-        if all_ring.size != 1
-          emsg = ""
-          all_ring.each { |ring|
-            emsg += "#{ring.join(',')}\r\n"
-          }
-          @mailer.send_mail(@subject_prefix + Message::ERROR_SPLIT_BRAIN, emsg)
+      # Watches the nodes, and returns the subjects of the mails sent.
+      def watch
+        @logger.info 'start watching a ROMA'
+        nodelists = {}
+        errors = {}
+        @config['roma'].each do |node|
+          nodelists[node] = nodelist(node)
+        rescue Error => e
+          errors[node] = "Catch an error when checking a node: #{e.message}"
         end
-        @log.debug "end checking a splitbrain"
+        @logger.info 'end watching'
+        errors.values.map { |message| mail(ERROR_NODE_DOWN, message) } +
+          check_split_brain(nodelists.values.uniq)
+      end
+
+      private
+
+      # Tries again as many times as retry count.
+      def nodelist(node)
+        tries = 0
+        begin
+          @client.request(node, 'nodelist').split
+        rescue Error => e
+          @logger.error "Catch an error when checking a node: #{e.message}"
+          tries += 1
+          raise if tries >= @config['retry']['count'].to_i
+          @logger.info "retry: #{tries} times"
+          sleep @config['retry']['period'].to_f
+          retry
+        end
+      end
+
+      def check_split_brain(nodelists)
+        return [] if nodelists.size <= 1
+        [mail(ERROR_SPLIT_BRAIN, nodelists.map { |nodes| "#{nodes.join(',')}\r\n" }.join)]
+      end
+
+      def mail(error, body)
+        subject = @subject_prefix + error
+        @logger.error "#{subject}: #{body}"
+        @mailer.send_mail(subject, body)
+        subject
       end
     end
-  end # Watch
-end # Roma
-
-def usage
-  puts File.basename(__FILE__) + " config.yml"
-end
-
-if 1 == ARGV.length
-  config = YAML.load_file(ARGV[0])
-  Roma::Watch::Main.new(config).watch
-else
-  usage
+  end
 end
