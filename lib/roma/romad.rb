@@ -28,9 +28,11 @@ module Roma
     attr_accessor :eventloop
     attr_accessor :startup
 
-    def initialize(argv = nil)
+    # +program+ is the name in the usage.
+    def initialize(argv = nil, program: File.basename($0))
       @stats = Roma::Stats.instance
       @startup = true
+      @program = program
       options(argv)
       initialize_stats
       initialize_connection
@@ -140,7 +142,7 @@ module Roma
 
             @log.info("Now accepting connections on address #{@stats.address}, port #{@stats.port}")
           end
-        rescue Interrupt => e
+        rescue SignalException => e
           if daemon?
             @log.error("#{e.inspect}\n#{$@}")
             retry
@@ -297,7 +299,7 @@ module Roma
 
     def options(argv)
       opts = OptionParser.new
-      opts.banner="usage:#{File.basename($0)} [options] address"
+      opts.banner="usage:#{@program} [options] address"
 
       @stats.daemon = false
       opts.on("-d","--daemon") { |v| @stats.daemon = true }
