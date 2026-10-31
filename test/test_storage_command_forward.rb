@@ -103,10 +103,16 @@ class StorageCommandForwardTest < Test::Unit::TestCase
 
   def test_get_expt
     @owner.request('set key1 0 1735700000 5', 'value')
-    pend('a forwarded get_expt replies without "\r\n" and END') do
-      assert_equal "1735700000\r\nEND\r\n", @conn.request('get_expt key1 unix')
-      assert_equal "END\r\n", @conn.request('get_expt key2 unix')
-    end
+    assert_equal "1735700000\r\nEND\r\n", @conn.request('get_expt key1 unix')
+    assert_equal "END\r\n", @conn.request('get_expt key2 unix')
+  end
+
+  # The connection is closed before END.
+  def test_get_expt_from_a_node_that_closes_the_connection
+    closing = Object.new
+    def closing.dispatch(_line, _rest) = ''
+    @conn.forward_to(closing)
+    assert_equal "SERVER_ERROR Message forward failed.\r\n", @conn.request('get_expt key1')
   end
 
   # The owner can't be reached.
@@ -120,10 +126,8 @@ class StorageCommandForwardTest < Test::Unit::TestCase
     line, value = data
     @conn.forward_to(DownNode.new)
     if line.start_with?('gets')
-      pend('gets raises when it can\'t get keys from another node') do
-        # It leaves out the keys it couldn't get.
-        assert_equal "END\r\n", @conn.request(line, value)
-      end
+      # It leaves out the keys it couldn't get.
+      assert_equal "END\r\n", @conn.request(line, value)
     else
       assert_equal "SERVER_ERROR Message forward failed.\r\n", @conn.request(line, value)
     end
@@ -202,9 +206,7 @@ class StorageCommandHashTest < Test::Unit::TestCase
 
   data('set' => 'set_size_of_zredundant', 'rset' => 'rset_size_of_zredundant')
   def test_set_size_of_zredundant_usage(command)
-    pend('the usage of size_of_zredundant names set_set_size_of_zredundant') do
-      assert_equal "usage:#{command} <n>\r\n", @conn.request("#{command} 0")
-    end
+    assert_equal "usage:#{command} <n>\r\n", @conn.request("#{command} 0")
   end
 end
 
@@ -266,9 +268,7 @@ class StorageCommandWriteBehindTest < Test::Unit::TestCase
                   "set key1\eother 0 2147483647 1 \r\n5\r\n"],
                  write_behind.map { |_hname, cmd, _key, _value| cmd }
     # The other node gets the key without the hash name.
-    pend('incr and cas send the key with the hash name to the other node') do
-      assert_equal %w(key1 key1 key1), @conn.redundant_calls.map { |call| call[:key] }
-    end
+    assert_equal %w(key1 key1 key1), @conn.redundant_calls.map { |call| call[:key] }
   end
 end
 
