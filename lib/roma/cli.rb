@@ -1,4 +1,6 @@
 require 'thor'
+require 'roma/tools/error'
+require 'roma/tools/log_merger'
 
 module Roma
   # The roma command. Each subcommand calls a class in Roma::Tools.
@@ -24,6 +26,14 @@ module Roma
       super(given_args, config)
     end
 
+    # A tool raises Roma::Tools::Error, or an error from the system such as
+    # a missing file. Thor prints the message and exits with status 1.
+    def self.dispatch(*)
+      super
+    rescue Roma::Tools::Error, SystemCallError => e
+      raise Thor::Error, e.message
+    end
+
     desc 'mkroute NODE_ID...', 'Make the routing table and write it into NODE_ID.route for each node'
     option :hash, aliases: '-h', type: :numeric, default: 32, banner: 'BITS', desc: 'Digest bit count'
     option :divide, aliases: '-d', type: :numeric, default: 9, banner: 'BITS',
@@ -37,8 +47,26 @@ module Roma
                                       hash_bits: options[:hash], divide_bits: options[:divide],
                                       redundancy: options[:redundant],
                                       replication_in_host: options[:replication_in_host])
-    rescue Roma::Tools::Mkroute::Error => e
-      raise Thor::Error, e.message
+    end
+
+    desc 'ssroute NODE_ID', 'Put the routing logs of a node, but the last one, into NODE_ID.route'
+    def ssroute(node_id)
+      require 'roma/tools/ssroute'
+      Roma::Tools::Ssroute.new.snapshot(node_id)
+    end
+
+    desc 'log_merger LOG_FILE...', 'Merge the log files of romad in time order'
+    option :output, aliases: '-o', banner: 'FILE', desc: 'Write into FILE instead of the standard output'
+    option :level, aliases: '-l', enum: Roma::Tools::LogMerger::LEVEL_LETTERS.keys, default: 'TRACE',
+                   desc: 'The lowest level to write'
+    option :start, aliases: '-s', banner: 'YYYYMMDDHHMMSS', desc: 'Write from this time'
+    option :end, aliases: '-e', banner: 'YYYYMMDDHHMMSS', desc: 'Write up to this time'
+    def log_merger(log_file, *log_files)
+      out = options[:output] ? File.open(options[:output], 'w') : $stdout
+      Roma::Tools::LogMerger.new(out: out).merge([log_file, *log_files], level: options[:level],
+                                                 start_date: options[:start], end_date: options[:end])
+    ensure
+      out.close if options[:output] && out
     end
   end
 end

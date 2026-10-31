@@ -7,6 +7,8 @@ require 'fake_node'
 require 'roma/routing/routing_data'
 require 'roma/storage/ruby_hash_storage'
 require 'roma/tools/mkroute'
+require 'roma/tools/ssroute'
+require 'roma/tools/log_merger'
 require 'roma/tools/recoverlost_lib'
 require 'roma/tools/multi_commander'
 require 'roma/tools/roma-adm'
@@ -103,7 +105,7 @@ class MkrouteTest < Test::Unit::TestCase
        'fewer nodes than redundancy' => [{ redundancy: 3 }, 'The node-id number should be redundant number or more.'])
   def test_invalid_arguments(data)
     opts, message = data
-    error = assert_raise(Roma::Tools::Mkroute::Error) { mkroute(%w(host1_1 host2_1), **opts) }
+    error = assert_raise(Roma::Tools::Error) { mkroute(%w(host1_1 host2_1), **opts) }
     assert_equal message, error.message
     assert_equal [], Dir.children(@dir)
   end
@@ -127,10 +129,10 @@ class LogMergerTest < Test::Unit::TestCase
     LOG
   end
 
-  def merged(*args)
-    out, err, status = run_tool('log_merger', 'a.log', 'b.log', *args)
-    assert_true status.success?, err
-    out.lines.map { |l| l[/\A(\w)\.log,.*: (\w+)$/] ? "#{$1}:#{$2}" : l.chomp }
+  def merged(**opts)
+    out = StringIO.new
+    Roma::Tools::LogMerger.new(out: out).merge(%w(a.log b.log).map { |f| File.join(@dir, f) }, **opts)
+    out.string.lines.map { |l| l[/\A(\w)\.log,.*: (\w+)$/] ? "#{$1}:#{$2}" : l.chomp }
   end
 
   # Each line is prefixed with its file. A line without a date belongs to
@@ -139,22 +141,78 @@ class LogMergerTest < Test::Unit::TestCase
     assert_equal ['a:a1', 'b:b1', 'a:a2', 'continued line of a2', 'b:b2', 'a:a3'], merged
   end
 
-  def test_log_level
-    assert_equal ['b:b1', 'a:a3'], merged('-l', 'WARN')
+  def test_whole_line
+    out = StringIO.new
+    Roma::Tools::LogMerger.new(out: out).merge([File.join(@dir, 'b.log')])
+    assert_equal "b.log,W, [2026-01-01T00:00:02.000001 #2]  WARN -- : b1\nb.log,I, [2026-01-01T00:00:04.000001 #2]  INFO -- : b2\n",
+                 out.string
+  end
+
+  data('TRACE' => ['TRACE', ['a:a1', 'b:b1', 'a:a2', 'continued line of a2', 'b:b2', 'a:a3']],
+       'INFO' => ['INFO', ['a:a1', 'b:b1', 'b:b2', 'a:a3']],
+       'WARN' => ['WARN', ['b:b1', 'a:a3']],
+       'ERROR' => ['ERROR', ['a:a3']],
+       'FATAL' => ['FATAL', []])
+  def test_level(data)
+    level, expected = data
+    assert_equal expected, merged(level: level)
   end
 
   def test_period
-    assert_equal ['b:b1', 'a:a2', 'continued line of a2', 'b:b2'], merged('-s', '20260101000002', '-e', '20260101000004')
+    assert_equal ['b:b1', 'a:a2', 'continued line of a2', 'b:b2'],
+                 merged(start_date: '20260101000002', end_date: '20260101000004')
   end
 
-  def test_output_file
-    merged('-o', 'merged.log')
-    assert_match(/a\.log,I, .* a1/, File.read(File.join(@dir, 'merged.log')))
+  # A date is filled up to the start or the end of the period it names.
+  def test_period_by_a_prefix
+    assert_equal ['a:a1', 'b:b1', 'a:a2', 'continued line of a2', 'b:b2', 'a:a3'],
+                 merged(start_date: '2026', end_date: '20260101')
+    assert_equal [], merged(start_date: '20260102')
+    assert_equal [], merged(end_date: '2025')
+  end
+end
+
+class SsrouteTest < Test::Unit::TestCase
+  include ToolTestHelper
+
+  def setup
+    super
+    @fname = File.join(@dir, 'host1_1.route')
+    Roma::Routing::RoutingData.create(32, 3, 1, ['host1_1']).save(@fname)
   end
 
-  def test_usage
-    _out, err, _status = run_tool('log_merger')
-    assert_match(/Usage/, err)
+  def write_log(n, line)
+    File.write("#{@fname}.#{n}", "2026-01-01T00:00:00.1 #{line}\n")
+  end
+
+  def snapshot(node_id)
+    out = StringIO.new
+    Roma::Tools::Ssroute.new(out: out, dir: @dir).snapshot(node_id)
+    out.string
+  end
+
+  def test_snapshot
+    write_log(1, 'join host2_1')
+    write_log(2, 'join host3_1')
+    assert_equal "succeed\n", snapshot('host1:1')
+    assert_equal %w(host1_1 host2_1), Roma::Routing::RoutingData.load_snapshot(@fname).nodes
+    assert_equal %w(host1_1.route host1_1.route.1~ host1_1.route.2 host1_1.route~), Dir.children(@dir).sort
+  end
+
+  # The last log is still being written.
+  def test_without_enough_logs
+    write_log(1, 'join host2_1')
+    error = assert_raise(Roma::Tools::Error) { snapshot('host1_1') }
+    assert_equal 'Routing-log file does not found.', error.message
+  end
+
+  data('missing route' => ['host2_1', /\Aerror:No such file or directory/],
+       'broken log' => ['host1_1', /\Aerror:.*parse error/])
+  def test_error(data)
+    node_id, message = data
+    write_log(1, 'unknown host2_1')
+    write_log(2, 'join host3_1')
+    assert_raise_message(message) { snapshot(node_id) }
   end
 end
 
