@@ -1,6 +1,7 @@
 # ROMA - A Distributed Key-Value Store in Ruby 
 [![Gitter](https://badges.gitter.im/roma/roma.svg)](https://gitter.im/roma/roma?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 [![test](https://github.com/roma/roma/actions/workflows/test.yml/badge.svg)](https://github.com/roma/roma/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/satoryu/roma/branch/dev2_0/graph/badge.svg)](https://codecov.io/gh/satoryu/roma)
 
 ROMA is one of the data storing systems for distributed key-value stores.  
 It is a completely decentralized distributed system that consists of multiple
