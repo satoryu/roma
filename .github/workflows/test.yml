@@ -27,6 +27,8 @@ jobs:
         with:
           files: coverage/coverage.xml
           disable_search: true
+          # The plugins look for gcov, xcrun and coverage.py data.
+          plugins: noop
           use_oidc: true
       - uses: actions/upload-artifact@v7
         if: always()
