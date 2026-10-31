@@ -22,7 +22,7 @@ More information is [here](http://roma-kvs.org/ "ROMA").
 * Refer to [ROMA documentations](http://roma-kvs.org/ "ROMA")
 
 ## Requirements
-* Ruby >= 2.1.0
+* Ruby >= 3.4
 
 
 
@@ -56,6 +56,39 @@ $ romad localhost -p 10002 -d --replication_in_host
 
 Refer to [Shell Commands](http://roma-kvs.org/commands.html#dist-jump-link-shell_commands) for more detail information about Shell Commands.  
 
+### Choose a storage
+ROMA keeps data in a Ruby Hash on memory by default. To keep data in files,
+install one of the storage gems and set it in your config file.
+
+| Storage | Gem | `require` | `STORAGE_CLASS` |
+| --- | --- | --- | --- |
+| Ruby Hash (default) | roma-storage (installed with ROMA) | `roma/storage/ruby_hash_storage` | `Roma::Storage::RubyHashStorage` |
+| DBM | [roma-storage-dbm](https://rubygems.org/gems/roma-storage-dbm) | `roma/storage/dbm` | `Roma::Storage::DbmStorage` |
+| SQLite3 | [roma-storage-sqlite3](https://rubygems.org/gems/roma-storage-sqlite3) | `roma/storage/sqlite3` | `Roma::Storage::SQLite3Storage` |
+
+For example, to use SQLite3:
+
+```
+$ gem install roma-storage-sqlite3
+$ roma mkconfig
+```
+
+Then edit the generated `config.rb`:
+
+```ruby
+require 'roma/storage/sqlite3'
+
+module Roma
+  module Config
+    STORAGE_CLASS = Roma::Storage::SQLite3Storage
+    STORAGE_PATH = '/var/lib/roma'
+    # ...
+  end
+end
+```
+
+Start romad with the config file by `romad localhost -p 10001 -d --config config.rb`.
+
 ## Usage
 Like memcached, you can connect to ROMA with telnet. Connect to the ROMA process that you ran above.
 
@@ -87,7 +120,6 @@ If you would like to contribute, please...
 3. Make changes in a branch & add unit tests.
 4. Run Unit Test
   * `bundle exec rake` (if unit test fails, run it again - it's fickle).
-  * Specify `STORAGE` to test test cases related to storages such as groonga, sqlite3 and dbm.
   * `bundle exec rake coverage` also measures the coverage of `lib`, including the romad processes that the tests start. Open `coverage/index.html` for the report. CI uploads it to Codecov.
 5. Create a pull request.
 

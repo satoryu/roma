@@ -524,7 +524,7 @@ module Roma
             req = "ruby_hash_storage"
             storage = "RubyHashStorage"
           when "Groonga"
-            req = "groonga_storage"
+            req = "groonga"
             storage = "GroongaStorage"
             bnum = Calculate.get_bnum(res)
             bnum = 5000000 if bnum < 5000000
@@ -549,7 +549,7 @@ module Roma
           case req
           when "ruby_hash_storage"
             body = ch_assign(body, "STORAGE_OPTION","")
-          when "groonga_storage"
+          when "groonga"
             body = ch_assign(body, "STORAGE_OPTION", "bnum=#{bnum}\#xmsiz=#{xmsiz}\#opts=d#dfunit=10")
           end
         end
