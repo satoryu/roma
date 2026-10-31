@@ -144,6 +144,35 @@ module Roma
       Roma::Tools::RomaWatcher.new(YAML.load_file(config_file)).watch
     end
 
+    desc 'tribunus HOSTNAME PORT_RANGE',
+         'Start romads at the ports such as 11211-11213, and join the romads on other hosts found by multicast'
+    option :new_ring, aliases: '-c', type: :boolean, default: false, desc: 'Create a new ring instead'
+    option :join, aliases: '-j', banner: 'HOST:PORT', desc: 'Join the romad instead'
+    option :udp_port, aliases: '-p', type: :numeric, desc: 'The UDP port for multicast (default: 14329)'
+    option :work_dir, aliases: '-w', banner: 'DIR', desc: 'The directory where the romads run'
+    option :multicast_addr, aliases: '-m', banner: 'ADDRESS', desc: 'The IP address for multicast (default: 225.0.0.123)'
+    option :ruby, aliases: '-r', banner: 'COMMAND', desc: 'The ruby to run the romads'
+    option :verbose, aliases: '-v', type: :boolean, default: false
+    def tribunus(hostname, port_range)
+      require 'roma/tools/tribunus'
+      raise Roma::Tools::Error, "--new_ring and --join can't be used together." if options[:new_ring] && options[:join]
+      join_host, join_port = options[:join]&.split(/[:_]/, 2)
+      raise Roma::Tools::Error, "--join should be HOST:PORT: #{options[:join]}" if options[:join] && join_port !~ /\A\d+\z/
+
+      tribunus = Roma::Tools::Tribunus.new(hostname, Roma::Tools::Tribunus.parse_ports(port_range),
+                                           udp_port: options[:udp_port], multicast_addr: options[:multicast_addr],
+                                           romad_work_dir: options[:work_dir], ruby: options[:ruby],
+                                           verbose: options[:verbose])
+      if options[:new_ring]
+        tribunus.start_new_ring
+      elsif options[:join]
+        tribunus.start_join(join_host, join_port.to_i)
+      else
+        tribunus.start_discover
+      end
+      tribunus.join
+    end
+
     desc 'log_merger LOG_FILE...', 'Merge the log files of romad in time order'
     option :output, aliases: '-o', banner: 'FILE', desc: 'Write into FILE instead of the standard output'
     option :level, aliases: '-l', enum: Roma::Tools::LogMerger::LEVEL_LETTERS.keys, default: 'TRACE',

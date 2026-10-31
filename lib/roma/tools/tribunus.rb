@@ -1,298 +1,198 @@
-#!/usr/bin/ruby
-require 'socket'
 require 'ipaddr'
-require 'optparse'
-UDP_PORT=14329
-MULTICAST_ADDR="225.0.0.123"
-ROMA_LOAD_PATH=File.expand_path(File.join(File.dirname(__FILE__),"../.."))
-RUBY_COMMAND_OPTIONS=["-I",ROMA_LOAD_PATH]
-ROMAD_OPTIONS=["--replication_in_host"]
-bin_dir=File.expand_path(File.join(File.dirname(__FILE__),"../../../bin"))
-ROMAD_PATH= File.expand_path(File.join(bin_dir,"romad"))
-ROMA_PATH= File.expand_path(File.join(bin_dir,"roma"))
+require 'rbconfig'
+require 'socket'
+require 'roma/tools/error'
 
-ROMAD_WORK_DIR='.'
-class Tribunus
-  #protocol
-  #
-  #update:<reply_ocunt>: <romad_hostname> [<romad_port> ...]
+module Roma
+  module Tools
+    # Starts romads on a host, and finds the romads on other hosts by UDP
+    # multicast, to join their ring.
+    #
+    # The hosts send each other "update:<reply count>: <hostname> [<port> ...]",
+    # and the receiver replies while the count is more than 0.
+    class Tribunus
+      UDP_PORT = 14329
+      MULTICAST_ADDR = '225.0.0.123'.freeze
+      HEARTBEAT_SECONDS = 300
+      HEARTBEAT_LOOP_INTERVAL = 50
+      TIMEOUT_SECONDS = 600
+      BIN_DIR = File.expand_path('../../../bin', __dir__)
+      ROMAD_OPTIONS = ['--replication_in_host'].freeze
 
-  RomadHost=Struct.new(:hostname,:ports,:updated_at)
-  def log(obj)
-    if @verbose
-      if obj.is_a? String
-        $stderr.puts obj
-      else
-        $stderr.puts obj.inspect
+      RomadHost = Struct.new(:hostname, :ports, :updated_at)
+
+      # Makes the ports from a range such as "11211-11213". Raises Error if
+      # it has less than 2 ports or more than 100.
+      def self.parse_ports(range)
+        first, last = range.split('-', 2).map { |port| Integer(port, exception: false) }
+        raise Error, "The port range should be like 11211-11213: #{range}" unless first && last
+        ports = (first..last).to_a
+        raise Error, 'The port range should have 2 ports or more.' if ports.size < 2
+        raise Error, 'The port range should have 100 ports or less.' if ports.size > 100
+        ports
       end
-    end
-  end
-  private :log
 
-  def initialize(romad_hostname,romad_ports,options={})
-    @multi_addr=options[:multicast_addr]||MULTICAST_ADDR
-    @port=options[:udp_port]||UDP_PORT
-    @romad_work_dir=options[:romad_work_dir]||ROMAD_WORK_DIR
-    @ruby_command_name=options[:ruby_command_name]||"ruby"
-    @verbose=options[:verbose]
-    log [:initalized,@multi_addr,@port,@romad_work_dir,@ruby_command_name]
+      attr_reader :remote_servers
 
-    @threads=[]
-    @romads={} #port => pid
-    @local_romad_host=RomadHost.new(romad_hostname,romad_ports,nil)
-
-    @mutex=Mutex.new
-    @remote_servers={} #ipaddr => RomadHost
-
-  end
-
-  def from_remote?(ipaddr)
-      from_remote= !Socket.ip_address_list.any?{|addr|addr.ip_address==ipaddr}
-  end
-  private :from_remote?
-
-
-  def spawn_new_roma_ring
-    spawn_romads(nil,nil)
-  end
-
-
-  def spawn_romads(remote_host,remote_port)
-    nodes=@local_romad_host.ports.map do|port|
-      "#{@local_romad_host.hostname}_#{port}"
-    end
-    nodes << "#{remote_host}_#{remote_port}" if remote_host
-    pid=Process.spawn(@ruby_command_name,*RUBY_COMMAND_OPTIONS,ROMA_PATH,"mkroute",*nodes,:chdir=>@romad_work_dir)
-    if(Process.waitpid2(pid)[1].to_i!=0)
-      raise "failed to make route"
-    end
-
-    @local_romad_host.ports.each do|port|
-      pid=Process.spawn(@ruby_command_name,*RUBY_COMMAND_OPTIONS,ROMAD_PATH,*ROMAD_OPTIONS,"-p",port.to_s,@local_romad_host.hostname, :chdir=>@romad_work_dir)
-      @romads[port]=pid
-    end
-  end
-
-  def spawn_romads_join(remote_host,remote_port)
-    @local_romad_host.ports.map do|port|
-      spawn_romad_join(port,remote_host,remote_port)
-    end
-  end
-
-
-  def spawn_romad_join(port,remote_host,remote_port)
-    pid=Process.spawn(@ruby_command_name,*RUBY_COMMAND_OPTIONS,ROMAD_PATH,*ROMAD_OPTIONS,"-p",port.to_s,@local_romad_host.hostname,"-j","#{remote_host}_#{remote_port}",:chdir=>@romad_work_dir)
-    @romads[port]=pid
-  end
-
-
-  def receive_update_command(ipaddr,reply_count,params)
-    param_ary=params.strip.split(/\s+/)
-    unless param_ary.empty?
-      hostname=param_ary[0]
-      ports=param_ary[1..-1].map{|port| port.to_i}
-      rhost=RomadHost.new(hostname,ports,Time.now)
-      @remote_servers[ipaddr]=rhost
-      if reply_count>0
-        unicast(ipaddr,update_message(reply_count-1))
+      # Starts romads at +ports+ of +hostname+. The options are :udp_port,
+      # :multicast_addr, :romad_work_dir, :ruby (the command) and :verbose.
+      def initialize(hostname, ports, options = {})
+        @multicast_addr = options[:multicast_addr] || MULTICAST_ADDR
+        @port = options[:udp_port] || UDP_PORT
+        @romad_work_dir = options[:romad_work_dir] || '.'
+        @ruby = options[:ruby] || RbConfig.ruby
+        @verbose = options[:verbose]
+        @local = RomadHost.new(hostname, ports, nil)
+        @romads = {} # port => pid
+        @remote_servers = {} # ipaddr => RomadHost
+        @mutex = Mutex.new
+        @threads = []
+        log [:initialized, @multicast_addr, @port, @romad_work_dir, @ruby]
       end
-    end
-  end
 
-  def run_command(ipaddr,msg)
-    match_data=/\A(.*):(\d+):(.*)/.match(msg)
-    if(match_data)
-      command=match_data[1]
-      reply_count=match_data[2].to_i
-      rest=match_data[3]
-      case command
-      when "update"
-        receive_update_command(ipaddr,reply_count,rest)
+      # Makes the routing table of the local romads, and starts them.
+      def start_new_ring
+        prepare_to_start
+        nodes = @local.ports.map { |port| "#{@local.hostname}_#{port}" }
+        status = wait(spawn(@ruby, File.join(BIN_DIR, 'roma'), 'mkroute', *nodes, *ROMAD_OPTIONS))
+        raise Error, 'Failed to make the routing table.' unless status.success?
+        @local.ports.each { |port| spawn_romad(port) }
       end
-    end
-  end
-  private :run_command
 
-  def update_message(reply_count,initial=false)
-    msg="update:#{reply_count}: #{@local_romad_host.hostname}"
-    if !initial && !@romads.keys.empty?
-      msg+=" "
-      msg+= @romads.keys.join(' ')
-    end
-    log [:msg, msg,@romads]
-    msg
-  end
-
-  def server_loop
-    sock=UDPSocket.new
-    sock.bind('0.0.0.0',@port)
-    sock.setsockopt(Socket::IPPROTO_IP, Socket::IP_ADD_MEMBERSHIP, IPAddr.new(MULTICAST_ADDR).hton+IPAddr.new('0.0.0.0').hton)
-    log 'start_listen'
-    Socket.udp_server_loop_on([sock]) do|msg,msg_src|
-        log [:received ,msg,msg_src]
-      if from_remote?(msg_src.remote_address.ip_address)
-        run_command(msg_src.remote_address.ip_address,msg)
+      # Starts the local romads to join the node at +host+ and +port+.
+      def start_join(host, port)
+        prepare_to_start
+        sleep 0.2
+        spawn_romads_join(host, port)
       end
-    end
-  end
 
-  HEARTBEAT_SECONDS=300
-  HEARTBEAT_LOOP_INTERVAL=50
-  TIMEOUT_SECONDS=600
+      # Asks the other hosts by multicast, and joins one that answers.
+      # Raises Error if none answers.
+      def start_discover(wait: 3)
+        prepare_to_start
+        sleep 0.2
+        multicast(update_message(1, initial: true))
+        sleep wait
+        rhost = choose_rhost
+        raise Error, 'No server responded.' unless rhost
+        spawn_romads_join(rhost.hostname, rhost.ports.first)
+      end
 
+      # Waits for the threads of the UDP server and the heartbeat.
+      def join
+        @threads.each(&:join)
+      end
 
-  def heartbeat_loop
-    loop do
-      delete_ipaddrs=[]
-      @remote_servers.each do|ipaddr,host|
+      # Runs a message from +ipaddr+.
+      def run_command(ipaddr, msg)
+        return unless (m = /\A(.*?):(\d+):(.*)/m.match(msg))
+        receive_update(ipaddr, m[2].to_i, m[3]) if m[1] == 'update'
+      end
 
-        if host.updated_at+TIMEOUT_SECONDS < Time.now
-          delete_ipaddrs << ipaddr
-        elsif host.updated_at+HEARTBEAT_SECONDS < Time.now
-          unicast(ipaddr,update_message(0))
-        elsif host.ports.empty?
-          unicast(ipaddr,update_message(1))
+      def update_message(reply_count, initial: false)
+        ports = initial ? [] : @romads.keys
+        ["update:#{reply_count}: #{@local.hostname}", *ports].join(' ')
+      end
+
+      # Forgets the hosts that haven't sent a message for long, and sends a
+      # message to the ones that haven't for a while, or have no romad yet.
+      def heartbeat(now = Time.now)
+        @mutex.synchronize do
+          @remote_servers.delete_if { |_ipaddr, host| host.updated_at + TIMEOUT_SECONDS < now }
+          @remote_servers.dup
+        end.each do |ipaddr, host|
+          if host.updated_at + HEARTBEAT_SECONDS < now
+            unicast(ipaddr, update_message(0))
+          elsif host.ports.empty?
+            unicast(ipaddr, update_message(1))
+          end
         end
       end
 
-      @mutex.synchronize do
-        delete_ipaddrs.each do|ipaddr|
-          @remote_servers.delete(ipaddr)
+      # A remote host that has romads.
+      def choose_rhost
+        @mutex.synchronize { @remote_servers.values.find { |rhost| !rhost.ports.empty? } }
+      end
+
+      private
+
+      def log(obj)
+        warn(obj.is_a?(String) ? obj : obj.inspect) if @verbose
+      end
+
+      def receive_update(ipaddr, reply_count, params)
+        hostname, *ports = params.split
+        return unless hostname
+        @mutex.synchronize { @remote_servers[ipaddr] = RomadHost.new(hostname, ports.map(&:to_i), Time.now) }
+        unicast(ipaddr, update_message(reply_count - 1)) if reply_count > 0
+      end
+
+      def spawn_romads_join(host, port)
+        @local.ports.each { |local_port| spawn_romad(local_port, '-j', "#{host}_#{port}") }
+      end
+
+      def spawn_romad(port, *args)
+        @romads[port] = spawn(@ruby, File.join(BIN_DIR, 'romad'), *ROMAD_OPTIONS, '-p', port.to_s, @local.hostname, *args)
+      end
+
+      def spawn(*cmd)
+        Process.spawn(*cmd, chdir: @romad_work_dir)
+      end
+
+      def wait(pid)
+        Process.wait2(pid)[1]
+      end
+
+      # The romads, which don't run as daemons, stop by INT. They restart by
+      # the other signals.
+      def prepare_to_start
+        %i(INT TERM HUP).each do |sig|
+          Signal.trap(sig) do
+            Process.kill(:INT, *@romads.values) unless @romads.empty?
+            exit 1
+          end
+        end
+        @threads << Thread.new { server_loop }
+        @threads << Thread.new { heartbeat_loop }
+      end
+
+      def server_loop
+        sock = UDPSocket.new
+        sock.bind('0.0.0.0', @port)
+        sock.setsockopt(Socket::IPPROTO_IP, Socket::IP_ADD_MEMBERSHIP,
+                        IPAddr.new(@multicast_addr).hton + IPAddr.new('0.0.0.0').hton)
+        log 'start_listen'
+        Socket.udp_server_loop_on([sock]) do |msg, src|
+          log [:received, msg, src]
+          ipaddr = src.remote_address.ip_address
+          run_command(ipaddr, msg) if from_remote?(ipaddr)
         end
       end
 
+      def heartbeat_loop
+        loop do
+          heartbeat
+          sleep HEARTBEAT_LOOP_INTERVAL
+        end
+      rescue StandardError => e
+        log e
+      end
 
+      def from_remote?(ipaddr)
+        Socket.ip_address_list.none? { |addr| addr.ip_address == ipaddr }
+      end
 
+      def unicast(ipaddr, msg)
+        log [:message, ipaddr, msg]
+        UDPSocket.open do |s|
+          s.connect(ipaddr, @port)
+          s.send(msg, 0)
+        end
+      end
 
-      sleep(HEARTBEAT_LOOP_INTERVAL)
-    end
-  rescue =>e
-    p e
-  end
-
-  def set_trap
-    [:INT,:TERM,:HUP].each do|sig|
-      Signal.trap(sig){ Process.kill(sig,*@romads.values);exit(1)  }
-    end
-  end
-
-  def prepare_to_start
-    set_trap
-    @threads << Thread.start{self.server_loop}
-    @threads << Thread.start{self.heartbeat_loop}
-  end
-  private :prepare_to_start
-
-  def start_new_ring
-    prepare_to_start
-    spawn_new_roma_ring
-  end
-
-  def choose_rhost
-    @remote_servers.each do|ipaddr,rhost|
-      unless rhost.ports.empty?
-        return rhost
+      def multicast(msg)
+        unicast(@multicast_addr, msg)
       end
     end
-    nil
-  end
-  def start_join(host,port)
-    prepare_to_start
-    sleep(0.2)
-    spawn_romads_join(host,port)
-  end
-
-  def start_discover
-    prepare_to_start
-    sleep(0.2)
-    multicast(update_message(1,true))
-    10.times{sleep(0.3)}
-    rhost=choose_rhost
-    if rhost
-      spawn_romads_join(rhost.hostname,rhost.ports.first)
-    else
-      $stderr.puts "no server responded"
-      exit 1
-    end
-
-  end
-
-  def join
-    @threads.each{|t|t.join}
-  end
-
-  def unicast(ipaddr,msg)
-    log [:message, ipaddr,msg]
-    s=UDPSocket.new
-    begin
-      s.connect(ipaddr,@port)
-      s.sendmsg(msg)
-    ensure
-        s.close
-    end
-  end
-
-  def multicast(msg)
-    unicast(@multi_addr,msg)
   end
 end
-
-opt=OptionParser.new
-conf={}
-opt.on('-d','discover the node by multicast [default]') do|v|
-  conf[:mode]=:discover
-end
-opt.on('-c','craete new ring') do|v|
-  conf[:mode]=:new_ring
-end
-opt.on('-j HOST:PORT',/\A.+?[_:]\d+\Z/,'join the specified romad node') do|v|
-  conf[:mode]=:join
-  node=v.split(/[_:]/)
-  conf[:joining_node]=[node[0],node[1].to_i]
-end
-
-opt.on('-p UDP_PORT',/\A\d+\Z/,'the port for multicast') do|v|
-  conf[:udp_port]=v.to_i
-end
-opt.on('-w WORKING_DIR','the directory where romads run') do|v|
-  conf[:romad_work_dir]=v
-end
-opt.on('-m MULTICAST_ADDRESS',/\A\d+\.\d+\.\d+\.\d+\Z/,'the ip address for multicast') do|v|
-  conf[:multicast_addr]=v
-end
-opt.on('-r RUBY_COMMAND','name of ruby interpreter (default: "ruby")') do|v|
-  conf[:ruby_command_name]=v
-end
-opt.on('-v','--verbose') do|v|
-  conf[:verbose]=v
-end
-opt.banner += " hostname port_range"
-
-opt.parse!(ARGV)
-
-if ARGV.size!=2
-  puts opt.help
-  exit 1
-end
-hostname=ARGV[0]
-port_ary=ARGV[1].split('-')
-ports=(port_ary[0].to_i..port_ary[1].to_i).to_a
-if ports.size < 2
-  puts 'less ports'
-  exit 1
-end
-if ports.size >100
-  puts 'too many ports'
-  exit 1
-end
-
-tri=Tribunus.new(hostname,ports,conf)
-case conf[:mode]
-when:new_ring
-  tri.start_new_ring
-when :join
-  tri.start_join(conf[:joining_node][0],conf[:joining_node][1])
-else
-  tri.start_discover
-end
-tri.join

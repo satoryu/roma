@@ -278,6 +278,17 @@ class CLITest < Test::Unit::TestCase
     assert_match(/No such file or directory/, err)
   end
 
+  data('new ring and join' => [%w(11211-11212 -c -j host2:1), /--new_ring and --join can't be used together/],
+       'join without port' => [%w(11211-11212 -j host2), /--join should be HOST:PORT: host2/],
+       'one port' => [%w(11211-11211 -c), /2 ports or more/])
+  def test_tribunus_errors(data)
+    args, message = data
+    out, err, status = roma('tribunus', 'host1', *args)
+    assert_equal 1, status
+    assert_equal '', out
+    assert_match(message, err)
+  end
+
   # Records how RecoverLost is called, instead of recovering.
   def spy_recoverlost
     calls = []
