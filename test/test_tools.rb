@@ -263,13 +263,16 @@ class MkconfigTest < Test::Unit::TestCase
     assert_match(/^    PLUGIN_FILES = \["plugin_storage.rb"\]$/, config)
   end
 
-  # The file can be loaded. In another process, not to change Roma::Config.
+  # The file can be loaded, and its version lets romad boot. In another
+  # process, not to change Roma::Config.
   def test_ruby_hash_config_loads
     mkconfig('1', '', '2', '1', '', '')
+    script = 'require "roma/version"; load ARGV[0]; ' \
+             'print Roma::Config::STORAGE_CLASS, " ", Roma::Config::VERSION == Roma::VERSION'
     out, err, status = Open3.capture3(RbConfig.ruby, '-I', File.expand_path('../lib', __dir__),
-                                      '-e', 'load ARGV[0]; print Roma::Config::STORAGE_CLASS', @path)
+                                      '-e', script, @path)
     assert_true status.success?, err
-    assert_equal 'Roma::Storage::RubyHashStorage', out
+    assert_equal 'Roma::Storage::RubyHashStorage true', out
   end
 
   # Groonga asks the memory, the processes, the servers and the data, and
@@ -279,7 +282,7 @@ class MkconfigTest < Test::Unit::TestCase
     # 100000000 * 2 * 2 / 1 / 10, and (1.5GB - 1GB) / 2 / 10
     option = 'bnum=40000000#xmsiz=26843545#opts=d#dfunit=10'
     assert_match(/^    STORAGE_CLASS = Roma::Storage::GroongaStorage$/, config)
-    assert_match(%r{\Arequire "roma/storage/groonga_storage"$}, config)
+    assert_match(%r{\Arequire "roma/storage/groonga"$}, config)
     assert_match(/^    STORAGE_OPTION = #{Regexp.escape(option.inspect)}$/, config)
     assert_match(/After\r\n.*STORAGE_OPTION: #{option}/m, out)
     assert_match(/After\r\n.*STORAGE_CLASS: Roma::Storage::GroongaStorage/m, out)

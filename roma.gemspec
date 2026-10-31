@@ -23,8 +23,8 @@ Gem::Specification.new do |s|
     'examples/**/*',
   ]
 
-  # Specify Ruby version of roma-1.1.0
-  s.required_ruby_version = '>= 2.3.0'
+  # The storage gems need Ruby 3.4 or later.
+  s.required_ruby_version = '>= 3.4'
 
   # Use these for libraries.
   s.require_path = 'lib'
