@@ -6,6 +6,7 @@ require 'roma/stats'
 require 'roma/command/receiver'
 require 'roma/event/con_pool'
 require 'roma/routing/cb_rttable'
+require 'roma/storage/ruby_hash_storage'
 
 # Runs ROMA's own commands (stat, balse, set_*/rset_* and so on) in-process,
 # without romad or sockets.
@@ -55,11 +56,66 @@ class CommandTestHarness
     end
   end
 
-  # Stands in for $roma, the running romad.
   WriteBehindWriter = Struct.new(:shift_size)
-  Romad = Struct.new(:wb_writer)
 
-  attr_reader :stats, :rttable, :log, :romad, :broadcasts
+  # Stands in for the writer of cluster replication. update_* would ask a
+  # node of the replica cluster; here they just make up the answers.
+  class ClusterReplicationWriter
+    attr_accessor :run_replication, :run_existing_data_replication,
+                  :replica_mklhash, :replica_nodelist, :replica_rttable
+
+    def initialize
+      @run_replication = false
+      @run_existing_data_replication = false
+      @replica_nodelist = []
+    end
+
+    def update_mklhash(nid)
+      @replica_mklhash = "mklhash of #{nid}"
+    end
+
+    def update_nodelist(nid)
+      @replica_nodelist = [nid]
+    end
+
+    def update_rttable(nid)
+      @replica_rttable = "rttable of #{nid}"
+    end
+  end
+
+  # Stands in for $roma, the running romad.
+  class Romad
+    attr_accessor :wb_writer, :cr_writer, :eventloop, :startup
+    # Write-behind files open now, by hash name.
+    attr_reader :wb_current_files, :rotated
+
+    def initialize
+      @wb_writer = WriteBehindWriter.new(nil)
+      @cr_writer = ClusterReplicationWriter.new
+      @startup = true
+      @wb_current_files = {}
+      @rotated = []
+    end
+
+    def wb_rotate(hname)
+      @rotated << hname
+      !!@wb_current_files.delete(hname)
+    end
+
+    def wb_get_path(hname)
+      "wb/#{NID}/#{hname}"
+    end
+
+    def wb_get_current_file_path(hname)
+      @wb_current_files[hname]
+    end
+
+    def wb_get_stat
+      { 'write-behind.run_replication' => @cr_writer.run_replication }
+    end
+  end
+
+  attr_reader :stats, :rttable, :log, :romad, :broadcasts, :storage
   # What the other node answers to relayed commands.
   attr_accessor :relay_reply
 
@@ -69,9 +125,14 @@ class CommandTestHarness
     @nid = NID
     @defhash = 'roma'
     @log = Log.new
-    @romad = Romad.new(WriteBehindWriter.new(nil))
-    @storages = {}
+    @romad = Romad.new
     @dir = Dir.mktmpdir('roma_command')
+    @storage = Roma::Storage::RubyHashStorage.new
+    @storage.vn_list = [0]
+    @storage.storage_path = @dir
+    @storage.st_class = Roma::Storage::RubyHashStorage
+    @storage.opendb
+    @storages = { @defhash => @storage }
     rd = Roma::Routing::RoutingData.create(32, 3, 2, [NID, OTHER_NID])
     @rttable = Roma::Routing::ChurnbasedRoutingTable.new(rd, File.join(@dir, 'test.route'))
     @broadcasts = []
@@ -84,7 +145,9 @@ class CommandTestHarness
   end
 
   # Runs a command line (without "\r\n") and returns everything it replied.
-  def request(line)
+  # +data+ is the data block that follows the command line, if any.
+  def request(line, data = nil)
+    @rbuf = data ? "#{data}\r\n".b : String.new
     @wbuf = String.new
     s = line.split(/ /)
     with_globals { send("ev_#{s[0]}", s) }
@@ -93,6 +156,15 @@ class CommandTestHarness
 
   def send_data(data)
     @wbuf << data
+  end
+
+  def read_bytes(size)
+    @rbuf.slice!(0, size)
+  end
+
+  # The real one, in Event::Handler, asks EventMachine about connections.
+  def conn_get_stat
+    { 'connection.count' => 0 }
   end
 
   def broadcast_cmd(cmd)
