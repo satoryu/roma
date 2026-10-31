@@ -111,7 +111,7 @@ module Roma
       def init_roma
         @log.debug "begin init_roma"
         exec "rm -f localhost_1121?.*"
-        exec "bin/mkroute -d 7 #{RomaProc.to_str(@roma_procs)} --replication_in_host"
+        exec "bin/roma mkroute -d 7 #{RomaProc.to_str(@roma_procs)} --replication_in_host"
         @log.debug "end init_roma"
       end
 

@@ -9,7 +9,7 @@ RUBY_COMMAND_OPTIONS=["-I",ROMA_LOAD_PATH]
 ROMAD_OPTIONS=["--replication_in_host"]
 bin_dir=File.expand_path(File.join(File.dirname(__FILE__),"../../../bin"))
 ROMAD_PATH= File.expand_path(File.join(bin_dir,"romad"))
-MKROUTE_PATH= File.expand_path(File.join(bin_dir,"mkroute"))
+ROMA_PATH= File.expand_path(File.join(bin_dir,"roma"))
 
 ROMAD_WORK_DIR='.'
 class Tribunus
@@ -62,7 +62,7 @@ class Tribunus
       "#{@local_romad_host.hostname}_#{port}"
     end
     nodes << "#{remote_host}_#{remote_port}" if remote_host
-    pid=Process.spawn(@ruby_command_name,*RUBY_COMMAND_OPTIONS,MKROUTE_PATH,*nodes,:chdir=>@romad_work_dir)
+    pid=Process.spawn(@ruby_command_name,*RUBY_COMMAND_OPTIONS,ROMA_PATH,"mkroute",*nodes,:chdir=>@romad_work_dir)
     if(Process.waitpid2(pid)[1].to_i!=0)
       raise "failed to make route"
     end
