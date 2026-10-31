@@ -247,9 +247,8 @@ class AsyncProcessEventTest < Test::Unit::TestCase
 
   def test_zredundant_failed
     @h.send_cmd_reply = nil
-    pend('the warning of a failed zredundant refers to an undefined variable') do
-      assert_false @h.call(:asyncev_zredundant, [OTHER_NID, 'roma', 'key', 1, 2, 0, 'value'])
-    end
+    # Retried.
+    assert_false @h.call(:asyncev_zredundant, [OTHER_NID, 'roma', 'key', 1, 2, 0, 'value'])
   end
 
   def test_rdelete
