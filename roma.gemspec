@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.homepage = 'http://roma-kvs.org/'
   s.name = "roma"
   s.version = Roma::VERSION
-  s.license = 'GPL-3.0'
+  s.license = 'GPL-3.0-only'
   s.summary = "ROMA server"
   s.description = <<-EOF
     ROMA is one of the data storing systems for distributed key-value stores. It is a completely decentralized distributed system that consists of multiple processes, called nodes, on several machines. It is based on pure P2P architecture like a distributed hash table, thus it provides high availability and scalability.
@@ -39,7 +39,7 @@ Gem::Specification.new do |s|
                 "--main", "README.md",
                 "-c UTF-8"
                ]
-  s.extra_rdoc_files = ["README.md", "CHANGELOG.md"]
+  s.extra_rdoc_files = ["README.md", "ChangeLog.md"]
 
   s.add_dependency 'eventmachine', '~> 1.2.7'
   s.add_dependency 'jaro_winkler', '~> 1.7'
@@ -52,7 +52,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'ffi'
   s.add_development_dependency 'test-unit'
   s.add_development_dependency 'rake'
-  s.add_development_dependency 'roma-client'
   s.add_development_dependency 'irb'
   s.add_development_dependency 'simplecov', '~> 1.3'
   s.add_development_dependency 'simplecov-cobertura', '~> 4.0'
