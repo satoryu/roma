@@ -89,10 +89,8 @@ class VnodeCommandTest < Test::Unit::TestCase
   def test_spushv_to_a_new_hash
     @conn.stats.address = 'vnodecommandtest'
     @conn.stats.port = Process.pid.to_s
-    pend('spushv calls createhash with one argument, so it fails for a new hash') do
-      assert_equal "READY\r\nSTORED\r\n", @conn.request('spushv newhash 0', stream(0, 'key1' => 'v'))
-      assert_equal 'v', @conn.storages['newhash'].get(0, 'key1', 0)
-    end
+    assert_equal "READY\r\nSTORED\r\n", @conn.request('spushv newhash 0', stream(0, 'key1' => 'v'))
+    assert_equal 'v', @conn.storages['newhash'].get(0, 'key1', 0)
   ensure
     @conn.storages['newhash']&.closedb
     FileUtils.rm_rf("#{Roma::Config::STORAGE_PATH}/#{@conn.stats.ap_str}")

@@ -61,10 +61,8 @@ class RLoggerTest < Test::Unit::TestCase
 
   def test_unknown
     logger
-    pend('RLogger#unknown calls unknow') do
-      @logger.unknown('unknown message')
-      assert_match(/ANY -- : unknown message/, File.read(@file))
-    end
+    @logger.unknown('unknown message')
+    assert_match(/ANY -- : unknown message/, File.read(@file))
   end
 
   def test_shift_by_size
@@ -87,10 +85,8 @@ class RLoggerTest < Test::Unit::TestCase
     make_old
     @logger.info('new')
     yesterday = (Time.now - 86_400).strftime('%Y%m%d')
-    pend('daily, weekly and monthly need SiD and eod, which RLogger can\'t find') do
-      assert_equal ['roma.log', "roma.log.#{yesterday}2359"], files
-      assert_not_match(/old/, File.read(@file))
-    end
+    assert_equal ['roma.log', "roma.log.#{yesterday}2359"], files
+    assert_not_match(/old/, File.read(@file))
   end
 
   def test_set_log_shift_age_to_a_period
@@ -99,9 +95,7 @@ class RLoggerTest < Test::Unit::TestCase
     @logger.info('old')
     make_old
     @logger.info('new')
-    pend('the file is named after the end of the period before the last') do
-      assert_equal ['roma.log', "roma.log.#{(Time.now - 60).strftime('%Y%m%d%H%M')}"], files
-    end
+    assert_equal ['roma.log', "roma.log.#{(Time.now - 60).strftime('%Y%m%d%H%M')}"], files
   end
 
   def test_shift_fails_if_the_file_exists
@@ -124,23 +118,14 @@ class RLoggerTest < Test::Unit::TestCase
     logger('daily')
     @logger.set_log_shift_age(age)
     # Wednesday
-    now = Time.local(2026, 3, 4, 5, 6, 7)
-    if %w(min hour).include?(age)
-      assert_equal expected, logdev.send(:previous_period_end, now)
-    else
-      pend('daily, weekly and monthly need SiD and eod, which RLogger can\'t find') do
-        assert_equal expected, logdev.send(:previous_period_end, now)
-      end
-    end
+    assert_equal expected, logdev.send(:previous_period_end, Time.local(2026, 3, 4, 5, 6, 7))
   end
 
   data('min' => 'min', 'hour' => 'hour')
   def test_create_with_a_period(age)
-    pend("Logger accepts only daily, weekly and monthly, so RLogger fails to start with #{age}") do
-      logger(age)
-      @logger.info('message')
-      assert_equal ['roma.log'], files
-    end
+    logger(age)
+    @logger.info('message')
+    assert_equal ['roma.log'], files
   end
 
   def test_stderr_wrapper
