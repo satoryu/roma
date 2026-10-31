@@ -47,12 +47,14 @@ If succeeded, two new files which named localhost_10001.route and localhost_1000
 Refer to [Commands](http://roma-kvs.org/commands.html "Commands") for more detail information about Shell Commands.  
 
 ### Start up ROMA
-Run two processes by using a romad.rb program as follows:  
+Run two processes by `roma server` as follows:  
 
 ```
-$ romad localhost -p 10001 -d --replication_in_host
-$ romad localhost -p 10002 -d --replication_in_host
+$ roma server localhost -p 10001 -d --replication_in_host
+$ roma server localhost -p 10002 -d --replication_in_host
 ```
+
+`romad` is the same as `roma server`, such as `romad localhost -p 10001 -d`. `roma server --help` shows the options.
 
 Refer to [Shell Commands](http://roma-kvs.org/commands.html#dist-jump-link-shell_commands) for more detail information about Shell Commands.  
 
@@ -88,6 +90,9 @@ end
 ```
 
 Start romad with the config file by `romad localhost -p 10001 -d --config config.rb`.
+
+### Tools
+The `roma` command has the tools to run ROMA, such as `roma mkroute`, `roma adm` and `roma recoverlost`. `roma help` lists them, and `roma help COMMAND` tells about one.
 
 ## Usage
 Like memcached, you can connect to ROMA with telnet. Connect to the ROMA process that you ran above.

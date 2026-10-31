@@ -368,6 +368,29 @@ class CLITest < Test::Unit::TestCase
     assert_equal "The scenario needs 2 nodes or more.\n", err
   end
 
+  # romad parses the options, and tells its usage.
+  data('--help' => '--help', '-h' => '-h')
+  def test_server_help(option)
+    out, _err, status = run_roma('server', option)
+    assert_true status.success?
+    assert_match(/\Ausage:roma server \[options\] address\n\s+-d, --daemon\n/, out)
+  end
+
+  data('no address' => [[], /\Aparse error: \nusage:roma server/],
+       'unknown option' => [%w(--unknown localhost), /\Ainvalid option: --unknown\nusage:roma server/],
+       'wrong port' => [%w(localhost -p abc), /\Aparse error: Port number is not numeric\./])
+  def test_server_errors(data)
+    args, message = data
+    _out, err, status = run_roma('server', *args)
+    assert_equal 1, status.exitstatus
+    assert_match(message, err)
+  end
+
+  def test_server_in_help
+    out, _err, _status = roma('help', 'server')
+    assert_match(/roma server ADDRESS \[OPTIONS\]/, out)
+  end
+
   # Records how RecoverLost is called, instead of recovering.
   def spy_recoverlost
     calls = []

@@ -5,7 +5,9 @@ require 'roma/tools/log_merger'
 module Roma
   # The roma command. Each subcommand calls a class in Roma::Tools.
   class CLI < Thor
-    check_unknown_options!
+    # romad parses the options of server.
+    check_unknown_options! except: [:server]
+    stop_on_unknown_option! :server
 
     def self.exit_on_failure?
       true
@@ -20,7 +22,7 @@ module Roma
     # "roma mkroute --help" is turned into "roma help mkroute". -h is not,
     # since a subcommand may use it, such as mkroute --hash.
     def self.start(given_args = ARGV, config = {})
-      if given_args.include?('--help') && all_commands.key?(given_args.first)
+      if given_args.include?('--help') && all_commands.key?(given_args.first) && given_args.first != 'server'
         given_args = ['help', given_args.first]
       end
       super(given_args, config)
@@ -32,6 +34,12 @@ module Roma
       super
     rescue Roma::Tools::Error, SystemCallError => e
       raise Thor::Error, e.message
+    end
+
+    desc 'server ADDRESS [OPTIONS]', 'Run romad. romad ADDRESS [OPTIONS] is the same. See roma server --help'
+    def server(*args)
+      require 'roma/server'
+      Roma::Server.run(args, program: 'roma server')
     end
 
     desc 'mkroute NODE_ID...', 'Make the routing table and write it into NODE_ID.route for each node'
