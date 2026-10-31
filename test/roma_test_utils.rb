@@ -46,13 +46,7 @@ module RomaTestUtils
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_IP}_#{DEFAULT_PORTS[0][0..-2]}?*"))
 
     system("#{ruby_path} #{mkroute_path} #{DEFAULT_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
-
-    # Boot the nodes at the same time; each command returns once romad daemonizes.
-    pids = DEFAULT_NODES.map do |node|
-      do_command_romad(node, conf, replication_in_host, wait: false)
-    end
-    pids.each { |pid| Process.wait(pid) }
-    wait_until_up(DEFAULT_NODES)
+    boot_nodes(DEFAULT_NODES, conf, replication_in_host)
   end
 
   def start_roma_replica(conf = DEFAULT_CONFIG, div_bits: 3, replication_in_host: true)
@@ -60,34 +54,50 @@ module RomaTestUtils
     FileUtils.rm_rf(Dir.glob("#{Roma::Config::STORAGE_PATH}/#{DEFAULT_IP}_#{REPLICA_PORTS[0][0..-2]}?*"))
 
     system("#{ruby_path} #{mkroute_path} #{REPLICA_NODES.join(' ')} -d #{div_bits} --replication_in_host >> #{SHELL_LOG} 2>&1")
+    boot_nodes(REPLICA_NODES, conf, replication_in_host)
+  end
 
-    # Boot the nodes at the same time; each command returns once romad daemonizes.
-    pids = REPLICA_NODES.map do |node|
-      do_command_romad(node, conf, replication_in_host, wait: false)
+  # Boots the nodes at the same time and waits until they accept connections.
+  def boot_nodes(nodes, conf, replication_in_host)
+    pids = nodes.map do |node|
+      Process.spawn(romad_command(node, conf, replication_in_host))
     end
-    pids.each { |pid| Process.wait(pid) }
-    wait_until_up(REPLICA_NODES)
+    if ENV['COVERAGE']
+      # romad runs in the foreground and writes its coverage when it stops.
+      pids.each { |pid| Process.detach(pid) }
+    else
+      # Each command returns once romad daemonizes.
+      pids.each { |pid| Process.wait(pid) }
+    end
+    wait_until_up(nodes)
   end
 
   def join_roma(node, conf = DEFAULT_CONFIG, replication_in_host: true)
     do_command_romad(node, conf, replication_in_host, true)
   end
 
-  # Runs romad, or with wait: false starts it and returns the pid.
-  def do_command_romad(node, conf, replication_in_host = true, is_join = false, wait: true)
-    host, port = node.split('_')
-    romad_command = [
-      ruby_path, romad_path, host,
-      '-p', port,
-      '-d', '--verbose', '--disabled_cmd_protect',
-      '--config', "#{test_dir}/#{conf}"
-    ]
-    romad_command << '--replication_in_host' if replication_in_host
-    romad_command << "-j #{DEFAULT_NODES[0]}" if is_join
-    romad_command << ">> #{SHELL_LOG} 2>&1"
+  def do_command_romad(node, conf, replication_in_host = true, is_join = false)
+    system(romad_command(node, conf, replication_in_host, is_join, daemon: true))
+  end
 
-    return Process.spawn(romad_command.join(' ')) unless wait
-    system(romad_command.join(' '))
+  # With COVERAGE, romad runs in the foreground: when it forks to become a
+  # daemon, Ruby resets the coverage counts in the child, and the coverage of
+  # loading lib would be lost.
+  def romad_command(node, conf, replication_in_host, is_join = false, daemon: !ENV['COVERAGE'])
+    host, port = node.split('_')
+    command = [ruby_path]
+    command.push('-r', "#{test_dir}/start_coverage") if ENV['COVERAGE']
+    command.push(
+      romad_path, host,
+      '-p', port,
+      '--verbose', '--disabled_cmd_protect',
+      '--config', "#{test_dir}/#{conf}"
+    )
+    command << '-d' if daemon
+    command << '--replication_in_host' if replication_in_host
+    command << "-j #{DEFAULT_NODES[0]}" if is_join
+    command << ">> #{SHELL_LOG} 2>&1"
+    command.join(' ')
   end
 
   def get_client

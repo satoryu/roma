@@ -1,3 +1,5 @@
+# Before lib is loaded, so that loading it is measured too.
+require_relative 'start_coverage' if ENV['COVERAGE']
 require 'test/unit'
 require 'English'
 # The tests poll nodes that are down, so avoid the occasional 5-second

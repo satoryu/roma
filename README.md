@@ -87,6 +87,7 @@ If you would like to contribute, please...
 4. Run Unit Test
   * `bundle exec rake` (if unit test fails, run it again - it's fickle).
   * Specify `STORAGE` to test test cases related to storages such as groonga, sqlite3 and dbm.
+  * `bundle exec rake coverage` also measures the coverage of `lib`, including the romad processes that the tests start. Open `coverage/index.html` for the report.
 5. Create a pull request.
 
 Contributions, improvements, comments and suggestions are welcome!

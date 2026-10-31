@@ -55,4 +55,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'rake'
   s.add_development_dependency 'roma-client'
   s.add_development_dependency 'irb'
+  s.add_development_dependency 'simplecov', '~> 1.3'
 end

@@ -31,6 +31,23 @@ Rake::TestTask.new do |t|
   t.options = '--verbose'
 end
 
+desc 'Run the tests and report the coverage of lib in coverage/index.html'
+task :coverage do
+  rm_rf 'coverage'
+  ENV['COVERAGE'] = '1'
+  begin
+    Rake::Task[:test].invoke
+  ensure
+    # The last romad processes may still be writing their results.
+    romad = File.expand_path('bin/romad', __dir__)
+    deadline = Time.now + 30
+    sleep 0.1 while system('pgrep', '-f', romad, out: File::NULL) && Time.now < deadline
+
+    require_relative 'test/coverage_helper'
+    CoverageHelper.report
+  end
+end
+
 namespace :changelog do
   task :update do
     last_released_tag = `git tag -l --sort=-creatordate | head -n1`.chomp
