@@ -227,9 +227,7 @@ class RoutingCommandTest < Test::Unit::TestCase
   end
 
   def test_rset_auto_recover_invalid_value
-    pend('rset_auto_recover puts debug text in the reply') do
-      assert_equal "CLIENT_ERROR arguments must be true or false\r\n", @conn.request('rset_auto_recover yes')
-    end
+    assert_equal "CLIENT_ERROR arguments must be true or false\r\n", @conn.request('rset_auto_recover yes')
     assert_false @rttable.auto_recover
   end
 
@@ -276,9 +274,7 @@ class RoutingCommandTest < Test::Unit::TestCase
     assert_equal "STORED\r\n", @conn.request('rset_threshold_for_failover 3')
     assert_equal 3, @rttable.fail_cnt_threshold
 
-    pend('the usage of rset_threshold_for_failover names set_threshold_for_failover') do
-      assert_equal "usage:rset_threshold_for_failover <n>\r\n", @conn.request('rset_threshold_for_failover x')
-    end
+    assert_equal "usage:rset_threshold_for_failover <n>\r\n", @conn.request('rset_threshold_for_failover x')
     assert_equal 3, @rttable.fail_cnt_threshold
   end
 
