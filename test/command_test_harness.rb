@@ -8,8 +8,9 @@ require 'roma/event/con_pool'
 require 'roma/routing/cb_rttable'
 require 'roma/storage/ruby_hash_storage'
 
-# Runs ROMA's own commands (stat, balse, set_*/rset_*, the routing commands
-# and so on) in-process, without romad or sockets.
+# Runs ROMA's own commands (stat, balse, set_*/rset_*, the routing, vnode,
+# background and multi-hash commands and so on) in-process, without romad
+# or sockets.
 #
 # It stands in for Roma::Command::Receiver, the event handler that mixes in
 # the command modules:
@@ -32,6 +33,8 @@ class CommandTestHarness
   include Roma::Command::UtilCommandReceiver
   include Roma::Command::SystemCommandReceiver
   include Roma::Command::RoutingCommandReceiver
+  include Roma::Command::BackgroundCommandReceiver
+  include Roma::Command::MultiHashCommandReceiver
 
   NID = 'localhost_11211'
   OTHER_NID = 'localhost_11212'
@@ -92,6 +95,8 @@ class CommandTestHarness
     attr_accessor :wb_writer, :cr_writer, :eventloop, :startup
     # Write-behind files open now, by hash name.
     attr_reader :wb_current_files, :rotated
+    # How many times the storage clean up was stopped.
+    attr_reader :clean_up_stops
 
     def initialize
       @wb_writer = WriteBehindWriter.new(nil)
@@ -99,6 +104,11 @@ class CommandTestHarness
       @startup = true
       @wb_current_files = {}
       @rotated = []
+      @clean_up_stops = 0
+    end
+
+    def stop_clean_up
+      @clean_up_stops += 1
     end
 
     def wb_rotate(hname)
@@ -119,7 +129,7 @@ class CommandTestHarness
     end
   end
 
-  attr_reader :stats, :rttable, :log, :romad, :broadcasts, :storage
+  attr_reader :stats, :rttable, :log, :romad, :broadcasts, :storage, :storages
   # How the last command closed the connection: :after_writing, :now or nil.
   attr_reader :closed
   # What the other node answers to relayed commands.
@@ -167,7 +177,7 @@ class CommandTestHarness
     @wbuf << data
   end
 
-  def read_bytes(size)
+  def read_bytes(size, _timeout = nil)
     @rbuf.slice!(0, size)
   end
 

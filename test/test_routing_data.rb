@@ -144,4 +144,58 @@ class RoutingDataTest < Test::Unit::TestCase
 
     assert_equal(bin, bin2)
   end
+
+  # The routing table writes its changes to logs next to the file:
+  # <file>.1, <file>.2 and so on. Lines starting with # are comments.
+  def write_log(n, *lines)
+    File.write("#{@fname}.#{n}", lines.map { |l| l.start_with?('#') ? "#{l}\n" : "2026-01-01T00:00:00.1 #{l}\n" }.join)
+  end
+
+  def test_load_with_logs
+    rd = Roma::Routing::RoutingData.create(32, 3, 1, ['roma0_3300'])
+    rd.save(@fname)
+    write_log(1, 'join roma1_3300', 'setroute 0 5 roma1_3300', '# a comment')
+    write_log(2, 'leave roma0_3300')
+    loaded = Roma::Routing::RoutingData.load(@fname)
+    assert_equal ['roma1_3300'], loaded.nodes
+    assert_equal ['roma1_3300'], loaded.v_idx[0]
+    assert_equal 5, loaded.v_clk[0]
+  end
+
+  def test_load_with_a_broken_log
+    Roma::Routing::RoutingData.create(32, 3, 1, ['roma0_3300']).save(@fname)
+    write_log(1, 'unknown roma1_3300')
+    assert_raise_message(/parse error/) { Roma::Routing::RoutingData.load(@fname) }
+  end
+
+  # A snapshot puts the logs but the last into the file.
+  def test_snapshot
+    Roma::Routing::RoutingData.create(32, 3, 1, ['roma0_3300']).save(@fname)
+    write_log(1, 'join roma1_3300')
+    write_log(2, 'join roma2_3300')
+    assert_true Roma::Routing::RoutingData.snapshot(@fname)
+    assert_equal ['roma0_3300', 'roma1_3300'], Roma::Routing::RoutingData.load_snapshot(@fname).nodes
+    assert_true File.exist?("#{@fname}~")
+    assert_true File.exist?("#{@fname}.1~")
+    assert_true File.exist?("#{@fname}.2")
+  end
+
+  def test_snapshot_without_enough_logs
+    Roma::Routing::RoutingData.create(32, 3, 1, ['roma0_3300']).save(@fname)
+    write_log(1, 'join roma1_3300')
+    assert_false Roma::Routing::RoutingData.snapshot(@fname)
+  end
+
+  def test_get_lost_vnodes
+    rd = Roma::Routing::RoutingData.create(32, 3, 1, ['roma0_3300'])
+    assert_equal [], rd.get_lost_vnodes
+    rd.v_idx[0] = []
+    assert_equal [0], rd.get_lost_vnodes
+  end
+
+  # With replication in a host, both copies may be on one host.
+  def test_create_with_replication_in_host
+    rd = Roma::Routing::RoutingData.create(32, 3, 2, %w(roma0_3300 roma0_3301), true)
+    rd.v_idx.each_value { |nids| assert_equal %w(roma0_3300 roma0_3301), nids.sort }
+  end
 end

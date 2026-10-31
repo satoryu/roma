@@ -9,7 +9,7 @@ module Roma
       # get_routing_history
       def ev_get_routing_history(s)
         routing_path  = get_config_stat["config.RTTABLE_PATH"]
-        contents = ""
+        contents = String.new
         Dir.glob("#{routing_path}/*").each{|fname|
           contents << File.read(fname) if !FileTest::directory?(fname) && fname =~ /#{@stats.ap_str}\.route*/
         }

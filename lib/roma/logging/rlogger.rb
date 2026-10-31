@@ -80,10 +80,13 @@ module Roma
       end
   
       module ExtShiftAge
+        SECONDS_IN_DAY = 24 * 60 * 60
+
         private 
 
-        def shift_log_period(now) 
-          postfix = previous_period_end(now).strftime("%Y%m%d%H%M")
+        # +period_end+ is the end of the period the log is for.
+        def shift_log_period(period_end)
+          postfix = period_end.strftime("%Y%m%d%H%M")
           age_file = "#{@filename}.#{postfix}"
           if FileTest.exist?(age_file)
             raise RuntimeError.new("'#{age_file}' already exists.")
@@ -104,15 +107,19 @@ module Roma
             t = now - 1 * 60 * 60
             ret = Time.mktime(t.year, t.month, t.mday, t.hour, 59, 59)
           when /^daily$/
-            ret = eod(now - 1 * SiD)
+            ret = end_of_day(now - 1 * SECONDS_IN_DAY)
           when /^weekly$/
-            ret = eod(now - ((now.wday + 1) * SiD))
+            ret = end_of_day(now - ((now.wday + 1) * SECONDS_IN_DAY))
           when /^monthly$/
-            ret = eod(now - now.mday * SiD)
+            ret = end_of_day(now - now.mday * SECONDS_IN_DAY)
           else 
             ret = now
           end
           return ret
+        end
+
+        def end_of_day(t)
+          Time.mktime(t.year, t.month, t.mday, 23, 59, 59)
         end
       end
   
@@ -141,10 +148,14 @@ module Roma
       end
 
       def initialize(logdev, shift_age = 0, shift_size = 1048576)
-        @wrap_logger = Logger.new(logdev, shift_age, shift_size)
+        # Logger knows only daily, weekly and monthly periods; RLogger shifts
+        # the log itself, so give Logger one of them and set the real one.
+        logger_shift_age = %w(min hour).include?(shift_age) ? 'daily' : shift_age
+        @wrap_logger = Logger.new(logdev, logger_shift_age, shift_size)
         @wrap_logger.extend(ExtTrace) 
         @wrap_logger.extend(ExtLogDev)
         @wrap_logger.extendLogDev()
+        @wrap_logger.set_shift_age(shift_age) if logger_shift_age != shift_age
       end
 
       def level=(severity)
@@ -188,7 +199,7 @@ module Roma
       end
   
       def unknown(progname = nil, &block)
-        @wrap_logger.unknow(progname, &block)
+        @wrap_logger.unknown(progname, &block)
       end
   
       def close; @wrap_logger.close; end
