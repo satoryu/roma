@@ -75,6 +75,33 @@ module Roma
                                     value: options[:value], yes: options[:yes])
     end
 
+    desc 'bench NODE_ID...', 'Send requests to the nodes, and write the queries per second every 10 seconds'
+    option :get, aliases: '-g', type: :boolean, default: false, desc: 'Get key_0 ... in order'
+    option :set, aliases: '-s', type: :boolean, default: false, desc: 'Set key_0 ... in order'
+    option :rand, aliases: '-r', type: :boolean, default: false,
+                  desc: 'Send random set, get and delete requests (default without --get and --set)'
+    option :num, aliases: '-n', type: :numeric, default: 10_000, desc: 'Number of keys'
+    option :threads, aliases: '-t', type: :numeric, default: 1, desc: 'Number of threads'
+    option :value_size, aliases: '-v', type: :numeric, banner: 'BYTES', desc: 'Set random values of this size'
+    option :duration, aliases: '-D', type: :numeric, banner: 'SEC', desc: 'Stop the random requests after this time'
+    def bench(node_id, *node_ids)
+      require 'roma/tools/bench'
+      modes = Roma::Tools::Bench::MODES.select { |mode| options[mode] }
+      modes << :rand unless options[:get] || options[:set] || options[:rand]
+      Roma::Tools::Bench.new([node_id, *node_ids]).run(modes, num: options[:num], threads: options[:threads],
+                                                       value_size: options[:value_size],
+                                                       duration: options[:duration])
+    end
+
+    desc 'consistency_test NODE_ID...', 'Set the keys to the number of each round, and check them'
+    option :keys, aliases: '-n', type: :numeric, default: 10_000, desc: 'Number of keys'
+    option :rounds, aliases: '-r', type: :numeric, desc: 'Number of rounds (default: forever)'
+    def consistency_test(node_id, *node_ids)
+      require 'roma/tools/consistency_test'
+      errors = Roma::Tools::ConsistencyTest.new([node_id, *node_ids]).run(keys: options[:keys], rounds: options[:rounds])
+      raise Roma::Tools::Error, "#{errors} keys were wrong." if errors > 0
+    end
+
     desc 'check_nodes NODE_ID...', 'Check that the nodes answer and know the same nodes, or exit with 1'
     def check_nodes(node_id, *node_ids)
       require 'roma/tools/check_nodes'
