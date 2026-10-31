@@ -77,6 +77,28 @@ module Roma
       puts Roma::Tools::MultiCommander.new(node_id).send_cmd_all([command, *args].join(' '))
     end
 
+    desc 'recoverlost NODE_ID STORAGE_PATH',
+         'Push the data in the storage files under STORAGE_PATH back for the vnodes whose data was lost'
+    option :since, aliases: '-s', banner: 'YYYYMMDDHHMMSS', desc: 'Also the vnodes lost since this time'
+    option :all, aliases: '-a', type: :boolean, default: false, desc: 'Every vnode'
+    option :keys, aliases: '-k', banner: 'FILE',
+                  desc: 'Only the keys in FILE, one in each line, or in the standard input with -'
+    option :alist, type: :boolean, default: false, desc: 'Push the data of the list plugin by alist_spushv'
+    def recoverlost(node_id, storage_path)
+      require 'roma/tools/recoverlost'
+      given = %i(since all keys).select { |name| options[name] }
+      raise Roma::Tools::Error, "--#{given.join(' and --')} can't be used together." if given.size > 1
+
+      tool = Roma::Tools::RecoverLost.new(alist: options[:alist])
+      if options[:keys]
+        keys = options[:keys] == '-' ? $stdin.readlines : File.readlines(options[:keys])
+        tool.recover_keys(node_id, storage_path, keys.map(&:chomp).reject(&:empty?))
+      else
+        tool.recover(node_id, storage_path, since: options[:since], all: options[:all])
+      end
+      puts 'Recover process has succeed.'
+    end
+
     desc 'log_merger LOG_FILE...', 'Merge the log files of romad in time order'
     option :output, aliases: '-o', banner: 'FILE', desc: 'Write into FILE instead of the standard output'
     option :level, aliases: '-l', enum: Roma::Tools::LogMerger::LEVEL_LETTERS.keys, default: 'TRACE',
