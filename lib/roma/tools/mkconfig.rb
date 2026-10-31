@@ -11,7 +11,7 @@ module Roma
       CONFIG_TEMPLATE_PATH = File.expand_path(File.join(LIB_PATH, "roma/config.rb"))
       PLUGIN_DIR = File.expand_path(File.join(LIB_PATH, File.join("roma", "plugin")))
       BNUM_COEFFICIENT = 2 #reccomend1-4.
-      TC_FILE = 10
+      DIVIDED_FILES = 10
       REDUNDANCY = 2
       DEFAULT_ROMA_CONNECTION = 12
       RUBY_CONNECTION = 10
@@ -49,12 +49,10 @@ module Roma
             message: Which storage will you use?
             choice:
               - Ruby Hash
-              - Tokyo Cabinet
               - Groonga
             default: 1
             next:
               - menu
-              - memory
               - memory
           memory:
             name: memory_size_GB
@@ -282,14 +280,14 @@ module Roma
       class Calculate
         def self.get_bnum(res)
           res["server"] = res["fd_server"] if !res["server"]
-          ans = res["data"].value.to_i * BNUM_COEFFICIENT * REDUNDANCY / res["server"].value.to_i / TC_FILE
+          ans = res["data"].value.to_i * BNUM_COEFFICIENT * REDUNDANCY / res["server"].value.to_i / DIVIDED_FILES
           return ans
         end
 
         def self.get_xmsize_max(res)
-          ans = (res["memory"].value.to_f * GB - OS_MEMORY_SIZE) / res["process"].value.to_i / TC_FILE
+          ans = (res["memory"].value.to_f * GB - OS_MEMORY_SIZE) / res["process"].value.to_i / DIVIDED_FILES
           if ans <= 0
-            ans = res["memory"].value.to_f * GB / 2 / res["process"].value.to_i / TC_FILE
+            ans = res["memory"].value.to_f * GB / 2 / res["process"].value.to_i / DIVIDED_FILES
           end
           ans = ans.to_i
           return ans
@@ -525,12 +523,6 @@ module Roma
           when "Ruby Hash"
             req = "ruby_hash_storage"
             storage = "RubyHashStorage"
-          when "Tokyo Cabinet"
-            req = "tc_storage"
-            storage = "TCStorage"
-            bnum = Calculate.get_bnum(res)
-            bnum = 5000000 if bnum < 5000000
-            xmsiz = Calculate.get_xmsize_max(res)
           when "Groonga"
             req = "groonga_storage"
             storage = "GroongaStorage"
@@ -557,7 +549,7 @@ module Roma
           case req
           when "ruby_hash_storage"
             body = ch_assign(body, "STORAGE_OPTION","")
-          when /^(tc_storage|groonga_storage)$/
+          when "groonga_storage"
             body = ch_assign(body, "STORAGE_OPTION", "bnum=#{bnum}\#xmsiz=#{xmsiz}\#opts=d#dfunit=10")
           end
         end

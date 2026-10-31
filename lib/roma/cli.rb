@@ -55,14 +55,6 @@ module Roma
       Roma::Tools::Ssroute.new.snapshot(node_id)
     end
 
-    desc 'check_tc_flag', 'Show the additional flags of the Tokyo Cabinet files in a storage directory'
-    option :storage, default: '.', banner: 'DIR', desc: 'Directory of the *.tc files'
-    option :library, default: '.', banner: 'DIR', desc: 'Directory of Tokyo Cabinet, which has bin/tchmgr'
-    def check_tc_flag
-      require 'roma/tools/check_tc_flag'
-      Roma::Tools::CheckTcFlag.new(options[:storage], options[:library]).print_flags
-    end
-
     desc 'mkconfig', 'Make config.rb in the current directory by asking questions'
     option :with_menu, aliases: '-m', type: :boolean, default: false,
                        desc: 'Show the menu to choose what to set'

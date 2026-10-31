@@ -9,7 +9,6 @@ require 'roma/storage/ruby_hash_storage'
 require 'roma/tools/mkroute'
 require 'roma/tools/ssroute'
 require 'roma/tools/log_merger'
-require 'roma/tools/check_tc_flag'
 require 'roma/config'
 require 'roma/tools/mkconfig'
 require 'roma/tools/recoverlost_lib'
@@ -219,40 +218,6 @@ class SsrouteTest < Test::Unit::TestCase
   end
 end
 
-class CheckTcFlagTest < Test::Unit::TestCase
-  include ToolTestHelper
-
-  # A tchmgr that says a.tc is open.
-  def setup
-    super
-    FileUtils.mkdir_p(["#{@dir}/lib/bin", "#{@dir}/ds"])
-    File.write("#{@dir}/lib/bin/tchmgr", <<~SH)
-      #!/bin/sh
-      case "$2" in
-        *a.tc) printf 'path: %s\nadditional flags: open\n' "$2";;
-        *) printf 'path: %s\nadditional flags:\n' "$2";;
-      esac
-    SH
-    File.chmod(0o755, "#{@dir}/lib/bin/tchmgr")
-    FileUtils.touch(%W(#{@dir}/ds/a.tc #{@dir}/ds/b.tc #{@dir}/ds/c.log))
-  end
-
-  def test_check_flag
-    tc = Roma::Tools::CheckTcFlag.new("#{@dir}/ds", "#{@dir}/lib")
-    assert_equal({ "#{@dir}/ds/a.tc" => ' open', "#{@dir}/ds/b.tc" => '' }, tc.check_flag)
-  end
-
-  def test_print_flags
-    out = StringIO.new
-    Roma::Tools::CheckTcFlag.new("#{@dir}/ds", "#{@dir}/lib", out: out).print_flags
-    assert_equal "#{@dir}/ds/a.tc :  open\n#{@dir}/ds/b.tc : (no flag)\n", out.string
-  end
-
-  def test_without_tchmgr
-    assert_raise(Errno::ENOENT) { Roma::Tools::CheckTcFlag.new("#{@dir}/ds", @dir).check_flag }
-  end
-end
-
 class MkconfigTest < Test::Unit::TestCase
   include ToolTestHelper
 
@@ -307,23 +272,24 @@ class MkconfigTest < Test::Unit::TestCase
     assert_equal 'Roma::Storage::RubyHashStorage', out
   end
 
-  # Tokyo Cabinet asks the memory, the processes, the servers and the data,
-  # and the options are calculated from them.
-  def test_tokyo_cabinet
+  # Groonga asks the memory, the processes, the servers and the data, and
+  # the options are calculated from them.
+  def test_groonga
     out = mkconfig('2', '1.5', '2', '1', '100000000', '', '2', '2', '3')
     # 100000000 * 2 * 2 / 1 / 10, and (1.5GB - 1GB) / 2 / 10
     option = 'bnum=40000000#xmsiz=26843545#opts=d#dfunit=10'
-    assert_match(/^    STORAGE_CLASS = Roma::Storage::TCStorage$/, config)
+    assert_match(/^    STORAGE_CLASS = Roma::Storage::GroongaStorage$/, config)
+    assert_match(%r{\Arequire "roma/storage/groonga_storage"$}, config)
     assert_match(/^    STORAGE_OPTION = #{Regexp.escape(option.inspect)}$/, config)
     assert_match(/After\r\n.*STORAGE_OPTION: #{option}/m, out)
-    assert_match(/After\r\n.*STORAGE_CLASS: Roma::Storage::TCStorage/m, out)
+    assert_match(/After\r\n.*STORAGE_CLASS: Roma::Storage::GroongaStorage/m, out)
     # The servers asked for the storage: 1 * 30 + (3 - 1) * 12 * 2
     assert_match(/bigger than 78\./, out)
   end
 
   # The bnum is at least 5000000, and the xmsiz is half of the memory if it
   # is less than what the OS takes.
-  def test_tokyo_cabinet_minimum
+  def test_groonga_minimum
     mkconfig('2', '', '', '', '', '', '2', '3', '')
     assert_match(/^    STORAGE_OPTION = "bnum=5000000#xmsiz=16106127#/, config)
   end

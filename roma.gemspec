@@ -50,7 +50,6 @@ Gem::Specification.new do |s|
   s.add_dependency 'readline'
   #s.add_dependency 'levenshtein', '~> 0.2.2'
 
-  #s.add_development_dependency 'tokyocabinet', '~> 1.29.1' # we prepared customized gem(1.31a) for ruby2.1. Please use this.
   s.add_development_dependency 'ffi'
   s.add_development_dependency 'test-unit'
   s.add_development_dependency 'rake'

@@ -159,25 +159,6 @@ class CLITest < Test::Unit::TestCase
     assert_match(message, err)
   end
 
-  def test_check_tc_flag
-    FileUtils.mkdir_p(["#{@dir}/tc/bin", "#{@dir}/ds"])
-    File.write("#{@dir}/tc/bin/tchmgr", "#!/bin/sh\nprintf 'additional flags: open\\n'\n")
-    File.chmod(0o755, "#{@dir}/tc/bin/tchmgr")
-    FileUtils.touch("#{@dir}/ds/a.tc")
-    out, _err, status = roma('check_tc_flag', '--storage', 'ds', '--library', 'tc')
-    assert_nil status
-    assert_equal "ds/a.tc :  open\n", out
-  end
-
-  # By default, both are the current directory.
-  def test_check_tc_flag_defaults
-    FileUtils.touch("#{@dir}/a.tc")
-    out, err, status = roma('check_tc_flag')
-    assert_equal 1, status
-    assert_equal '', out
-    assert_match(%r{No such file or directory - \./bin/tchmgr}, err)
-  end
-
   def run_roma(*args, stdin: '')
     cmd = [RbConfig.ruby]
     cmd.push('-r', File.expand_path('start_coverage', __dir__)) if ENV['COVERAGE']

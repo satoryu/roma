@@ -5,7 +5,6 @@
 module Roma
   module Storage
   end
-  Storage::autoload(:TCStorage,'roma/storage/tokyocabinet')
   Storage::autoload(:DbmStorage,'roma/storage/dbm')
   Storage::autoload(:SQLite3Storage,'roma/storage/sqlite3')
 
@@ -65,8 +64,6 @@ module Roma
 
     def new_storage(ext)
       case(ext)
-      when 'tc'
-        return ::Roma::Storage::TCStorage.new
       when 'dbm'
         return Roma::Storage::DbmStorage.new
       when 'sql3'
