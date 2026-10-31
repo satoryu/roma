@@ -1,5 +1,38 @@
 # Change Log
 
+## 2.0.0 (Not Released Yet)
+
+### Ruby and dependencies
+* Ruby 3.4 or later; CI runs Ruby 4.0 on GitHub Actions [#1](https://github.com/satoryu/roma/pull/1)
+* Tokyo Cabinet is no longer supported: its tools and options are removed [#27](https://github.com/satoryu/roma/pull/27)
+* The file storages are the gems roma-storage-dbm and roma-storage-sqlite3 [#28](https://github.com/satoryu/roma/pull/28)
+* roma-client and nkf are no longer needed [#33](https://github.com/satoryu/roma/pull/33)
+
+### The roma command
+The tools in `bin/` are subcommands of the new `roma` command now (`roma help` lists them), and the old commands are removed ([#8](https://github.com/satoryu/roma/issues/8)).
+
+| Before | After |
+| --- | --- |
+| `romad` | `roma server` (`romad` stays as its alias) [#39](https://github.com/satoryu/roma/pull/39) |
+| `mkroute`, `ssroute`, `log_merger`, `mkconfig` | `roma mkroute`, `roma ssroute`, `roma log_merger`, `roma mkconfig` [#24](https://github.com/satoryu/roma/pull/24) [#25](https://github.com/satoryu/roma/pull/25) [#26](https://github.com/satoryu/roma/pull/26) |
+| `chg_redundancy`, `multi_commander` | `roma chg_redundancy NUM NODE_ID`, `roma multi_commander` [#29](https://github.com/satoryu/roma/pull/29) |
+| `recoverlost`, `recoverlost_alist`, `recoverlost_alist_all`, `recoverlost_alist_keys` | `roma recoverlost [--since TIME] [--all] [--keys FILE] [--alist]` [#30](https://github.com/satoryu/roma/pull/30) |
+| `roma-adm` | `roma adm` [#31](https://github.com/satoryu/roma/pull/31) |
+| `key_list`, `key_access`, `mkrecent` | `roma key_list`, `roma key_access`, `roma mkrecent` [#32](https://github.com/satoryu/roma/pull/32) |
+| `roma_watcher` | `roma roma_watcher` [#33](https://github.com/satoryu/roma/pull/33) |
+| `tribunus` | `roma tribunus` [#34](https://github.com/satoryu/roma/pull/34) |
+| `sample_watcher*` | `roma check_nodes`, `roma multi_commander` [#35](https://github.com/satoryu/roma/pull/35) |
+| `simple_bench`, `data_accumulation`, `consistency_test` | `roma bench`, `roma consistency_test` [#36](https://github.com/satoryu/roma/pull/36) |
+| `safecopy_test`, `safecopy_integration_test` | `roma safecopy_test` [#37](https://github.com/satoryu/roma/pull/37) |
+| `test-scenario` | `roma test_scenario` [#38](https://github.com/satoryu/roma/pull/38) |
+
+The tools print errors on the standard error and exit with 1.
+
+### Fixes
+* A romad that isn't a daemon stops by TERM and HUP [#39](https://github.com/satoryu/roma/pull/39)
+* The bundled config.rb had an old version, with which romad didn't boot [#28](https://github.com/satoryu/roma/pull/28)
+* Bugs found by the unit tests: zredundant retry, routing and system commands, plugins [#10](https://github.com/satoryu/roma/pull/10) [#12](https://github.com/satoryu/roma/pull/12) [#18](https://github.com/satoryu/roma/pull/18) [#20](https://github.com/satoryu/roma/pull/20) [#21](https://github.com/satoryu/roma/pull/21)
+
 ## 1.3.1 (Not Released Yet)
 
 * Use travis, [satoryu](https://github.com/satoryu), [#126](https://github.com/roma/roma/pull/126)
