@@ -460,7 +460,7 @@ module Roma
       # set_size_of_zredundant <n>
       def ev_set_size_of_zredundant(s)
         if s.length != 2 || s[1].to_i == 0
-          return send_data("usage:set_set_size_of_zredundant <n>\r\n")
+          return send_data("usage:set_size_of_zredundant <n>\r\n")
         end
         res = broadcast_cmd("rset_size_of_zredundant #{s[1]}\r\n")
         @stats.size_of_zredundant = s[1].to_i
@@ -471,7 +471,7 @@ module Roma
       # rset_size_of_zredundant <n>
       def ev_rset_size_of_zredundant(s)
         if s.length != 2 || s[1].to_i == 0
-          return send_data("usage:set_set_size_of_zredundant <n>\r\n")
+          return send_data("usage:rset_size_of_zredundant <n>\r\n")
         end
         @stats.size_of_zredundant = s[1].to_i
         send_data("STORED\r\n")
@@ -523,7 +523,7 @@ module Roma
       rescue => e
         @rttable.proc_failed(nid)
         @log.error("forward gets failed:nid=#{nid} key=#{keys}")
-        nil
+        {}
       end
 
       def forward_get_expt(nid, vn, key, is_unix=nil)
@@ -531,8 +531,10 @@ module Roma
         con.send("get_expt #{key} #{is_unix}\r\n")
         res = ''
         while((line = con.gets)!="END\r\n")
-          res = line.chomp
+          raise 'connection closed' unless line
+          res << line
         end
+        res << line
         return_connection(nid, con)
         @rttable.proc_succeed(nid)
         res
@@ -601,9 +603,9 @@ module Roma
             Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:cas], k, ret[4])
           end
           if $roma.cr_writer.run_replication
-            k = "#{k}\e#{hname}" if hname != @defhash
+            rk = hname != @defhash ? "#{k}\e#{hname}" : k
             fnc = 'set' # To restrain a defference between main and replica cluster due to clk 
-            Roma::WriteBehindProcess::push(nil, "#{fnc} #{k} 0 #{expt} #{v.length} \r\n#{v}\r\n", k, v)
+            Roma::WriteBehindProcess::push(nil, "#{fnc} #{rk} 0 #{expt} #{v.length} \r\n#{v}\r\n", rk, v)
           end
           redundant(nodes, hname, k, d, ret[2], expt, ret[4])
           send_data("STORED\r\n")          
@@ -704,8 +706,8 @@ module Roma
             Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[fnc], k, res[4])
           end
           if $roma.cr_writer.run_replication
-            k = "#{k}\e#{hname}" if hname != @defhash
-            Roma::WriteBehindProcess::push(nil, "#{fnc} #{k} #{v}\r\n", k, v)
+            rk = hname != @defhash ? "#{k}\e#{hname}" : k
+            Roma::WriteBehindProcess::push(nil, "#{fnc} #{rk} #{v}\r\n", rk, v)
           end
           redundant(nodes, hname, k, d, res[2], res[3], res[4])
           send_data("#{res[4]}\r\n")
