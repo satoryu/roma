@@ -1,0 +1,221 @@
+module Roma
+  # The settings of romad. A config file sets them in Roma.configure:
+  #
+  #   Roma.configure do |config|
+  #     config.port = 11211
+  #     config.log.level = :info
+  #     config.storage.engine = :dbm
+  #   end
+  #
+  # Every setting has a default, and a wrong value raises Configuration::Error.
+  class Configuration
+    class Error < StandardError; end
+
+    # The storages that storage.engine takes by name: the file to require,
+    # the class and the gem.
+    STORAGE_ENGINES = {
+      ruby_hash: ['roma/storage/ruby_hash_storage', :RubyHashStorage, 'roma-storage'],
+      dbm: ['roma/storage/dbm', :DbmStorage, 'roma-storage-dbm'],
+      sqlite3: ['roma/storage/sqlite3', :SQLite3Storage, 'roma-storage-sqlite3'],
+      groonga: ['roma/storage/groonga', :GroongaStorage, 'roma-storage-groonga']
+    }.freeze
+
+    # A group of settings, such as config.log. A subclass declares them by
+    # setting and group.
+    class Group
+      BOOLEAN = [true, false].freeze
+
+      # Declares a setting with its default. The value must be one of +one_of+,
+      # or of a class in +type+, or else +check+ returns false for it.
+      def self.setting(name, default, type: nil, one_of: nil, check: nil)
+        settings[name] = default
+        attr_reader name
+
+        define_method("#{name}=") do |value|
+          valid = if one_of
+                    one_of.include?(value)
+                  else
+                    Array(type).any? { |t| t === value } && (check.nil? || check.call(value))
+                  end
+          unless valid
+            expected = one_of ? "one of #{one_of.map(&:inspect).join(', ')}" : "a valid #{Array(type).join(' or ')}"
+            raise Error, "#{path_of(name)} should be #{expected}: #{value.inspect}"
+          end
+          instance_variable_set("@#{name}", value)
+        end
+      end
+
+      # Declares a group of settings in this group.
+      def self.group(name, klass)
+        groups[name] = klass
+        attr_reader name
+      end
+
+      def self.settings
+        @settings ||= {}
+      end
+
+      def self.groups
+        @groups ||= {}
+      end
+
+      # +prefix+ is the path to this group, such as "connection.pool".
+      def initialize(prefix = nil)
+        @prefix = prefix
+        self.class.settings.each do |name, default|
+          instance_variable_set("@#{name}", default.frozen? ? default : default.dup)
+        end
+        self.class.groups.each do |name, klass|
+          instance_variable_set("@#{name}", klass.new(path_of(name)))
+        end
+      end
+
+      # The settings in a Hash by their paths, such as "log.level".
+      def to_h
+        h = self.class.settings.keys.to_h { |name| [path_of(name), public_send(name)] }
+        self.class.groups.each_key { |name| h.merge!(public_send(name).to_h) }
+        h
+      end
+
+      private
+
+      def path_of(name)
+        @prefix ? "#{@prefix}.#{name}" : name.to_s
+      end
+    end
+
+    class Routing < Group
+      setting :path, '.', type: String
+      # A subclass of Roma::Routing::RoutingTable, or nil for ChurnbasedRoutingTable.
+      setting :table_class, nil, type: [Class, NilClass]
+      # Replaces the host names in the routing table that a client gets:
+      # { '192.168.1.0/24' => { 'host1' => '192.168.1.11' } }
+      setting :sub_nid, {}, type: Hash
+      # What to do when the data of a vnode is lost.
+      setting :lost_action, :auto_assign, one_of: %i(no_action auto_assign shutdown)
+      setting :auto_recover, false, one_of: BOOLEAN
+      # The failures to a node, before it is taken as down.
+      setting :fail_cnt_threshold, 15, type: Integer
+      # Seconds in which another failure doesn't count up.
+      setting :fail_cnt_gap, 0, type: Numeric
+      setting :event_limit_line, 1000, type: Integer
+    end
+
+    class Log < Group
+      setting :path, '.', type: String
+      setting :level, :debug, one_of: %i(debug info warn error)
+      # The files to keep, or 'daily', 'weekly' or 'monthly'.
+      setting :shift_age, 10, type: [Integer, String]
+      setting :shift_size, 1024 * 1024 * 10, type: Integer
+      setting :stream_show_wait_param, 0.001, type: Numeric
+    end
+
+    class Pool < Group
+      # Seconds to keep a connection in the pool. It should be less than
+      # connection.expire_time.
+      setting :expire_time, 30, type: Numeric
+      setting :max, 5, type: Integer
+    end
+
+    class EMPool < Group
+      setting :expire_time, 30, type: Numeric
+      setting :max, 15, type: Integer
+    end
+
+    class Connection < Group
+      setting :use_epoll, true, one_of: BOOLEAN
+      setting :descriptor_table_size, 4096, type: Integer
+      # Like MaxStartups of sshd_config: 'start:rate:full'.
+      setting :continuous_limit, '200:30:300', type: String, check: ->(v) { v.match?(/\A\d+(:\d+:\d+)?\z/) }
+      # Seconds to keep an accepted connection, or 0 for ever.
+      setting :expire_time, 0, type: Numeric
+      setting :dns_caching, false, one_of: BOOLEAN
+      group :pool, Pool
+      group :em_pool, EMPool
+    end
+
+    class Storage < Group
+      # A name in STORAGE_ENGINES, or a storage class.
+      setting :engine, :ruby_hash, type: [Symbol, Class], check: ->(v) { v.is_a?(Class) || STORAGE_ENGINES.key?(v) }
+      setting :path, '.', type: String
+      setting :divnum, 10, type: Integer, check: ->(v) { v.positive? }
+      setting :option, '', type: [String, NilClass]
+      # What to do when the storage fails.
+      setting :exception_action, :no_action, one_of: %i(no_action shutdown)
+      # Seconds to keep deleted and expired keys.
+      setting :delmark_expire_time, 60 * 60 * 24 * 5, type: Integer
+      setting :clean_up_interval, 60 * 5, type: Integer
+
+      # The storage class of engine. A name is required, and raises Error
+      # if its gem is missing.
+      def engine_class
+        return engine if engine.is_a?(Class)
+
+        file, name, gem = STORAGE_ENGINES.fetch(engine)
+        begin
+          require file
+        rescue LoadError
+          raise Error, "storage.engine #{engine.inspect} needs #{gem}. Install it by gem install #{gem}."
+        end
+        Roma::Storage.const_get(name)
+      end
+    end
+
+    class DataCopy < Group
+      setting :stream_copy_wait_param, 0.001, type: Numeric
+    end
+
+    class WriteBehind < Group
+      setting :path, './wb', type: String
+      setting :shift_size, 1024 * 1024 * 10, type: Integer
+      # The commands to write behind, by their numbers: { set: 1, delete: 2 }
+      setting :command_map, {}, type: Hash
+    end
+
+    class Redundant < Group
+      # The data bigger than this is compressed for the redundancy, or 0 for never.
+      setting :zredundant_size, 0, type: Integer
+    end
+
+    class Settings < Group
+      setting :name, 'ROMA', type: String
+      setting :port, 12000, type: Integer, check: ->(v) { (1..65535).cover?(v) }
+      # The files in roma/command_plugin.
+      setting :plugins, ['plugin_storage.rb'], type: Array, check: ->(v) { v.all?(String) }
+      group :routing, Routing
+      group :log, Log
+      group :connection, Connection
+      group :storage, Storage
+      group :data_copy, DataCopy
+      group :write_behind, WriteBehind
+      group :redundant, Redundant
+    end
+  end
+
+  # The settings of romad.
+  def self.config
+    @config ||= Configuration::Settings.new
+  end
+
+  # Yields the settings to change them.
+  def self.configure
+    yield config
+  end
+
+  # Puts the settings back to the defaults.
+  def self.reset_config
+    @config = nil
+  end
+
+  # Puts the settings back to the defaults, and runs the config file at
+  # +path+. Raises Configuration::Error if the file is of the old format,
+  # which defines the constants of Roma::Config.
+  def self.load_config(path)
+    reset_config
+    load path
+    return unless Roma.const_defined?(:Config, false)
+
+    raise Configuration::Error, "#{path} defines Roma::Config, which ROMA 2.0 doesn't read. " \
+                                'Set the settings in Roma.configure instead. See ChangeLog.md.'
+  end
+end
