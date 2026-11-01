@@ -109,7 +109,7 @@ module RomaTestUtils
     wait_count = 0
     sleep 5
 
-    until client.rttable.nodes.include?(node)
+    until client.routing_table.nodes.include?(node)
       sleep 1
       client.update_rttable
       wait_count += 1

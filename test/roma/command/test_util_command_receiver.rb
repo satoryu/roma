@@ -24,7 +24,7 @@ class UtilCommandReceiverTest < Test::Unit::TestCase
 
   def test_async_broadcast_cmd
     node = FakeNode.new
-    @conn.rttable.add_node(node.nid)
+    @conn.routing_table.add_node(node.nid)
     res = @conn.async_broadcast_cmd("whoami\r\n", [NID, OTHER_NID])
     assert_equal({ node.nid => 'ROMA' }, res)
   ensure

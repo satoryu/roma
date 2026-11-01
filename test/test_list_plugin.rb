@@ -573,8 +573,8 @@ module ListPluginTests
 
   def create_storage_and_calc_vn(k)
     # calc vn
-    nid,d = @rc.rttable.search_node("aa")
-    vn = @rc.rttable.get_vnode_id(d)
+    nid,d = @rc.routing_table.search_node("aa")
+    vn = @rc.routing_table.get_vnode_id(d)
 
     st = Roma::Storage::HashStorage.new
     st.vn_list = [vn]
@@ -638,7 +638,7 @@ class ListPluginForceForwardTest < Test::Unit::TestCase
 
   def setup
     super
-    @rc.rttable.force_forward = true
+    @rc.routing_table.force_forward = true
   end
 
   undef test_alist_spushv

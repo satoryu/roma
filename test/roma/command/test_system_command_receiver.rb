@@ -125,27 +125,27 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
   def test_switch_failover
     @conn.relay_reply = 'ENABLED'
     assert_equal "#{{ OTHER_NID => 'ENABLED', NID => 'ENABLED' }}\r\n", @conn.request('switch_failover on')
-    assert_true @conn.rttable.enabled_failover
+    assert_true @conn.routing_table.enabled_failover
     assert_equal ["rswitch_failover on\r\n"], @conn.broadcasts
 
     @conn.relay_reply = 'DISABLED'
     assert_equal "#{{ OTHER_NID => 'DISABLED', NID => 'DISABLED' }}\r\n", @conn.request('switch_failover off')
-    assert_false @conn.rttable.enabled_failover
+    assert_false @conn.routing_table.enabled_failover
   end
 
   def test_switch_failover_with_invalid_value
     @conn.relay_reply = 'NOTSWITCHED'
     assert_equal "#{{ OTHER_NID => 'NOTSWITCHED', NID => 'NOTSWITCHED' }}\r\n",
                  @conn.request('switch_failover maybe')
-    assert_false @conn.rttable.enabled_failover
+    assert_false @conn.routing_table.enabled_failover
     assert_equal "CLIENT_ERROR number of arguments\r\n", @conn.request('switch_failover')
   end
 
   def test_rswitch_failover
     assert_equal "ENABLED\r\n", @conn.request('rswitch_failover on')
-    assert_true @conn.rttable.enabled_failover
+    assert_true @conn.routing_table.enabled_failover
     assert_equal "DISABLED\r\n", @conn.request('rswitch_failover off')
-    assert_false @conn.rttable.enabled_failover
+    assert_false @conn.routing_table.enabled_failover
     assert_equal "NOTSWITCHED\r\n", @conn.request('rswitch_failover maybe')
     assert_equal [], @conn.broadcasts
   end

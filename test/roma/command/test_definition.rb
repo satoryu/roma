@@ -108,9 +108,9 @@ class DefinitionTestReceiver
   end
 
   def initialize
-    @stats = Struct.new(:ap_str).new(:ap_str)
-    @rttable = RtStub.new
-    @defhash = 'roma'
+    @stats = Struct.new(:my_node_id).new(:my_node_id)
+    @routing_table = RtStub.new
+    @default_hash_name = 'roma'
     @log = LogStub.new
     @storages = Hash.new(StorageStub.new)
   end
@@ -153,7 +153,7 @@ class DefinitionTest < Test::Unit::TestCase
   def test_defcmd
     # normal case
     res = @obj.ev_balse ['balse','arg1','arg2']
-    expected = { ap_str: ['balse','arg1','arg2'], broadcast_cmd: "rbalse arg1 arg2\r\n" }
+    expected = { my_node_id: ['balse','arg1','arg2'], broadcast_cmd: "rbalse arg1 arg2\r\n" }
     assert_equal "#{expected}\r\n", res
 
     res = @obj.ev_rbalse ['balse','arg1','arg2']
@@ -179,7 +179,7 @@ class DefinitionTest < Test::Unit::TestCase
     # define a command in DefinitionTestReceiver class is not define yet
     DefinitionTestReceiver.class_eval do
       def_command_with_relay :balse2 do |s|
-        "#{s.join(' ')} #{@stats.ap_str}"
+        "#{s.join(' ')} #{@stats.my_node_id}"
       end
     end
     assert true
@@ -188,7 +188,7 @@ class DefinitionTest < Test::Unit::TestCase
     assert_raise RuntimeError do
       DefinitionTestReceiver.class_eval do
         def_command_with_relay :balse do |s|
-          "#{s.join(' ')} #{@stats.ap_str}"
+          "#{s.join(' ')} #{@stats.my_node_id}"
         end
       end
     end
@@ -200,7 +200,7 @@ class DefinitionTest < Test::Unit::TestCase
     end
 
     res = @obj.ev_balse ['balse','arg1','arg2']
-    expected = { ap_str: 'override', broadcast_cmd: "rbalse arg1 arg2\r\n" }
+    expected = { my_node_id: 'override', broadcast_cmd: "rbalse arg1 arg2\r\n" }
     assert_equal "#{expected}\r\n", res
 
     res = @obj.ev_rbalse ['balse','arg1','arg2']

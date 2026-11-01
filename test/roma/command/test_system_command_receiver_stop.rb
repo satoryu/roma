@@ -11,7 +11,7 @@ class SystemCommandReceiverStopTest < Test::Unit::TestCase
 
   def setup
     @conn = CommandTestHarness.new
-    @conn.rttable.enabled_failover = true
+    @conn.routing_table.enabled_failover = true
   end
 
   def teardown
@@ -26,13 +26,13 @@ class SystemCommandReceiverStopTest < Test::Unit::TestCase
     assert_equal :after_writing, @conn.closed
     assert_true @conn.stop_event_loop?
     # Failover is off, so the other nodes don't take this node as failed.
-    assert_false @conn.rttable.enabled_failover
+    assert_false @conn.routing_table.enabled_failover
   end
 
   def assert_not_stopped
     assert_equal :after_writing, @conn.closed
     assert_false @conn.stop_event_loop?
-    assert_true @conn.rttable.enabled_failover
+    assert_true @conn.routing_table.enabled_failover
     assert_equal [], @conn.broadcasts
   end
 
@@ -128,14 +128,14 @@ class SystemCommandReceiverStopTest < Test::Unit::TestCase
     assert_equal ["rrestart\r\n"], @conn.broadcasts
     # romad runs the event loop again once it stops.
     assert_true @conn.romad.eventloop
-    assert_false @conn.rttable.enabled_failover
+    assert_false @conn.routing_table.enabled_failover
   end
 
   def test_rrestart
     assert_equal "RESTARTED\r\n", request_in_reactor('rrestart')
     assert_equal [], @conn.broadcasts
     assert_true @conn.romad.eventloop
-    assert_false @conn.rttable.enabled_failover
+    assert_false @conn.routing_table.enabled_failover
   end
 
   # Restarting doesn't close the connection itself; stopping the reactor

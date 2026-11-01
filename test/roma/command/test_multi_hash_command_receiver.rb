@@ -9,7 +9,7 @@ class MultiHashCommandReceiverTest < Test::Unit::TestCase
     # Hashes are made in Roma.config.storage.path, named after this node.
     @conn.stats.address = 'multihashcommandtest'
     @conn.stats.port = Process.pid.to_s
-    @path = "#{Roma.config.storage.path}/#{@conn.stats.ap_str}"
+    @path = "#{Roma.config.storage.path}/#{@conn.stats.my_node_id}"
   end
 
   def teardown
@@ -20,7 +20,7 @@ class MultiHashCommandReceiverTest < Test::Unit::TestCase
 
   # Relayed by def_command_with_relay, which puts this node's reply first.
   def replies(reply, other: 'STORED')
-    "#{{ @conn.stats.ap_str => reply, OTHER_NID => other }}\r\n"
+    "#{{ @conn.stats.my_node_id => reply, OTHER_NID => other }}\r\n"
   end
 
   def test_defhash

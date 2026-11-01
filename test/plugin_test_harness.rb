@@ -31,10 +31,10 @@ class PluginTestHarness
   HASH_NAME = 'roma'
 
   Stats = Struct.new(:wb_command_map, :read_count, :write_count, :delete_count,
-                     :compression_threshold, :ap_str)
+                     :compression_threshold, :my_node_id)
 
   # Stands in for $roma, the running romad, which some commands look at.
-  Romad = Struct.new(:cr_writer)
+  Romad = Struct.new(:cluster_replication_writer)
   ClusterReplicationWriter = Struct.new(:run_replication)
 
   class RoutingTable
@@ -92,9 +92,9 @@ class PluginTestHarness
 
   def initialize(nid: NID, nodes: [NID, REPLICA_NID])
     @romad = Romad.new(ClusterReplicationWriter.new(false))
-    @nid = nid
-    @defhash = HASH_NAME
-    @rttable = RoutingTable.new(nodes)
+    @my_node_id = nid
+    @default_hash_name = HASH_NAME
+    @routing_table = RoutingTable.new(nodes)
     @stats = Stats.new({}, 0, 0, 0, 0, nid)
     @log = Logger.new(nil)
     @storage = Roma::Storage::HashStorage.new
@@ -203,7 +203,7 @@ class PluginTestHarness
       @default_hash_name = HASH_NAME
       @used_keys = []
       @connection = Connection.new(harness)
-      @rttable = RomaTestClient::RoutingTable.new(Roma::Routing::RoutingData.create(32, 3, 2, [NID, REPLICA_NID]))
+      @routing_table = RomaTestClient::RoutingTable.new(Roma::Routing::RoutingData.create(32, 3, 2, [NID, REPLICA_NID]))
     end
 
     private

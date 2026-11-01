@@ -19,9 +19,9 @@ module Roma
         else
           @log.info("Receive a balse command.")
         end
-        @rttable.enabled_failover = false
+        @routing_table.enabled_failover = false
         res = broadcast_cmd("rbalse\r\n")
-        res[@stats.ap_str] = "BYE"
+        res[@stats.my_node_id] = "BYE"
         send_data("#{res.inspect}\r\n")
         close_connection_after_writing
         @stop_event_loop = true
@@ -34,7 +34,7 @@ module Roma
         else
           @log.info("Receive a rbalse command.")
         end
-        @rttable.enabled_failover = false
+        @routing_table.enabled_failover = false
         send_data("BYE\r\n")
         close_connection_after_writing
         @stop_event_loop = true
@@ -53,9 +53,9 @@ module Roma
         else
           @log.info("Receive a shutdown command.")
         end
-        @rttable.enabled_failover = false
+        @routing_table.enabled_failover = false
         res = broadcast_cmd("rshutdown\r\n")
-        res[@stats.ap_str] = "BYE"
+        res[@stats.my_node_id] = "BYE"
         send_data("#{res.inspect}\r\n")
         close_connection_after_writing
         @stop_event_loop = true
@@ -68,7 +68,7 @@ module Roma
         else
           @log.info("Receive a rshutdown command.")
         end
-        @rttable.enabled_failover = false
+        @routing_table.enabled_failover = false
         send_data("BYE\r\n")
         close_connection_after_writing
         @stop_event_loop = true
@@ -88,7 +88,7 @@ module Roma
             return
           end
           @log.info("Receive a shutdown_self command.")
-          @rttable.enabled_failover = false
+          @routing_table.enabled_failover = false
           send_data("BYE\r\n")
           @stop_event_loop = true
           close_connection_after_writing
@@ -124,7 +124,7 @@ module Roma
           send_stat_result("storages[#{hname}].",st.get_stat,regexp)
         }
         send_stat_result(nil,$roma.wb_get_stat,regexp)
-        send_stat_result(nil,@rttable.get_stat(@stats.ap_str),regexp)
+        send_stat_result(nil,@routing_table.get_stat(@stats.my_node_id),regexp)
         send_stat_result(nil,conn_get_stat,regexp)
         send_stat_result(nil,DNSCache.instance.get_stat,regexp)
         send_data("END\r\n")
@@ -154,9 +154,9 @@ module Roma
         res = broadcast_cmd("rwritebehind_rotate #{s[1]}\r\n")
 
         if $roma.wb_rotate(s[1])
-          res[@stats.ap_str] = "ROTATED"
+          res[@stats.my_node_id] = "ROTATED"
         else
-          res[@stats.ap_str] = "NOT_OPEND"
+          res[@stats.my_node_id] = "NOT_OPEND"
         end
         send_data("#{res}\r\n")
       end
@@ -181,7 +181,7 @@ module Roma
         res = broadcast_cmd("rwritebehind_get_path #{s[1]}\r\n")
 
         ret = $roma.wb_get_path(s[1])
-        res[@stats.ap_str] = ret
+        res[@stats.my_node_id] = ret
 
         send_data("#{res}\r\n")
       end
@@ -205,9 +205,9 @@ module Roma
 
         ret = $roma.wb_get_current_file_path(s[1])
         if ret
-          res[@stats.ap_str] = ret
+          res[@stats.my_node_id] = ret
         else
-          res[@stats.ap_str] = "NOT_OPEND"
+          res[@stats.my_node_id] = "NOT_OPEND"
         end
         send_data("#{res}\r\n")
       end
@@ -245,22 +245,22 @@ module Roma
         Timeout.timeout(1){
           case s[1]
           when 'true'
-            $roma.cr_writer.update_mklhash(s[2])
-            $roma.cr_writer.update_nodelist(s[2])
-            $roma.cr_writer.update_rttable(s[2])
-            $roma.cr_writer.run_replication = true
+            $roma.cluster_replication_writer.update_mklhash(s[2])
+            $roma.cluster_replication_writer.update_nodelist(s[2])
+            $roma.cluster_replication_writer.update_rttable(s[2])
+            $roma.cluster_replication_writer.run_replication = true
             if s[3] == 'all'
-              $roma.cr_writer.run_existing_data_replication = true
-              Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process', [$roma.cr_writer.replica_rttable]))
+              $roma.cluster_replication_writer.run_existing_data_replication = true
+              Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process', [$roma.cluster_replication_writer.replica_rttable]))
             end
-            res[@stats.ap_str] = "ACTIVATED"
+            res[@stats.my_node_id] = "ACTIVATED"
           when 'false'
-            $roma.cr_writer.replica_mklhash = nil
-            $roma.cr_writer.replica_nodelist = []
-            $roma.cr_writer.replica_rttable = nil
-            $roma.cr_writer.run_replication = false
-            $roma.cr_writer.run_existing_data_replication = false
-            res[@stats.ap_str] = "DEACTIVATED"
+            $roma.cluster_replication_writer.replica_mklhash = nil
+            $roma.cluster_replication_writer.replica_nodelist = []
+            $roma.cluster_replication_writer.replica_rttable = nil
+            $roma.cluster_replication_writer.run_replication = false
+            $roma.cluster_replication_writer.run_existing_data_replication = false
+            res[@stats.my_node_id] = "DEACTIVATED"
           end
         }
         send_data("#{res}\r\n")
@@ -283,21 +283,21 @@ module Roma
         Timeout.timeout(1){
           case s[1]
           when 'true'
-            $roma.cr_writer.update_mklhash(s[2])
-            $roma.cr_writer.update_nodelist(s[2])
-            $roma.cr_writer.update_rttable(s[2])
-            $roma.cr_writer.run_replication = true
+            $roma.cluster_replication_writer.update_mklhash(s[2])
+            $roma.cluster_replication_writer.update_nodelist(s[2])
+            $roma.cluster_replication_writer.update_rttable(s[2])
+            $roma.cluster_replication_writer.run_replication = true
             if s[3] == 'all'
-              $roma.cr_writer.run_existing_data_replication = true
-              Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process', [$roma.cr_writer.replica_rttable]))
+              $roma.cluster_replication_writer.run_existing_data_replication = true
+              Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process', [$roma.cluster_replication_writer.replica_rttable]))
             end
             send_data("ACTIVATED\r\n")
           when 'false'
-            $roma.cr_writer.replica_mklhash = nil
-            $roma.cr_writer.replica_nodelist = []
-            $roma.cr_writer.replica_rttable = nil
-            $roma.cr_writer.run_replication = false
-            $roma.cr_writer.run_existing_data_replication = false
+            $roma.cluster_replication_writer.replica_mklhash = nil
+            $roma.cluster_replication_writer.replica_nodelist = []
+            $roma.cluster_replication_writer.replica_rttable = nil
+            $roma.cluster_replication_writer.run_replication = false
+            $roma.cluster_replication_writer.run_existing_data_replication = false
             send_data("DEACTIVATED\r\n")
           end
         }
@@ -313,7 +313,7 @@ module Roma
           return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n")
         end
         res = broadcast_cmd("rdcnice #{s[1]}\r\n")
-        res[@stats.ap_str] = dcnice(s[1].to_i)
+        res[@stats.my_node_id] = dcnice(s[1].to_i)
         send_data("#{res}\r\n")
       end
 
@@ -328,17 +328,17 @@ module Roma
       def ev_restart(s)
         res = broadcast_cmd("rrestart\r\n")
         $roma.eventloop = true
-        @rttable.enabled_failover = false
+        @routing_table.enabled_failover = false
         Messaging::ConPool.instance.close_all
         Event::EMConPool::instance.close_all
         EventMachine::stop_event_loop
-        res[@stats.ap_str] = "RESTARTED"
+        res[@stats.my_node_id] = "RESTARTED"
         send_data("#{res}\r\n")
       end
 
       def ev_rrestart(s)
         $roma.eventloop = true
-        @rttable.enabled_failover = false
+        @routing_table.enabled_failover = false
         Messaging::ConPool.instance.close_all
         Event::EMConPool::instance.close_all
         EventMachine::stop_event_loop
@@ -372,12 +372,12 @@ module Roma
       # out <key> <vn>
       def ev_out(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
+        hname ||= @default_hash_name
         if s.length >= 3
           vn = s[2].to_i
         else
-          d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-          vn = @rttable.get_vnode_id(d)
+          d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+          vn = @routing_table.get_vnode_id(d)
         end
         res = @storages[hname].out(vn, key, 0)
         @stats.out_message_count += 1
@@ -393,12 +393,12 @@ module Roma
       # <data block>\r\n
       def ev_rset(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
+        hname ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         data = read_bytes(s[5].to_i)
         read_bytes(2)
-        vn = @rttable.get_vnode_id(d)
+        vn = @routing_table.get_vnode_id(d)
         unless @storages.key?(hname)
           send_data("SERVER_ERROR #{hname} does not exists.\r\n")
           return
@@ -416,12 +416,12 @@ module Roma
       # <compressed data block>\r\n
       def ev_rzset(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
+        hname ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         zdata = read_bytes(s[5].to_i)
         read_bytes(2)
-        vn = @rttable.get_vnode_id(d)
+        vn = @routing_table.get_vnode_id(d)
         unless @storages.key?(hname)
           send_data("SERVER_ERROR #{hname} does not exists.\r\n")
           return
@@ -444,7 +444,7 @@ module Roma
       def ev_forcedly_start(s)
         @log.info("ROMA forcedly start.")
         AsyncProcess::queue.clear
-        @rttable.enabled_failover = true
+        @routing_table.enabled_failover = true
         Command::Receiver::mk_evlist
         $roma.startup = false
         send_data("STARTED\r\n")
@@ -459,15 +459,15 @@ module Roma
         if s[1] == 'on'
           Messaging::ConPool.instance.close_all
           Event::EMConPool::instance.close_all
-          @rttable.enabled_failover = true
+          @routing_table.enabled_failover = true
           @log.info("failover enabled")
-          res[@stats.ap_str] = "ENABLED"
+          res[@stats.my_node_id] = "ENABLED"
         elsif s[1] == 'off'
-          @rttable.enabled_failover = false
+          @routing_table.enabled_failover = false
           @log.info("failover disabled")
-          res[@stats.ap_str] = "DISABLED"
+          res[@stats.my_node_id] = "DISABLED"
         else
-          res[@stats.ap_str] = "NOTSWITCHED"
+          res[@stats.my_node_id] = "NOTSWITCHED"
         end
         send_data("#{res}\r\n")
       end
@@ -480,11 +480,11 @@ module Roma
         if s[1] == 'on'
           Messaging::ConPool.instance.close_all
           Event::EMConPool::instance.close_all
-          @rttable.enabled_failover = true
+          @routing_table.enabled_failover = true
           @log.info("failover enabled")
           return send_data("ENABLED\r\n")
         elsif s[1] == 'off'
-          @rttable.enabled_failover = false
+          @routing_table.enabled_failover = false
           @log.info("failover disabled")
           return send_data("DISABLED\r\n")
         else
@@ -502,7 +502,7 @@ module Roma
         res = broadcast_cmd("rset_descriptor_table_size #{s[1]}\r\n")
 
         EM.set_descriptor_table_size(s[1].to_i)
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -551,12 +551,12 @@ module Roma
           }
           @stats.latency_check_time_count = s[2].to_i
           @stats.latency_log = true
-          res[@stats.ap_str] = "ACTIVATED"
+          res[@stats.my_node_id] = "ACTIVATED"
         elsif s[1] =="off"
           @stats.latency_check_cmd = [] #reset
           @stats.latency_check_time_count = false
           @stats.latency_log = false
-          res[@stats.ap_str] = "DEACTIVATED"
+          res[@stats.my_node_id] = "DEACTIVATED"
         end
         @stats.latency_data = Hash.new { |hash,key| hash[key] = {}}
         send_data("#{res}\r\n")
@@ -620,7 +620,7 @@ module Roma
         s.each_index {|idx|
           @stats.latency_check_cmd.push(s[idx]) if idx >= 1
         }
-        res[@stats.ap_str] = "SET"
+        res[@stats.my_node_id] = "SET"
         send_data("#{res}\r\n")
       end
 
@@ -667,7 +667,7 @@ module Roma
           @stats.latency_check_cmd.delete(s[idx]) if idx >= 1
           @stats.latency_data.delete(s[idx]) if idx >= 1
         }
-        res[@stats.ap_str] = "DELETED"
+        res[@stats.my_node_id] = "DELETED"
         send_data("#{res}\r\n")
       end
 
@@ -707,7 +707,7 @@ module Roma
           @stats.latency_check_time_count = false
           @stats.latency_log = false
         end
-        res[@stats.ap_str] = "CHANGED"
+        res[@stats.my_node_id] = "CHANGED"
         send_data("#{res}\r\n")
       end
 
@@ -736,9 +736,9 @@ module Roma
         res = broadcast_cmd("rset_continuous_limit #{s[1]}\r\n")
 
         if Event::Handler.set_ccl(s[1])
-          res[@stats.ap_str] = "STORED"
+          res[@stats.my_node_id] = "STORED"
         else
-          res[@stats.ap_str] = "NOT_STORED"
+          res[@stats.my_node_id] = "NOT_STORED"
         end
         send_data("#{res}\r\n")
       end
@@ -766,7 +766,7 @@ module Roma
 
         res = broadcast_cmd("rset_connection_pool_maxlength #{s[1]}\r\n")
         Messaging::ConPool.instance.maxlength = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -795,7 +795,7 @@ module Roma
 
         res = broadcast_cmd("rset_emconnection_pool_maxlength #{s[1]}\r\n")
         Event::EMConPool.instance.maxlength = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -821,7 +821,7 @@ module Roma
 
         res = broadcast_cmd("rset_accepted_connection_expire_time #{s[1]}\r\n")
         Event::Handler::connection_expire_time = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -843,7 +843,7 @@ module Roma
 
         res = broadcast_cmd("rset_connection_pool_expire_time #{s[1]}\r\n")
         Messaging::ConPool.instance.expire_time = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -869,7 +869,7 @@ module Roma
         end
         res = broadcast_cmd("rset_emconnection_pool_expire_time #{s[1]}\r\n")
         Event::EMConPool::instance.expire_time = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -892,13 +892,13 @@ module Roma
         if s[1] == 'on' || s[1] == 'true'
           DNSCache.instance.enable_dns_cache
           @log.info("DNS caching enabled")
-          res[@stats.ap_str] = "ENABLED"
+          res[@stats.my_node_id] = "ENABLED"
         elsif s[1] == 'off' || s[1] == 'false'
           DNSCache.instance.disable_dns_cache
           @log.info("DNS caching disabled")
-          res[@stats.ap_str] = "DISABLED"
+          res[@stats.my_node_id] = "DISABLED"
         else
-          res[@stats.ap_str] = "NOTSWITCHED"
+          res[@stats.my_node_id] = "NOTSWITCHED"
         end
         send_data("#{res}\r\n")
       end
@@ -934,7 +934,7 @@ module Roma
 
         res = broadcast_cmd("rset_hilatency_warn_time #{s[1]}\r\n")
         @stats.hilatency_warn_time = s[1].to_f
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -960,7 +960,7 @@ module Roma
         end
         res = broadcast_cmd("rset_routing_trans_timeout #{s[1]}\r\n")
         @stats.routing_trans_timeout = s[1].to_f
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
 
         send_data("#{res}\r\n")
       end
@@ -988,7 +988,7 @@ module Roma
         end
         res = broadcast_cmd("rset_spushv_read_timeout #{s[1]}\r\n")
         @stats.spushv_read_timeout = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -1014,7 +1014,7 @@ module Roma
         end
         res = broadcast_cmd("rset_reqpushv_timeout_count #{s[1]}\r\n")
         @stats.reqpushv_timeout_count = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -1040,7 +1040,7 @@ module Roma
         end
         res = broadcast_cmd("rset_spushv_klength_warn #{s[1]}\r\n")
         @stats.spushv_klength_warn = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -1066,7 +1066,7 @@ module Roma
         end
         res = broadcast_cmd("rset_spushv_vlength_warn #{s[1]}\r\n")
         @stats.spushv_vlength_warn = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -1099,7 +1099,7 @@ module Roma
 
           res = broadcast_cmd("rwb_command_map #{s[1..-1].join}\r\n")
           @stats.wb_command_map = map
-          res[@stats.ap_str] = map.inspect
+          res[@stats.my_node_id] = map.inspect
           send_data("#{res}\r\n")
         else
           send_data("CLIENT_ERROR hash string parse error\r\n")
@@ -1134,7 +1134,7 @@ module Roma
 
         res = broadcast_cmd("rset_wb_shift_size #{s[1]}\r\n")
         $roma.wb_writer.shift_size = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -1219,7 +1219,7 @@ module Roma
         end
         res = broadcast_cmd("rset_gui_last_snapshot #{s[1]}\r\n")
         @stats.gui_last_snapshot = s[1]
-        res[@stats.ap_str] = "PUSHED"
+        res[@stats.my_node_id] = "PUSHED"
         send_data("#{res}\r\n")
       end
 
@@ -1242,7 +1242,7 @@ module Roma
         end
 
         # failover check
-        unless @rttable.enabled_failover
+        unless @routing_table.enabled_failover
           return send_data("CLIENT_ERROR failover disable now!!\r\n")
         end
 
@@ -1264,7 +1264,7 @@ module Roma
         res = broadcast_cmd("rset_log_shift_size #{s[1]}\r\n")
         @log.set_log_shift_size(s[1].to_i)
         @stats.log_shift_size = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -1297,7 +1297,7 @@ module Roma
           @log.set_log_shift_age(s[1])
           @stats.log_shift_age = s[1]
         end
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 

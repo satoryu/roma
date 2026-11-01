@@ -86,13 +86,13 @@ class CommandTestHarness
     end
 
     def update_rttable(nid)
-      @replica_rttable = "rttable of #{nid}"
+      @replica_rttable = "routing_table of #{nid}"
     end
   end
 
   # Stands in for $roma, the running romad.
   class Romad
-    attr_accessor :wb_writer, :cr_writer, :eventloop, :startup
+    attr_accessor :wb_writer, :cluster_replication_writer, :eventloop, :startup
     # Write-behind files open now, by hash name.
     attr_reader :wb_current_files, :rotated
     # How many times the storage clean up was stopped.
@@ -100,7 +100,7 @@ class CommandTestHarness
 
     def initialize
       @wb_writer = WriteBehindWriter.new(nil)
-      @cr_writer = ClusterReplicationWriter.new
+      @cluster_replication_writer = ClusterReplicationWriter.new
       @startup = true
       @wb_current_files = {}
       @rotated = []
@@ -125,11 +125,11 @@ class CommandTestHarness
     end
 
     def wb_get_stat
-      { 'write-behind.run_replication' => @cr_writer.run_replication }
+      { 'write-behind.run_replication' => @cluster_replication_writer.run_replication }
     end
   end
 
-  attr_reader :stats, :rttable, :log, :romad, :broadcasts, :storage, :storages
+  attr_reader :stats, :routing_table, :log, :romad, :broadcasts, :storage, :storages
   # How the last command closed the connection: :after_writing, :now or nil.
   attr_reader :closed
   # What the other node answers to relayed commands.
@@ -138,9 +138,9 @@ class CommandTestHarness
   def initialize
     @stats = Roma::Stats.send(:new)
     @stats.address, @stats.port = NID.split('_')
-    @nid = NID
+    @my_node_id = NID
     @addr = CLIENT_ADDR
-    @defhash = 'roma'
+    @default_hash_name = 'roma'
     @log = Log.new
     @romad = Romad.new
     @dir = Dir.mktmpdir('roma_command')
@@ -149,15 +149,15 @@ class CommandTestHarness
     @storage.storage_path = @dir
     @storage.st_class = Roma::Storage::HashStorage
     @storage.opendb
-    @storages = { @defhash => @storage }
+    @storages = { @default_hash_name => @storage }
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [NID, OTHER_NID])
-    @rttable = Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route'))
+    @routing_table = Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route'))
     @broadcasts = []
     @relay_reply = 'STORED'
   end
 
   def close
-    @rttable.close_log
+    @routing_table.close_log
     FileUtils.rm_rf(@dir)
   end
 

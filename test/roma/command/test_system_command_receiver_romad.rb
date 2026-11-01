@@ -87,7 +87,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   end
 
   def test_switch_replication_on_and_off
-    cr = @conn.romad.cr_writer
+    cr = @conn.romad.cluster_replication_writer
     @conn.relay_reply = 'ACTIVATED'
     assert_equal replies('ACTIVATED', other: 'ACTIVATED'), @conn.request('switch_replication true localhost_21211')
     assert_equal ["rswitch_replication true localhost_21211 \r\n"], @conn.broadcasts
@@ -108,15 +108,15 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   def test_switch_replication_with_existing_data
     @conn.relay_reply = 'ACTIVATED'
     @conn.request('switch_replication true localhost_21211 all')
-    assert_true @conn.romad.cr_writer.run_existing_data_replication
+    assert_true @conn.romad.cluster_replication_writer.run_existing_data_replication
     assert_equal 1, Roma::AsyncProcess.queue.size
     msg = Roma::AsyncProcess.queue.pop
     assert_equal 'start_replicate_existing_data_process', msg.event
-    assert_equal ['rttable of localhost_21211'], msg.args
+    assert_equal ['routing_table of localhost_21211'], msg.args
   end
 
   def test_rswitch_replication
-    cr = @conn.romad.cr_writer
+    cr = @conn.romad.cluster_replication_writer
     assert_equal "ACTIVATED\r\n", @conn.request('rswitch_replication true localhost_21211')
     assert_true cr.run_replication
     assert_equal "DEACTIVATED\r\n", @conn.request('rswitch_replication false')
@@ -132,7 +132,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
     assert_equal reply, @conn.request("switch_replication #{args}")
     assert_equal reply, @conn.request("rswitch_replication #{args}")
     assert_equal [], @conn.broadcasts
-    assert_false @conn.romad.cr_writer.run_replication
+    assert_false @conn.romad.cluster_replication_writer.run_replication
   end
 
   # priority => [stream_copy_wait, each_vn_dump_sleep, each_vn_dump_sleep_count]
@@ -159,7 +159,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   end
 
   def test_out
-    vn = @conn.rttable.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.rttable.hash_space_size)
+    vn = @conn.routing_table.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.routing_table.hash_space_size)
     @conn.storage.set(vn, 'key1', 0, 0x7fffffff, 'value1')
     assert_equal "DELETED\r\n", @conn.request('out key1')
     assert_nil @conn.storage.get(vn, 'key1', 0)
@@ -169,7 +169,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
 
   def test_rset
     assert_equal "STORED\r\n", @conn.request('rset key1 0 1 2147483647 6', 'value1')
-    vn = @conn.rttable.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.rttable.hash_space_size)
+    vn = @conn.routing_table.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.routing_table.hash_space_size)
     assert_equal 'value1', @conn.storage.get(vn, 'key1', 0)
     assert_equal 1, @conn.stats.redundant_count
   end
@@ -182,7 +182,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   def test_rzset
     zdata = Zlib::Deflate.deflate('value1')
     assert_equal "STORED\r\n", @conn.request("rzset key1 0 1 2147483647 #{zdata.bytesize}", zdata)
-    vn = @conn.rttable.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.rttable.hash_space_size)
+    vn = @conn.routing_table.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.routing_table.hash_space_size)
     assert_equal 'value1', @conn.storage.get(vn, 'key1', 0)
     assert_equal "NOT_STORED\r\n", @conn.request('rzset key2 0 1 0 6', 'broken')
   end
@@ -224,7 +224,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
 
   def test_set_cleanup_regexp
     assert_equal "CLIENT_ERROR failover disable now!!\r\n", @conn.request('set_cleanup_regexp ^tmp')
-    @conn.rttable.enabled_failover = true
+    @conn.routing_table.enabled_failover = true
     assert_equal "STORED\r\n", @conn.request('set_cleanup_regexp ^tmp')
     assert_equal '^tmp', @conn.storage.cleanup_regexp
     assert_equal "CLIENT_ERROR number of arguments 0 to 1\r\n", @conn.request('set_cleanup_regexp')
@@ -233,7 +233,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   def test_forcedly_start
     Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_join_process'))
     assert_equal "STARTED\r\n", @conn.request('forcedly_start')
-    assert_true @conn.rttable.enabled_failover
+    assert_true @conn.routing_table.enabled_failover
     assert_false @conn.romad.startup
     assert_true Roma::AsyncProcess.queue.empty?
   end

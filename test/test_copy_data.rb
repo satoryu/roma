@@ -25,13 +25,13 @@ class CopyDataTest < Test::Unit::TestCase
     keys = []
     n = 1000
     n.times do |i|
-      d = Digest::SHA1.hexdigest(i.to_s).hex % @rc.rttable.hash_space_size
-      vn = @rc.rttable.get_vnode_id(d)
+      d = Digest::SHA1.hexdigest(i.to_s).hex % @rc.routing_table.hash_space_size
+      vn = @rc.routing_table.get_vnode_id(d)
       if vn == 0
         keys << i.to_s
       end
     end
-    nid = @rc.rttable.search_nodes(0)
+    nid = @rc.routing_table.search_nodes(0)
 
     push_a_vnode_stream('roma', 0, nid[0], keys)
 

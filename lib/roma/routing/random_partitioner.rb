@@ -1,19 +1,19 @@
 module Roma
   module Routing
     module RandomPartitioner
-      def exclude_nodes(ap_str, rep_host)
+      def exclude_nodes(my_node_id, rep_host)
         exclude_nodes = nodes
         if rep_host
-          exclude_nodes = [ap_str]
+          exclude_nodes = [my_node_id]
         else
-          myhost = ap_str.split(/[:_]/)[0]
+          myhost = my_node_id.split(/[:_]/)[0]
           exclude_nodes.delete_if { |nid| nid.split(/[:_]/)[0] != myhost }
         end
         exclude_nodes
       end
 
-      def exclude_nodes_for_join(ap_str, _rep_host)
-        [ap_str]
+      def exclude_nodes_for_join(my_node_id, _rep_host)
+        [my_node_id]
       end
 
       alias_method :exclude_nodes_for_recover, :exclude_nodes
@@ -86,23 +86,23 @@ module Roma
         end
       end
 
-      def select_node_for_release(ap_str, rep_host, nids)
+      def select_node_for_release(my_node_id, rep_host, nids)
         buf = nodes
 
         unless rep_host
           deny_hosts = []
           nids.each do |nid|
             host = nid.split(/[:_]/)[0]
-            deny_hosts << host if host != ap_str.split(/[:_]/)[0]
+            deny_hosts << host if host != my_node_id.split(/[:_]/)[0]
           end
           buf.delete_if { |nid| deny_hosts.include?(nid.split(/[:_]/)[0]) }
         else
           nids.each { |nid| buf.delete(nid) }
         end
 
-        buf.delete_if { |instance| instance == ap_str }
+        buf.delete_if { |instance| instance == my_node_id }
         to_nid = buf.sample
-        new_nids = nids.map { |n| n == ap_str ? to_nid : n }
+        new_nids = nids.map { |n| n == my_node_id ? to_nid : n }
         [to_nid, new_nids]
       end
 

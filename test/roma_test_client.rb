@@ -54,7 +54,7 @@ class RomaTestClient
     end
   end
 
-  attr_accessor :rttable, :default_hash_name
+  attr_accessor :routing_table, :default_hash_name
 
   def initialize(nodes)
     @default_hash_name = 'roma'
@@ -70,18 +70,18 @@ class RomaTestClient
     @used_keys.clear
   end
 
-  def update_rttable(nodes = @rttable.nodes)
+  def update_rttable(nodes = @routing_table.nodes)
     nodes.each do |node|
       routing_data = fetch_routing_data(node)
       if routing_data
-        @rttable = RoutingTable.new(routing_data)
+        @routing_table = RoutingTable.new(routing_data)
         return
       end
     end
     raise 'failed to get a routing table'
   end
 
-  def stats(filter: '', node: @rttable.nodes.first)
+  def stats(filter: '', node: @routing_table.nodes.first)
     lines = send_command(node, "stats #{filter}", nil, :multiplelines_receiver)
     lines.each_with_object({}) do |line, h|
       k, v = line.split(' ', 2)
@@ -139,7 +139,7 @@ class RomaTestClient
 
   def gets(keys, raw = false)
     res = {}
-    keys.group_by { |key| @rttable.search_node(key)[0] }.each do |nid, ks|
+    keys.group_by { |key| @routing_table.search_node(key)[0] }.each do |nid, ks|
       cmd = "gets #{ks.map { |key| k(key) }.join(' ')}"
       res.merge!(send_command(nid, cmd, nil, :value_hash_receiver))
     end
@@ -416,7 +416,7 @@ class RomaTestClient
 
   def request(key, cmd, value = nil, receiver = :oneline_receiver)
     @used_keys << key unless @used_keys.include?(key)
-    nid, _d = @rttable.search_node(key)
+    nid, _d = @routing_table.search_node(key)
     send_command(nid, cmd, value, receiver)
   end
 

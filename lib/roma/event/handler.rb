@@ -66,7 +66,7 @@ module Roma
       attr_reader :last_access
       attr_reader :addr, :port
 
-      def initialize(storages, rttable)
+      def initialize(storages, routing_table)
         @rbuf=''
         unless has_event?
           public_methods.each{|m|
@@ -80,7 +80,7 @@ module Roma
         @th2 = 200
 
         @storages = storages
-        @rttable = rttable
+        @routing_table = routing_table
         @log = Roma::Logging::RLogger.instance
         @last_access = Time.now
       end

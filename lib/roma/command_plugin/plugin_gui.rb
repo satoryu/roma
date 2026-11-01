@@ -11,7 +11,7 @@ module Roma
         routing_path  = get_config_stat["config.routing.path"]
         contents = String.new
         Dir.glob("#{routing_path}/*").each{|fname|
-          contents << File.read(fname) if !FileTest::directory?(fname) && fname =~ /#{@stats.ap_str}\.route*/
+          contents << File.read(fname) if !FileTest::directory?(fname) && fname =~ /#{@stats.my_node_id}\.route*/
         }
         routing_list = contents.scan(/[-\.a-zA-Z\d]+_[\d]+/).uniq.sort
         routing_list.each{|routing|
@@ -41,7 +41,7 @@ module Roma
           send_data("STARTED\r\n")
         rescue
           @stats.gui_run_gather_logs = false
-          @rttable.logs = []
+          @routing_table.logs = []
           send_data("CLIENT_ERROR\r\n")
         end
       end
@@ -51,12 +51,12 @@ module Roma
         if @stats.gui_run_gather_logs
           send_data("Not finished gathering\r\n")
         else
-          @rttable.logs.each_with_index{|log, index|
+          @routing_table.logs.each_with_index{|log, index|
             send_data("#{log}\r\n")
             sleep @stats.stream_show_wait if index % 10 == 0
           }
           send_data("END\r\n")
-          @rttable.logs.clear
+          @routing_table.logs.clear
         end
       end
 
