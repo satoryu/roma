@@ -47,7 +47,6 @@ Gem::Specification.new do |s|
   s.add_dependency 'logger'
   s.add_dependency 'thor', '~> 1.3'
   s.add_dependency 'readline'
-  #s.add_dependency 'levenshtein', '~> 0.2.2'
 
   s.add_development_dependency 'ffi'
   s.add_development_dependency 'test-unit'

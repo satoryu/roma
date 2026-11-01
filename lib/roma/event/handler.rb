@@ -4,7 +4,6 @@
 require 'eventmachine'
 require 'roma/event/con_pool'
 require 'roma/event/jaro_winkler'
-#require 'roma/event/levenshtein'
 require 'roma/logging/rlogger'
 require 'roma/stats'
 require 'roma/storage/basic_storage'
