@@ -2,6 +2,7 @@ require 'thread'
 require 'digest/sha1'
 require 'timeout'
 require 'roma/async_message'
+require 'roma/configuration'
 
 module Roma
 
@@ -693,7 +694,7 @@ module Roma
           end
         end
       end
-      t = Time.now.to_i - Roma::Config::STORAGE_DELMARK_EXPTIME
+      t = Time.now.to_i - Roma.config.storage.delmark_expire_time
       count = 0
       @storages.each_pair do |hname, st|
         break unless @stats.do_clean_up?
@@ -880,7 +881,7 @@ module Roma
     def get_routing_event
       @log.info("#{__method__}:start.")
 
-      routing_path = Config::RTTABLE_PATH
+      routing_path = Roma.config.routing.path
       # The storage files may be in a directory named like the routing logs.
       f_list = Dir.glob("#{routing_path}/#{@stats.ap_str}*").select { |f| File.file?(f) }
 
@@ -915,7 +916,7 @@ module Roma
     def get_logs(args)
       @log.debug("#{__method__}:start.")
 
-      log_path =  Config::LOG_PATH
+      log_path =  Roma.config.log.path
       log_file = "#{log_path}/#{@stats.ap_str}.log"
 
       target_logs = []

@@ -12,7 +12,7 @@ class RomadSignalTest < Test::Unit::TestCase
   STOP_TIMEOUT_SEC = 10
 
   def setup
-    FileUtils.rm_rf(DEFAULT_NODES.map { |node| "#{Roma::Config::STORAGE_PATH}/#{node}" })
+    FileUtils.rm_rf(DEFAULT_NODES.map { |node| "#{Roma.config.storage.path}/#{node}" })
     system("#{ruby_path} #{roma_path} mkroute #{DEFAULT_NODES.join(' ')} -d 3 --replication_in_host >> #{SHELL_LOG} 2>&1")
     @pids = []
   end
@@ -91,7 +91,7 @@ class RomadSignalTest < Test::Unit::TestCase
   end
 
   def stopped_logs(node)
-    File.read("#{Roma::Config::LOG_PATH}/#{node}.log").scan("Romad has stopped: #{node}").size
+    File.read("#{Roma.config.log.path}/#{node}.log").scan("Romad has stopped: #{node}").size
   end
 
   data('INT' => [:INT, false], 'TERM' => [:TERM, false],

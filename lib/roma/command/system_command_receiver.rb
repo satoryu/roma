@@ -1,4 +1,5 @@
 require 'roma/async_process'
+require 'roma/configuration'
 
 module Roma
   module Command
@@ -1359,23 +1360,20 @@ module Roma
       end
 
       def get_config_stat
+        config = Roma.config
         ret = {}
-        ret['config.DEFAULT_LOST_ACTION'] = Config::DEFAULT_LOST_ACTION
-        ret['config.LOG_SHIFT_AGE'] = Config::LOG_SHIFT_AGE
-        ret['config.LOG_SHIFT_SIZE'] = Config::LOG_SHIFT_SIZE
-        ret['config.LOG_PATH'] = File.expand_path(Config::LOG_PATH)
-        ret['config.RTTABLE_PATH'] = File.expand_path(Config::RTTABLE_PATH)
-        ret['config.STORAGE_DELMARK_EXPTIME'] = Config::STORAGE_DELMARK_EXPTIME
-        if Config.const_defined?(:STORAGE_EXCEPTION_ACTION)
-          ret['config.STORAGE_EXCEPTION_ACTION'] = Config::STORAGE_EXCEPTION_ACTION
-        end
-        ret['config.DATACOPY_STREAM_COPY_WAIT_PARAM'] = Config::DATACOPY_STREAM_COPY_WAIT_PARAM
-        ret['config.PLUGIN_FILES'] = Config::PLUGIN_FILES.inspect
-        ret['config.WRITEBEHIND_PATH'] = File.expand_path(Config::WRITEBEHIND_PATH)
-        ret['config.WRITEBEHIND_SHIFT_SIZE'] = Config::WRITEBEHIND_SHIFT_SIZE
-        if Config.const_defined?(:CONNECTION_DESCRIPTOR_TABLE_SIZE)
-          ret['config.CONNECTION_DESCRIPTOR_TABLE_SIZE'] = Config::CONNECTION_DESCRIPTOR_TABLE_SIZE
-        end
+        ret['config.DEFAULT_LOST_ACTION'] = config.routing.lost_action
+        ret['config.LOG_SHIFT_AGE'] = config.log.shift_age
+        ret['config.LOG_SHIFT_SIZE'] = config.log.shift_size
+        ret['config.LOG_PATH'] = File.expand_path(config.log.path)
+        ret['config.RTTABLE_PATH'] = File.expand_path(config.routing.path)
+        ret['config.STORAGE_DELMARK_EXPTIME'] = config.storage.delmark_expire_time
+        ret['config.STORAGE_EXCEPTION_ACTION'] = config.storage.exception_action
+        ret['config.DATACOPY_STREAM_COPY_WAIT_PARAM'] = config.data_copy.stream_copy_wait_param
+        ret['config.PLUGIN_FILES'] = config.plugins.inspect
+        ret['config.WRITEBEHIND_PATH'] = File.expand_path(config.write_behind.path)
+        ret['config.WRITEBEHIND_SHIFT_SIZE'] = config.write_behind.shift_size
+        ret['config.CONNECTION_DESCRIPTOR_TABLE_SIZE'] = config.connection.descriptor_table_size
         ret
       end
 

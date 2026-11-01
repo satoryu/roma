@@ -4,7 +4,7 @@ require 'tool_test_helper'
 require 'roma/routing/routing_data'
 require 'roma/storage/ruby_hash_storage'
 require 'roma/tools/recover_lost'
-require 'roma/config'
+require 'roma/configuration'
 
 class RecoverLostTest < Test::Unit::TestCase
   include ToolTestHelper

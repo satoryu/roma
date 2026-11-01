@@ -79,13 +79,13 @@ class RomadOptionsTest < Test::Unit::TestCase
     super
     @romad = Roma::Romad.allocate
     set(stats: Roma::Stats.send(:new))
-    # options requires the config file; this one is new, so it is loaded.
     @config = File.join(@dir, 'config.rb')
-    File.write(@config, "# Roma::Config is loaded already.\n")
+    File.write(@config, "Roma.configure { |config| config.name = 'test' }\n")
   end
 
   def teardown
     @romad = nil
+    Roma.reset_config
     super
   end
 
@@ -109,8 +109,8 @@ class RomadOptionsTest < Test::Unit::TestCase
   def test_defaults
     parse(['roma0'])
     assert_equal 'roma0', stats.address
-    assert_equal Roma::Config::DEFAULT_PORT.to_s, stats.port
-    assert_equal Roma::Config::DEFAULT_NAME, stats.name
+    assert_equal Roma.config.port.to_s, stats.port
+    assert_equal 'test', stats.name
     assert_equal File.expand_path(@config), stats.config_path
     assert_false stats.daemon
     assert_false stats.verbose
@@ -147,10 +147,20 @@ class RomadOptionsTest < Test::Unit::TestCase
     assert_match(/usage:/, err)
   end
 
-  def test_config_loaded_already
-    parse(['roma0'])
-    @romad.instance_variable_set(:@stats, Roma::Stats.send(:new))
-    assert_raise(RuntimeError) { call(:options, ['--config', @config, 'roma0']) }
+  # Without --config, the settings are kept.
+  def test_without_config
+    Roma.configure { |config| config.port = 11300 }
+    call(:options, ['roma0'])
+    assert_equal '11300', stats.port
+    assert_nil stats.config_path
+  end
+
+  def test_wrong_config
+    File.write(@config, "Roma.configure { |config| config.port = 0 }\n")
+    err = capture_stderr do
+      assert_raise(SystemExit) { call(:options, ['--config', @config, 'roma0']) }
+    end
+    assert_equal "port should be a valid Integer: 0\n", err
   end
 
   def capture_stdout
@@ -179,7 +189,7 @@ class RomadInitializeTest < Test::Unit::TestCase
     super
     @romad = Roma::Romad.allocate
     stats = Roma::Stats.send(:new)
-    # Files are made in Roma::Config::RTTABLE_PATH and STORAGE_PATH, named
+    # Files are made in Roma.config.routing.path and STORAGE_PATH, named
     # after this node.
     stats.address = 'romadtest'
     stats.port = Process.pid.to_s
@@ -200,7 +210,7 @@ class RomadInitializeTest < Test::Unit::TestCase
   # The routing file of this node, and its log, which the routing table
   # writes next to it.
   def routing_file
-    fname = "#{Roma::Config::RTTABLE_PATH}/#{ap}.route"
+    fname = "#{Roma.config.routing.path}/#{ap}.route"
     @files.push(fname, "#{fname}.1")
     fname
   end
@@ -211,9 +221,9 @@ class RomadInitializeTest < Test::Unit::TestCase
 
   def test_initialize_stats
     call(:initialize_stats)
-    assert_equal Roma::Config::LOG_SHIFT_AGE, @romad.stats.log_shift_age if defined?(Roma::Config::LOG_SHIFT_AGE)
-    assert_equal Roma::Config::LOG_LEVEL, @romad.stats.log_level if defined?(Roma::Config::LOG_LEVEL)
-    assert_equal Roma::Config::STORAGE_CLEAN_UP_INTERVAL, @romad.stats.clean_up_interval
+    assert_equal Roma.config.log.shift_age, @romad.stats.log_shift_age
+    assert_equal Roma.config.log.level, @romad.stats.log_level
+    assert_equal Roma.config.storage.clean_up_interval, @romad.stats.clean_up_interval
   end
 
   def test_initialize_rttable
@@ -221,9 +231,9 @@ class RomadInitializeTest < Test::Unit::TestCase
     call(:initialize_rttable)
     rttable = @romad.rttable
     assert_equal [OTHER_NID, ap].sort, rttable.nodes.sort
-    assert_equal Roma::Config::DEFAULT_LOST_ACTION, rttable.lost_action
-    assert_equal Roma::Config::ROUTING_FAIL_CNT_THRESHOLD, rttable.fail_cnt_threshold
-    assert_equal Roma::Config::ROUTING_EVENT_LIMIT_LINE, rttable.event_limit_line
+    assert_equal Roma.config.routing.lost_action, rttable.lost_action
+    assert_equal Roma.config.routing.fail_cnt_threshold, rttable.fail_cnt_threshold
+    assert_equal Roma.config.routing.event_limit_line, rttable.event_limit_line
     assert_false rttable.enabled_failover
     assert_equal 'start_get_routing_event', Roma::AsyncProcess.queue.pop.event
   end
@@ -256,7 +266,7 @@ class RomadInitializeTest < Test::Unit::TestCase
   def test_initialize_storages
     save_routing([ap, OTHER_NID])
     call(:initialize_rttable)
-    path = "#{Roma::Config::STORAGE_PATH}/#{ap}"
+    path = "#{Roma.config.storage.path}/#{ap}"
     @files << path
     call(:initialize_storages)
     assert_equal ['roma'], @romad.storages.keys

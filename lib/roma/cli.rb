@@ -67,7 +67,6 @@ module Roma
     option :with_menu, aliases: '-m', type: :boolean, default: false,
                        desc: 'Show the menu to choose what to set'
     def mkconfig
-      require 'roma/config'
       require 'roma/tools/mkconfig'
       Roma::Tools::Mkconfig.new.run(options[:with_menu] ? :with_menu : :no_menu)
     end

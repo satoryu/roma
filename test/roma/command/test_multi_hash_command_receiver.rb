@@ -6,10 +6,10 @@ class MultiHashCommandReceiverTest < Test::Unit::TestCase
 
   def setup
     super
-    # Hashes are made in Roma::Config::STORAGE_PATH, named after this node.
+    # Hashes are made in Roma.config.storage.path, named after this node.
     @conn.stats.address = 'multihashcommandtest'
     @conn.stats.port = Process.pid.to_s
-    @path = "#{Roma::Config::STORAGE_PATH}/#{@conn.stats.ap_str}"
+    @path = "#{Roma.config.storage.path}/#{@conn.stats.ap_str}"
   end
 
   def teardown

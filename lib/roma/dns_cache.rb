@@ -1,4 +1,5 @@
 require 'singleton'
+require 'roma/configuration'
 
 module Roma
   class DNSCache
@@ -6,10 +7,7 @@ module Roma
 
     def initialize
       @@addrs = {}
-      @@enabled_caching = false
-      if Config.const_defined?(:DNS_CACHING)
-        @@enabled_caching = Config::DNS_CACHING
-      end
+      @@enabled_caching = Roma.config.connection.dns_caching
     end
 
     def resolve_name(host)

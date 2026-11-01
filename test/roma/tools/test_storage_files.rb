@@ -1,7 +1,7 @@
 require 'test_helper'
 require 'tool_test_helper'
 require 'roma/storage/ruby_hash_storage'
-require 'roma/config'
+require 'roma/configuration'
 require 'roma/tools/storage_files'
 
 class StorageFilesTest < Test::Unit::TestCase

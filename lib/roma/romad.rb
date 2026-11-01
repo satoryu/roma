@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 require 'optparse'
 require 'roma/version'
+require 'roma/configuration'
 require 'roma/stats'
 require 'roma/command_plugin'
 require 'roma/async_process'
@@ -45,26 +46,6 @@ module Roma
     end
 
     def start
-      # config version check
-      if !Config.const_defined?(:VERSION)
-        @log.error("ROMA FAIL TO BOOT! : config.rb's version is too old.")
-        exit
-      elsif Config::VERSION != Roma::VERSION
-        if /(\d+)\.(\d+)\.(\d+)/ =~ Config::VERSION
-          version_config = ($1.to_i << 16) + ($2.to_i << 8) + $3.to_i
-        end
-        if /(\d+)\.(\d+)\.(\d+)/ =~ Roma::VERSION
-          version_roma = ($1.to_i << 16) + ($2.to_i << 8) + $3.to_i
-        end
-
-        if version_config == version_roma
-          @log.info("This version is development version.")
-        else
-          @log.error("ROMA FAIL TO BOOT! : config.rb's version is differ from current ROMA version.")
-          exit
-        end
-      end
-
       if node_check(@stats.ap_str)
         @log.error("#{@stats.ap_str} is already running.")
         return
@@ -83,12 +64,10 @@ module Roma
       end
 
       # select a kind of system call
-      if Config.const_defined?(:CONNECTION_USE_EPOLL) && Config::CONNECTION_USE_EPOLL
+      if Roma.config.connection.use_epoll
         @log.info("use an epoll")
         EM.epoll
-        if Config.const_defined?(:CONNECTION_DESCRIPTOR_TABLE_SIZE)
-          EM.set_descriptor_table_size(Config::CONNECTION_DESCRIPTOR_TABLE_SIZE)
-        end
+        EM.set_descriptor_table_size(Roma.config.connection.descriptor_table_size)
       else
         @log.info("use a select")
       end
@@ -189,73 +168,40 @@ module Roma
     private
 
     def initialize_stats
-      if Config.const_defined?(:REDUNDANT_ZREDUNDANT_SIZE)
-        @stats.size_of_zredundant = Config::REDUNDANT_ZREDUNDANT_SIZE
-      end
-      if Config.const_defined?(:DATACOPY_STREAM_COPY_WAIT_PARAM)
-        @stats.stream_copy_wait_param = Config::DATACOPY_STREAM_COPY_WAIT_PARAM
-      end
-      if Config.const_defined?(:LOG_STREAM_SHOW_WAIT_PARAM)
-        @stats.stream_show_wait_param = Config::LOG_STREAM_SHOW_WAIT_PARAM
-      end
-      if Config.const_defined?(:WB_COMMAND_MAP)
-        @stats.wb_command_map = Config::WB_COMMAND_MAP
-      end
-      if Config.const_defined?(:STORAGE_CLEAN_UP_INTERVAL)
-        @stats.clean_up_interval = Config::STORAGE_CLEAN_UP_INTERVAL
-      end
-      if Config.const_defined?(:LOG_SHIFT_SIZE)
-        @stats.log_shift_size = Config::LOG_SHIFT_SIZE
-      end
-      if Config.const_defined?(:LOG_SHIFT_AGE)
-        @stats.log_shift_age = Config::LOG_SHIFT_AGE
-      end
-      if Config.const_defined?(:LOG_LEVEL)
-        @stats.log_level = Config::LOG_LEVEL
-      end
+      config = Roma.config
+      @stats.size_of_zredundant = config.redundant.zredundant_size
+      @stats.stream_copy_wait_param = config.data_copy.stream_copy_wait_param
+      @stats.stream_show_wait_param = config.log.stream_show_wait_param
+      @stats.wb_command_map = config.write_behind.command_map
+      @stats.clean_up_interval = config.storage.clean_up_interval
+      @stats.log_shift_size = config.log.shift_size
+      @stats.log_shift_age = config.log.shift_age
+      @stats.log_level = config.log.level
     end
 
     def initialize_connection
-      if Config.const_defined?(:CONNECTION_CONTINUOUS_LIMIT)
-        unless Event::Handler.set_ccl(Config::CONNECTION_CONTINUOUS_LIMIT)
-          raise "config parse error : Config::CONNECTION_CONTINUOUS_LIMIT"
-        end
+      connection = Roma.config.connection
+      unless Event::Handler.set_ccl(connection.continuous_limit)
+        raise "config parse error : connection.continuous_limit"
       end
-
-      if Config.const_defined?(:CONNECTION_EXPTIME)
-        Event::Handler::connection_expire_time = Config::CONNECTION_EXPTIME
-      end
-
-      if Config.const_defined?(:CONNECTION_POOL_EXPTIME)
-        Messaging::ConPool.instance.expire_time = Config::CONNECTION_POOL_EXPTIME
-      end
-
-      if Config.const_defined?(:CONNECTION_POOL_MAX)
-        Messaging::ConPool.instance.maxlength = Config::CONNECTION_POOL_MAX
-      end
-
-      if Config.const_defined?(:CONNECTION_EMPOOL_EXPTIME)
-        Event::EMConPool::instance.expire_time = Config::CONNECTION_EMPOOL_EXPTIME
-      end
-
-      if Config.const_defined?(:CONNECTION_EMPOOL_MAX)
-        Event::EMConPool::instance.maxlength = Config::CONNECTION_EMPOOL_MAX
-      end
+      Event::Handler::connection_expire_time = connection.expire_time
+      Messaging::ConPool.instance.expire_time = connection.pool.expire_time
+      Messaging::ConPool.instance.maxlength = connection.pool.max
+      Event::EMConPool::instance.expire_time = connection.em_pool.expire_time
+      Event::EMConPool::instance.maxlength = connection.em_pool.max
     end
 
     def initialize_wb_writer
       @wb_writer = Roma::WriteBehind::FileWriter.new(
-                                                     Roma::Config::WRITEBEHIND_PATH,
-                                                     Roma::Config::WRITEBEHIND_SHIFT_SIZE,
+                                                     Roma.config.write_behind.path,
+                                                     Roma.config.write_behind.shift_size,
                                                      @log)
 
       @cr_writer = Roma::WriteBehind::StreamWriter.new(@log)
     end
 
     def initialize_plugin
-      return unless Roma::Config.const_defined? :PLUGIN_FILES
-
-      Roma::Config::PLUGIN_FILES.each do|f|
+      Roma.config.plugins.each do|f|
         path = plugin_path(f)
         require path
         @log.info("#{path} loaded")
@@ -301,22 +247,21 @@ module Roma
     end
 
     def initialize_logger
-      Roma::Logging::RLogger.create_singleton_instance("#{Roma::Config::LOG_PATH}/#{@stats.ap_str}.log",
-                                                       Roma::Config::LOG_SHIFT_AGE,
-                                                       Roma::Config::LOG_SHIFT_SIZE)
+      log = Roma.config.log
+      Roma::Logging::RLogger.create_singleton_instance("#{log.path}/#{@stats.ap_str}.log",
+                                                       log.shift_age,
+                                                       log.shift_size)
       @log = Roma::Logging::RLogger.instance
 
-      if Config.const_defined? :LOG_LEVEL
-        case Config::LOG_LEVEL
-        when :debug
-          @log.level = Roma::Logging::RLogger::Severity::DEBUG
-        when :info
-          @log.level = Roma::Logging::RLogger::Severity::INFO
-        when :warn
-          @log.level = Roma::Logging::RLogger::Severity::WARN
-        when :error
-          @log.level = Roma::Logging::RLogger::Severity::ERROR
-        end
+      case log.level
+      when :debug
+        @log.level = Roma::Logging::RLogger::Severity::DEBUG
+      when :info
+        @log.level = Roma::Logging::RLogger::Severity::INFO
+      when :warn
+        @log.level = Roma::Logging::RLogger::Severity::WARN
+      when :error
+        @log.level = Roma::Logging::RLogger::Severity::ERROR
       end
     end
 
@@ -367,14 +312,12 @@ module Roma
       raise OptionParser::ParseError.new if argv.length < 1
       @stats.address = argv[0]
 
-      @stats.config_path = 'roma/config' unless @stats.config_path
+      # Without --config, the settings are the defaults, or what is set in
+      # Roma.configure before.
+      Roma.load_config(@stats.config_path) if @stats.config_path
 
-      unless require @stats.config_path
-        raise "config.rb has already been load outside the romad.rb."
-      end
-
-      @stats.name = Config::DEFAULT_NAME unless @stats.name
-      @stats.port = Config::DEFAULT_PORT.to_s unless @stats.port
+      @stats.name = Roma.config.name unless @stats.name
+      @stats.port = Roma.config.port.to_s unless @stats.port
 
       unless @stats.port =~ /^\d+$/
         raise OptionParser::ParseError.new('Port number is not numeric.')
@@ -388,29 +331,18 @@ module Roma
       $stderr.puts e.message
       $stderr.puts opts.help
       exit 1
+    rescue Configuration::Error => e
+      $stderr.puts e.message
+      exit 1
     end
 
     def initialize_storages
       @storages = {}
-      if Config.const_defined? :STORAGE_PATH
-        path = "#{Roma::Config::STORAGE_PATH}/#{@stats.ap_str}"
-      end
-
-      if Config.const_defined? :STORAGE_CLASS
-        st_class = Config::STORAGE_CLASS
-      end
-
-      if Config.const_defined? :STORAGE_DIVNUM
-        st_divnum = Config::STORAGE_DIVNUM
-      end
-      if Config.const_defined? :STORAGE_OPTION
-        st_option = Config::STORAGE_OPTION
-      end
-
-      path ||= './'
-      st_class ||= Storage::RubyHashStorage
-      st_divnum ||= 10
-      st_option ||= nil
+      storage = Roma.config.storage
+      path = "#{storage.path}/#{@stats.ap_str}"
+      st_class = storage.engine_class
+      st_divnum = storage.divnum
+      st_option = storage.option
       Dir.glob("#{path}/*").each{|f|
         if File.directory?(f)
           hname = File.basename(f)
@@ -436,32 +368,22 @@ module Roma
     end
 
     def initialize_rttable
+      routing = Roma.config.routing
       if @stats.join_ap
         initialize_rttable_join
       else
-        fname = "#{Roma::Config::RTTABLE_PATH}/#{@stats.ap_str}.route"
+        fname = "#{routing.path}/#{@stats.ap_str}.route"
         raise "#{fname} not found." unless File::exist?(fname)
         rd = Roma::Routing::RoutingData::load(fname)
         raise "It failed in loading the routing table data." unless rd
-        if Config.const_defined? :RTTABLE_CLASS
-          @rttable = Config::RTTABLE_CLASS.new(rd,fname)
-        else
-          @rttable = Roma::Routing::ChurnbasedRoutingTable.new(rd,fname)
-        end
+        @rttable = (routing.table_class || Roma::Routing::ChurnbasedRoutingTable).new(rd, fname)
       end
 
-      if Roma::Config.const_defined?(:RTTABLE_SUB_NID)
-        @rttable.sub_nid = Roma::Config::RTTABLE_SUB_NID
-      end
-
-      if Roma::Config.const_defined?(:ROUTING_FAIL_CNT_THRESHOLD)
-        @rttable.fail_cnt_threshold = Roma::Config::ROUTING_FAIL_CNT_THRESHOLD
-      end
-      if Roma::Config.const_defined?(:ROUTING_FAIL_CNT_GAP)
-        @rttable.fail_cnt_gap = Roma::Config::ROUTING_FAIL_CNT_GAP
-      end
-      @rttable.lost_action = Roma::Config::DEFAULT_LOST_ACTION
-      @rttable.auto_recover = Roma::Config::AUTO_RECOVER if defined?(Roma::Config::AUTO_RECOVER)
+      @rttable.sub_nid = routing.sub_nid
+      @rttable.fail_cnt_threshold = routing.fail_cnt_threshold
+      @rttable.fail_cnt_gap = routing.fail_cnt_gap
+      @rttable.lost_action = routing.lost_action
+      @rttable.auto_recover = routing.auto_recover
 
       @rttable.enabled_failover = false
       @rttable.set_leave_proc{|nid|
@@ -484,9 +406,7 @@ module Roma
         end
       }
 
-      if Roma::Config.const_defined?(:ROUTING_EVENT_LIMIT_LINE)
-        @rttable.event_limit_line = Roma::Config::ROUTING_EVENT_LIMIT_LINE
-      end
+      @rttable.event_limit_line = routing.event_limit_line
       Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_get_routing_event'))
     end
 
@@ -501,7 +421,7 @@ module Roma
           "me = \"#{@stats.name}\"  #{@stats.join_ap} = \"#{name}\""
       end
 
-      fname = "#{Roma::Config::RTTABLE_PATH}/#{@stats.ap_str}.route"
+      fname = "#{Roma.config.routing.path}/#{@stats.ap_str}.route"
       if rd = get_routedump(@stats.join_ap)
         rd.save(fname)
       else

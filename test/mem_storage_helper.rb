@@ -1,5 +1,5 @@
 require 'roma/storage/ruby_hash_storage'
-require 'roma/config'
+require 'roma/configuration'
 
 # The storages are on memory, instead of the files.
 module MemStorageHelper
