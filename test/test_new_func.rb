@@ -113,7 +113,8 @@ class NewFuncTest < Test::Unit::TestCase
 end
 
 # Tests that change settings or nodes start new romad processes each time.
-# Each setting command is covered by test_sys_command.rb. The ones here check
+# Each setting command is covered by
+# test/roma/command/test_system_command_receiver.rb. The ones here check
 # that relaying to the other node works through romad.
 class NewFuncChangingClusterTest < Test::Unit::TestCase
   self.test_order = :defined

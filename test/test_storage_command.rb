@@ -203,7 +203,7 @@ class StorageCommandTest < Test::Unit::TestCase
   (StorageCommandTests.public_instance_methods.grep(/\Atest_/) - E2E_STORAGE_COMMAND_TESTS).each { |t| undef_method(t) }
 end
 
-class StorageCommandTestForceForward < Test::Unit::TestCase
+class StorageCommandForceForwardTest < Test::Unit::TestCase
   self.test_order = :defined
   extend RomaTestUtils::RomaPerClass
   include StorageCommandTests

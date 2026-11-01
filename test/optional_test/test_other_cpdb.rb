@@ -4,7 +4,7 @@ require 'roma/config'
 require 'pathname'
 
 if ENV['OPTIONAL']
-  class CpdbBaseTest < Test::Unit::TestCase
+  class OtherCpdbTest < Test::Unit::TestCase
     self.test_order = :defined
     include RomaTestUtils
 
@@ -17,7 +17,7 @@ if ENV['OPTIONAL']
   end
 
   # Dbm Storage Test
-  class DbmTest < CpdbBaseTest
+  class OtherCpdbDbmTest < OtherCpdbTest
     def setup
       start_roma 'cpdbtest/config4cpdb_dbm.rb'
       @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
@@ -31,7 +31,7 @@ if ENV['OPTIONAL']
   end
 
   # Sqlite3 Storage Test
-  class Sqlite3Test < CpdbBaseTest
+  class OtherCpdbSqlite3Test < OtherCpdbTest
     def setup
       start_roma 'cpdbtest/config4cpdb_sqlite3.rb'
       @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
