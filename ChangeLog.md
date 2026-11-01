@@ -19,14 +19,15 @@ The tools in `bin/` are subcommands of the new `roma` command now (`roma help` l
 | `recoverlost`, `recoverlost_alist`, `recoverlost_alist_all`, `recoverlost_alist_keys` | `roma recoverlost [--since TIME] [--all] [--keys FILE] [--alist]` [#30](https://github.com/satoryu/roma/pull/30) |
 | `roma-adm` | `roma adm` [#31](https://github.com/satoryu/roma/pull/31) |
 | `key_list`, `key_access`, `mkrecent` | `roma key_list`, `roma key_access`, `roma mkrecent` [#32](https://github.com/satoryu/roma/pull/32) |
-| `roma_watcher` | `roma roma_watcher` [#33](https://github.com/satoryu/roma/pull/33) |
-| `tribunus` | `roma tribunus` [#34](https://github.com/satoryu/roma/pull/34) |
 | `sample_watcher*` | `roma check_nodes`, `roma multi_commander` [#35](https://github.com/satoryu/roma/pull/35) |
-| `simple_bench`, `data_accumulation`, `consistency_test` | `roma bench`, `roma consistency_test` [#36](https://github.com/satoryu/roma/pull/36) |
-| `safecopy_test`, `safecopy_integration_test` | `roma safecopy_test` [#37](https://github.com/satoryu/roma/pull/37) |
-| `test-scenario` | `roma test_scenario` [#38](https://github.com/satoryu/roma/pull/38) |
+| `simple_bench`, `data_accumulation` | `roma bench` [#36](https://github.com/satoryu/roma/pull/36) |
 
 The tools print errors on the standard error and exit with 1.
+
+These tools are removed, as they are not needed [#51](https://github.com/satoryu/roma/issues/51):
+* `consistency_test`, `safecopy_test`, `safecopy_integration_test` and `test-scenario`, which are checks for developers of ROMA. `roma bench` puts load on the nodes.
+* `tribunus`, which finds the hosts by UDP multicast.
+* `roma_watcher`, which mails by sendmail. `roma check_nodes` exits with 1 when the nodes are wrong, so a monitoring tool can call it instead.
 
 ### File names
 The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins require, stays as a deprecated alias of `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)

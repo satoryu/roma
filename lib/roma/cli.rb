@@ -101,39 +101,6 @@ module Roma
                                                        duration: options[:duration])
     end
 
-    desc 'consistency_test NODE_ID...', 'Set the keys to the number of each round, and check them'
-    option :keys, aliases: '-n', type: :numeric, default: 10_000, desc: 'Number of keys'
-    option :rounds, aliases: '-r', type: :numeric, desc: 'Number of rounds (default: forever)'
-    def consistency_test(node_id, *node_ids)
-      require 'roma/tools/consistency_test'
-      errors = Roma::Tools::ConsistencyTest.new([node_id, *node_ids]).run(keys: options[:keys], rounds: options[:rounds])
-      raise Roma::Tools::Error, "#{errors} keys were wrong." if errors > 0
-    end
-
-    desc 'safecopy_test NODE_ID',
-         'Switch each divided file of a node to safecopy and back while setting keys, and check them'
-    option :keys, aliases: '-n', type: :numeric, default: 1000, desc: 'Number of keys of each kind'
-    option :count, aliases: '-c', type: :numeric, default: 1, desc: 'Times of the test'
-    option :hash_name, default: 'roma', desc: 'The hash to test'
-    def safecopy_test(node_id)
-      require 'roma/tools/safecopy_test'
-      errors = Roma::Tools::SafecopyTest.new(node_id, hash_name: options[:hash_name])
-                                        .run(keys: options[:keys], count: options[:count])
-      raise Roma::Tools::Error, "#{errors} keys were wrong." if errors > 0
-    end
-
-    desc 'test_scenario', 'Start romads, send requests, kill a node, and check that the others find it down'
-    option :nodes, aliases: '-n', type: :numeric, default: 3, desc: 'Number of the romads'
-    option :host, default: 'localhost', desc: 'The host of the romads'
-    option :port, type: :numeric, default: 11211, desc: 'The port of the first romad'
-    option :work_dir, aliases: '-w', default: '.', banner: 'DIR', desc: 'The directory where the romads run'
-    option :timeout, type: :numeric, default: 60, banner: 'SEC', desc: 'Seconds to wait for the nodes'
-    def test_scenario
-      require 'roma/tools/test_scenario'
-      Roma::Tools::TestScenario.new(work_dir: options[:work_dir], hostname: options[:host], port: options[:port],
-                                    nodes: options[:nodes], timeout: options[:timeout]).run
-    end
-
     desc 'check_nodes NODE_ID...', 'Check that the nodes answer and know the same nodes, or exit with 1'
     def check_nodes(node_id, *node_ids)
       require 'roma/tools/check_nodes'
@@ -201,43 +168,6 @@ module Roma
       Roma::Tools::MkRecent.new.make(path1, path2, recent_path, hash_bits: options[:hash],
                                      divide_bits: options[:divide], divnum: options[:divnum])
       puts 'Make recent data process has succeed.'
-    end
-
-    desc 'roma_watcher CONFIG_FILE',
-         'Mail if a node is down or the nodes are split, as the YAML config file says'
-    def roma_watcher(config_file)
-      require 'yaml'
-      require 'roma/tools/roma_watcher'
-      Roma::Tools::RomaWatcher.new(YAML.load_file(config_file)).watch
-    end
-
-    desc 'tribunus HOSTNAME PORT_RANGE',
-         'Start romads at the ports such as 11211-11213, and join the romads on other hosts found by multicast'
-    option :new_ring, aliases: '-c', type: :boolean, default: false, desc: 'Create a new ring instead'
-    option :join, aliases: '-j', banner: 'HOST:PORT', desc: 'Join the romad instead'
-    option :udp_port, aliases: '-p', type: :numeric, desc: 'The UDP port for multicast (default: 14329)'
-    option :work_dir, aliases: '-w', banner: 'DIR', desc: 'The directory where the romads run'
-    option :multicast_addr, aliases: '-m', banner: 'ADDRESS', desc: 'The IP address for multicast (default: 225.0.0.123)'
-    option :ruby, aliases: '-r', banner: 'COMMAND', desc: 'The ruby to run the romads'
-    option :verbose, aliases: '-v', type: :boolean, default: false
-    def tribunus(hostname, port_range)
-      require 'roma/tools/tribunus'
-      raise Roma::Tools::Error, "--new_ring and --join can't be used together." if options[:new_ring] && options[:join]
-      join_host, join_port = options[:join]&.split(/[:_]/, 2)
-      raise Roma::Tools::Error, "--join should be HOST:PORT: #{options[:join]}" if options[:join] && join_port !~ /\A\d+\z/
-
-      tribunus = Roma::Tools::Tribunus.new(hostname, Roma::Tools::Tribunus.parse_ports(port_range),
-                                           udp_port: options[:udp_port], multicast_addr: options[:multicast_addr],
-                                           romad_work_dir: options[:work_dir], ruby: options[:ruby],
-                                           verbose: options[:verbose])
-      if options[:new_ring]
-        tribunus.start_new_ring
-      elsif options[:join]
-        tribunus.start_join(join_host, join_port.to_i)
-      else
-        tribunus.start_discover
-      end
-      tribunus.join
     end
 
     desc 'log_merger LOG_FILE...', 'Merge the log files of romad in time order'

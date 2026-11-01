@@ -255,42 +255,6 @@ class CLITest < Test::Unit::TestCase
     assert_match(message, err)
   end
 
-  # The config is loaded, and a node down is mailed by its mailer.
-  def test_roma_watcher
-    sendmail = File.join(@dir, 'sendmail')
-    File.write(sendmail, "#!/bin/sh\ncat > #{@dir}/mail\n")
-    File.chmod(0o755, sendmail)
-    File.write(File.join(@dir, 'watcher.yml'), <<~YAML)
-      roma: ["localhost:1"]
-      log: { path: #{@dir}/watcher.log }
-      timeout: 1
-      retry: { count: 1, period: 0 }
-      mail: { from: from@example.com, to: to@example.com, mailer: #{sendmail}, subject_prefix: "ROMA " }
-    YAML
-    out, _err, status = roma('roma_watcher', 'watcher.yml')
-    assert_nil status
-    assert_equal '', out
-    assert_match(/^Subject: ROMA A node down$/, File.read(File.join(@dir, 'mail')))
-    assert_match(/start watching a ROMA/, File.read(File.join(@dir, 'watcher.log')))
-  end
-
-  def test_roma_watcher_no_config
-    _out, err, status = roma('roma_watcher', 'missing.yml')
-    assert_equal 1, status
-    assert_match(/No such file or directory/, err)
-  end
-
-  data('new ring and join' => [%w(11211-11212 -c -j host2:1), /--new_ring and --join can't be used together/],
-       'join without port' => [%w(11211-11212 -j host2), /--join should be HOST:PORT: host2/],
-       'one port' => [%w(11211-11211 -c), /2 ports or more/])
-  def test_tribunus_errors(data)
-    args, message = data
-    out, err, status = roma('tribunus', 'host1', *args)
-    assert_equal 1, status
-    assert_equal '', out
-    assert_match(message, err)
-  end
-
   def test_check_nodes
     node = adm_node
     node.replies['nodelist'] = "#{node.nid}\r\n"
@@ -318,54 +282,6 @@ class CLITest < Test::Unit::TestCase
     calls = spy_tool(Roma::Tools::Bench, :run) { roma('bench', 'host1_1', 'host2_1', *args) }
     expected = { num: 10_000, threads: 1, value_size: nil, duration: nil }.merge(opts)
     assert_equal [[:new, %w(host1_1 host2_1), {}], [:run, [modes], expected]], calls
-  end
-
-  def test_consistency_test
-    kvs = FakeKVS.new
-    @fake_nodes << kvs
-    out, _err, status = roma('consistency_test', kvs.nid, '-n', '2', '-r', '3')
-    assert_nil status
-    assert_equal '', out
-    assert_equal({ 'key_0' => '3', 'key_1' => '3' }, kvs.data)
-  end
-
-  def test_consistency_test_errors
-    kvs = FakeKVS.new
-    @fake_nodes << kvs
-    kvs.replies['set'] = "NOT_STORED\r\n"
-    _out, err, status = roma('consistency_test', kvs.nid, '-n', '2', '-r', '1')
-    assert_equal 1, status
-    assert_equal "2 keys were wrong.\n", err
-  end
-
-  data('defaults' => [[], { keys: 1000, count: 1 }, {}],
-       'options' => [%w(-n 5 -c 2 --hash_name h), { keys: 5, count: 2 }, { hash_name: 'h' }])
-  def test_safecopy_test(data)
-    args, run_opts, new_opts = data
-    require 'roma/tools/safecopy_test'
-    calls = spy_tool(Roma::Tools::SafecopyTest, :run) { roma('safecopy_test', 'host1_1', *args) }
-    assert_equal [[:new, 'host1_1', { hash_name: 'roma' }.merge(new_opts)], [:run, [], run_opts]], calls
-  end
-
-  def test_safecopy_test_node_down
-    _out, err, status = roma('safecopy_test', 'localhost_1')
-    assert_equal 1, status
-    assert_match(/\Alocalhost_1: /, err)
-  end
-
-  data('defaults' => [[], { work_dir: '.', hostname: 'localhost', port: 11211, nodes: 3, timeout: 60 }],
-       'options' => [%w(-n 4 --host h --port 1 -w d --timeout 5), { work_dir: 'd', hostname: 'h', port: 1, nodes: 4, timeout: 5 }])
-  def test_test_scenario(data)
-    args, opts = data
-    require 'roma/tools/test_scenario'
-    calls = spy_tool(Roma::Tools::TestScenario, :run) { roma('test_scenario', *args) }
-    assert_equal [[:new, opts], [:run, [], {}]], calls
-  end
-
-  def test_test_scenario_one_node
-    _out, err, status = roma('test_scenario', '-n', '1')
-    assert_equal 1, status
-    assert_equal "The scenario needs 2 nodes or more.\n", err
   end
 
   # romad parses the options, and tells its usage.
