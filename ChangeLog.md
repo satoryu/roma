@@ -61,7 +61,7 @@ end
 | `CONNECTION_CONTINUOUS_LIMIT`, `CONNECTION_EXPTIME`, `DNS_CACHING` | `connection.continuous_limit`, `connection.expire_time`, `connection.dns_caching` |
 | `CONNECTION_POOL_EXPTIME`, `CONNECTION_POOL_MAX` | `connection.pool.expire_time`, `connection.pool.max` |
 | `CONNECTION_EMPOOL_EXPTIME`, `CONNECTION_EMPOOL_MAX` | `connection.em_pool.expire_time`, `connection.em_pool.max` |
-| `STORAGE_CLASS` | `storage.engine`: `:ruby_hash`, `:dbm`, `:sqlite3`, `:groonga` or a class |
+| `STORAGE_CLASS` | `storage.engine`: the name of a storage gem, such as `:dbm` for roma-storage-dbm, or a class |
 | `STORAGE_PATH`, `STORAGE_DIVNUM`, `STORAGE_OPTION` | `storage.path`, `storage.divnum`, `storage.option` |
 | `STORAGE_EXCEPTION_ACTION`, `STORAGE_DELMARK_EXPTIME`, `STORAGE_CLEAN_UP_INTERVAL` | `storage.exception_action`, `storage.delmark_expire_time`, `storage.clean_up_interval` |
 | `DATACOPY_STREAM_COPY_WAIT_PARAM` | `data_copy.stream_copy_wait_param` |

@@ -11,15 +11,6 @@ module Roma
   class Configuration
     class Error < StandardError; end
 
-    # The storages that storage.engine takes by name: the file to require,
-    # the class and the gem.
-    STORAGE_ENGINES = {
-      ruby_hash: ['roma/storage/ruby_hash_storage', :RubyHashStorage, 'roma-storage'],
-      dbm: ['roma/storage/dbm', :DbmStorage, 'roma-storage-dbm'],
-      sqlite3: ['roma/storage/sqlite3', :SQLite3Storage, 'roma-storage-sqlite3'],
-      groonga: ['roma/storage/groonga', :GroongaStorage, 'roma-storage-groonga']
-    }.freeze
-
     # A group of settings, such as config.log. A subclass declares them by
     # setting and group.
     class Group
@@ -135,8 +126,9 @@ module Roma
     end
 
     class Storage < Group
-      # A name in STORAGE_ENGINES, or a storage class.
-      setting :engine, :ruby_hash, type: [Symbol, Class], check: ->(v) { v.is_a?(Class) || STORAGE_ENGINES.key?(v) }
+      # The name of a storage, such as :dbm of the gem roma-storage-dbm, or a
+      # storage class.
+      setting :engine, :ruby_hash, type: [Symbol, Class], check: ->(v) { v.is_a?(Class) || v.match?(/\A[a-z][a-z0-9_]*\z/) }
       setting :path, '.', type: String
       setting :divnum, 10, type: Integer, check: ->(v) { v.positive? }
       setting :option, '', type: [String, NilClass]
@@ -146,18 +138,36 @@ module Roma
       setting :delmark_expire_time, 60 * 60 * 24 * 5, type: Integer
       setting :clean_up_interval, 60 * 5, type: Integer
 
-      # The storage class of engine. A name is required, and raises Error
-      # if its gem is missing.
+      # The storage class of engine. A name such as :dbm requires
+      # roma/storage/dbm of the gem roma-storage-dbm (or
+      # roma/storage/dbm_storage, as roma-storage has ruby_hash_storage), and
+      # is the class in it named like DbmStorage, in any case. Raises Error if
+      # the file or the class is missing.
       def engine_class
         return engine if engine.is_a?(Class)
 
-        file, name, gem = STORAGE_ENGINES.fetch(engine)
-        begin
-          require file
-        rescue LoadError
+        file = ["roma/storage/#{engine}", "roma/storage/#{engine}_storage"].find { |f| require_storage(f) }
+        unless file
+          gem = "roma-storage-#{engine}"
           raise Error, "storage.engine #{engine.inspect} needs #{gem}. Install it by gem install #{gem}."
         end
+
+        class_name = "#{engine.to_s.split('_').map(&:capitalize).join}Storage"
+        name = Roma::Storage.constants.find { |c| c.to_s.casecmp?(class_name.delete('_')) }
+        raise Error, "#{file} has no storage class such as Roma::Storage::#{class_name}." unless name
         Roma::Storage.const_get(name)
+      end
+
+      private
+
+      # Requires +file+, or returns false if it is not found. A LoadError of
+      # another file, which +file+ requires, is raised.
+      def require_storage(file)
+        require file
+        true
+      rescue LoadError => e
+        raise unless e.path == file
+        false
       end
     end
 

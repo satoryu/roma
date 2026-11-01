@@ -69,7 +69,7 @@ install one of the storage gems and set it in your config file.
 | SQLite3 | [roma-storage-sqlite3](https://rubygems.org/gems/roma-storage-sqlite3) | `:sqlite3` |
 | Groonga | [roma-storage-groonga](https://rubygems.org/gems/roma-storage-groonga) | `:groonga` |
 
-`config.storage.engine` also takes a storage class, such as one of another gem.
+Another storage gem works the same way: with roma-storage-NAME installed, `config.storage.engine = :NAME` requires `roma/storage/NAME` and uses the class in it named like `NAMEStorage`. `config.storage.engine` also takes a storage class.
 
 roma-storage-groonga needs [Groonga](https://groonga.org/) 12.0.2 or later. Install it first, for example by `brew install groonga`.
 
