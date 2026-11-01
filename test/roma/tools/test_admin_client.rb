@@ -12,9 +12,9 @@ class AdminClientTest < Test::Unit::TestCase
 
   def test_routing_data
     node = fake_node
-    routing_data = Roma::Routing::RoutingData.create(32, 3, 1, [node.nid])
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 1, [node.node_id])
     serve_routing(node, routing_data)
-    assert_equal routing_data.routes, client.routing_data(node.nid).routes
+    assert_equal routing_data.routes, client.routing_data(node.node_id).routes
   end
 
   data('no routing data' => ["0\r\n", /has no routing data/],
@@ -25,7 +25,7 @@ class AdminClientTest < Test::Unit::TestCase
     reply, message = data
     node = fake_node
     node.replies['routingdump'] = reply
-    assert_raise_message(message) { client.routing_data(node.nid) }
+    assert_raise_message(message) { client.routing_data(node.node_id) }
   end
 
   def test_routing_data_cut
@@ -36,8 +36,8 @@ class AdminClientTest < Test::Unit::TestCase
       s.write("10\r\nabc")
       s.close
     end
-    nid = "localhost_#{server.addr[1]}"
-    assert_raise_message("#{nid} closed the connection.") { client.routing_data(nid) }
+    node_id = "localhost_#{server.addr[1]}"
+    assert_raise_message("#{node_id} closed the connection.") { client.routing_data(node_id) }
   ensure
     thread.join
     server.close
@@ -47,20 +47,20 @@ class AdminClientTest < Test::Unit::TestCase
   def test_command
     node = fake_node
     node.replies['stats'] = "a 1\r\nb 2\r\nEND\r\n"
-    assert_equal ['a 1', 'b 2', 'END'], client.command(node.nid, 'stats')
+    assert_equal ['a 1', 'b 2', 'END'], client.command(node.node_id, 'stats')
     assert_equal ['stats'], node.commands
   end
 
   def test_command_without_reply
     node = fake_node
     node.replies['stats'] = proc { '' }
-    assert_raise_message("#{node.nid} didn't reply to stats.") { client.command(node.nid, 'stats') }
+    assert_raise_message("#{node.node_id} didn't reply to stats.") { client.command(node.node_id, 'stats') }
   end
 
   def test_request
     node = fake_node
     node.replies['stats'] = "a 1\r\nb 2\r\nEND\r\n"
-    assert_equal 'a 1', client.request(node.nid, 'stats')
+    assert_equal 'a 1', client.request(node.node_id, 'stats')
   end
 
   data('closed' => [:close, /closed the connection/],
@@ -69,12 +69,12 @@ class AdminClientTest < Test::Unit::TestCase
     reply, message = data
     node = fake_node
     node.replies['stats'] = reply
-    assert_raise_message(message) { client.request(node.nid, 'stats') }
+    assert_raise_message(message) { client.request(node.node_id, 'stats') }
   end
 
   def test_node_down
-    nid = down_node
-    error = assert_raise(Roma::Tools::Error) { client.command(nid, 'whoami') }
-    assert_match(/\A#{nid}: .*refused/i, error.message)
+    node_id = down_node
+    error = assert_raise(Roma::Tools::Error) { client.command(node_id, 'whoami') }
+    assert_match(/\A#{node_id}: .*refused/i, error.message)
   end
 end

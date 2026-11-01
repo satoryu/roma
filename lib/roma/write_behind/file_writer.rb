@@ -11,12 +11,12 @@ module Roma
         path.chop! if path[-1]=='/'
         @path = path
         @log = log
-        @fdh = {} # file handle hash
-        @fnh = {} # file name hash
+        @file_handles = {} # file handle hash
+        @file_names = {} # file name hash
         @do_write = false
         @shift_size = shift_size
         @total_size = Hash.new(0)
-        @rottime = Time.now
+        @rotation_time = Time.now
       end
 
       def get_stat
@@ -24,7 +24,7 @@ module Roma
         ret['write-behind.path'] = File.expand_path(@path)
         ret['write-behind.shift_size'] = @shift_size
         ret['write-behind.do_write'] = @do_write
-        @fdh.each{|hash_name,fname|
+        @file_handles.each{|hash_name,fname|
           ret["write-behind[#{hash_name}].path"] = File.expand_path(fname)
           ret["write-behind[#{hash_name}].size"] = @total_size[hash_name]
         }
@@ -34,15 +34,15 @@ module Roma
       def write(hash_name, cmd, key, val)
         @do_write = true
         t = Time.now
-        if @total_size[hash_name] >= @shift_size || t >= @rottime
+        if @total_size[hash_name] >= @shift_size || t >= @rotation_time
           @do_write = false
           rotate(hash_name)
         end
 
-        fd = @fdh[hash_name]
+        fd = @file_handles[hash_name]
         unless fd
           fd = openfile(hash_name)
-          @log.info("WriteBehind file has been created: [#{@fnh[hash_name]}]")
+          @log.info("WriteBehind file has been created: [#{@file_names[hash_name]}]")
           @total_size[hash_name] = 0
         end
         klen = key.length
@@ -57,13 +57,13 @@ module Roma
 
       def rotate(hash_name)
         @log.info("WriteBehind:rotate #{hash_name}")
-        fd_old = @fdh[hash_name]
+        fd_old = @file_handles[hash_name]
         unless fd_old
           @log.info("WriteBehind:rotate #{hash_name} not opend")
           return false
         end
-        @fdh.delete(hash_name)
-        @fnh.delete(hash_name)
+        @file_handles.delete(hash_name)
+        @file_names.delete(hash_name)
         sleep 0.01 while @do_write
         fd_old.close
         @log.info("WriteBehind:rotate succeed")
@@ -75,7 +75,7 @@ module Roma
         path = "#{@path}/#{@stats.my_node_id}/#{hash_name}/#{t.strftime('%Y%m%d')}"
         mkdir(path)
         # set a next rotation time
-        @rottime = Time.local(t.year,t.month,t.day,0,0,0) + 24 * 60 * 60
+        @rotation_time = Time.local(t.year,t.month,t.day,0,0,0) + 24 * 60 * 60
 
         max = -1
         Dir::glob("#{path}/*.wb").each{|f|
@@ -85,8 +85,8 @@ module Roma
         }
         fname = "#{path}/#{max + 1}.wb"
         fd = open(fname,'wb')
-        @fnh[hash_name] = fname
-        @fdh[hash_name] = fd
+        @file_names[hash_name] = fname
+        @file_handles[hash_name] = fd
       end
 
       def wb_get_path(hash_name)
@@ -95,15 +95,15 @@ module Roma
 
       def get_current_file_path(hash_name)
         @log.info("WriteBehind:get_current_file_path #{hash_name}")
-        unless @fnh[hash_name]
+        unless @file_names[hash_name]
           @log.info("WriteBehind:get_current_file_path #{hash_name} not opend")
           return nil
         end
-        File.expand_path("#{@fnh[hash_name]}")
+        File.expand_path("#{@file_names[hash_name]}")
       end
 
       def close_all
-        @fdh.each_value{|fd| fd.close }
+        @file_handles.each_value{|fd| fd.close }
       end
 
       def mkdir(path)

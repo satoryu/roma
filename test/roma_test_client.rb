@@ -139,9 +139,9 @@ class RomaTestClient
 
   def gets(keys, raw = false)
     res = {}
-    keys.group_by { |key| @routing_table.search_node(key)[0] }.each do |nid, ks|
+    keys.group_by { |key| @routing_table.search_node(key)[0] }.each do |node_id, ks|
       cmd = "gets #{ks.map { |key| k(key) }.join(' ')}"
-      res.merge!(send_command(nid, cmd, nil, :value_hash_receiver))
+      res.merge!(send_command(node_id, cmd, nil, :value_hash_receiver))
     end
     res.transform_values! { |v| Marshal.load(v) } unless raw
     res
@@ -416,33 +416,33 @@ class RomaTestClient
 
   def request(key, cmd, value = nil, receiver = :oneline_receiver)
     @used_keys << key unless @used_keys.include?(key)
-    nid, _d = @routing_table.search_node(key)
-    send_command(nid, cmd, value, receiver)
+    node_id, _d = @routing_table.search_node(key)
+    send_command(node_id, cmd, value, receiver)
   end
 
-  def send_command(nid, cmd, value = nil, receiver = :oneline_receiver)
+  def send_command(node_id, cmd, value = nil, receiver = :oneline_receiver)
     retries = 0
     begin
       ret = Timeout.timeout(TIMEOUT_SEC) do
-        con = connection(nid)
+        con = connection(node_id)
         con.write(value ? "#{cmd}\r\n#{value}\r\n" : "#{cmd}\r\n")
         __send__(receiver, con)
       end
     rescue SystemCallError, IOError
-      close_connection(nid)
+      close_connection(node_id)
       retry if (retries += 1) < RETRY_COUNT
       raise
     rescue Timeout::Error
-      close_connection(nid)
+      close_connection(node_id)
       raise
     end
     raise ret if ret.is_a?(String) && ret.start_with?('SERVER_ERROR', 'CLIENT_ERROR')
     ret
   end
 
-  def fetch_routing_data(nid)
+  def fetch_routing_data(node_id)
     Timeout.timeout(TIMEOUT_SEC) do
-      con = connection(nid)
+      con = connection(node_id)
       con.write("routingdump\r\n")
       len = con.gets.to_i
       return nil if len <= 0
@@ -452,19 +452,19 @@ class RomaTestClient
       routing_data
     end
   rescue SystemCallError, IOError, Timeout::Error
-    close_connection(nid)
+    close_connection(node_id)
     nil
   end
 
-  def connection(nid)
-    self.class.connections[nid] ||= begin
-      host, port = nid.split(/[:_]/)
+  def connection(node_id)
+    self.class.connections[node_id] ||= begin
+      host, port = node_id.split(/[:_]/)
       TCPSocket.new(host, port)
     end
   end
 
-  def close_connection(nid)
-    con = self.class.connections.delete(nid)
+  def close_connection(node_id)
+    con = self.class.connections.delete(node_id)
     con.close if con
   rescue IOError
   end

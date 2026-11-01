@@ -36,8 +36,8 @@ class CommandTestHarness
   include Roma::Command::BackgroundCommandReceiver
   include Roma::Command::MultiHashCommandReceiver
 
-  NID = 'localhost_11211'
-  OTHER_NID = 'localhost_11212'
+  NODE_ID = 'localhost_11211'
+  OTHER_NODE_ID = 'localhost_11212'
   # The address the client connects from.
   CLIENT_ADDR = '127.0.0.1'
 
@@ -77,16 +77,16 @@ class CommandTestHarness
       @replica_nodelist = []
     end
 
-    def update_mklhash(nid)
-      @replica_mklhash = "mklhash of #{nid}"
+    def update_mklhash(node_id)
+      @replica_mklhash = "mklhash of #{node_id}"
     end
 
-    def update_nodelist(nid)
-      @replica_nodelist = [nid]
+    def update_nodelist(node_id)
+      @replica_nodelist = [node_id]
     end
 
-    def update_rttable(nid)
-      @replica_rttable = "routing_table of #{nid}"
+    def update_rttable(node_id)
+      @replica_rttable = "routing_table of #{node_id}"
     end
   end
 
@@ -117,7 +117,7 @@ class CommandTestHarness
     end
 
     def wb_get_path(hash_name)
-      "wb/#{NID}/#{hash_name}"
+      "wb/#{NODE_ID}/#{hash_name}"
     end
 
     def wb_get_current_file_path(hash_name)
@@ -137,8 +137,8 @@ class CommandTestHarness
 
   def initialize
     @stats = Roma::Stats.send(:new)
-    @stats.address, @stats.port = NID.split('_')
-    @my_node_id = NID
+    @stats.address, @stats.port = NODE_ID.split('_')
+    @my_node_id = NODE_ID
     @addr = CLIENT_ADDR
     @default_hash_name = 'roma'
     @log = Log.new
@@ -150,7 +150,7 @@ class CommandTestHarness
     @storage.st_class = Roma::Storage::HashStorage
     @storage.opendb
     @storages = { @default_hash_name => @storage }
-    routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [NID, OTHER_NID])
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [NODE_ID, OTHER_NODE_ID])
     @routing_table = Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route'))
     @broadcasts = []
     @relay_reply = 'STORED'
@@ -165,7 +165,7 @@ class CommandTestHarness
   # +data+ is what the client sends after the command line, if any: a data
   # block or the answer to a question.
   def request(line, data = nil)
-    @rbuf = data ? "#{data}\r\n".b : String.new
+    @read_buffer = data ? "#{data}\r\n".b : String.new
     @wbuf = String.new
     @closed = nil
     s = line.split(/ /)
@@ -178,13 +178,13 @@ class CommandTestHarness
   end
 
   def read_bytes(size, _timeout = nil)
-    @rbuf.slice!(0, size)
+    @read_buffer.slice!(0, size)
   end
 
   # Returns nil when the client sent nothing more. The real one waits.
   def gets
-    idx = @rbuf.index("\n")
-    @rbuf.slice!(0, idx + 1) if idx
+    idx = @read_buffer.index("\n")
+    @read_buffer.slice!(0, idx + 1) if idx
   end
 
   def close_connection_after_writing
@@ -207,7 +207,7 @@ class CommandTestHarness
 
   def broadcast_cmd(cmd)
     @broadcasts << cmd
-    { OTHER_NID => @relay_reply }
+    { OTHER_NODE_ID => @relay_reply }
   end
 
   private

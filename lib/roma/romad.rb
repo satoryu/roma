@@ -181,7 +181,7 @@ module Roma
 
     def initialize_connection
       connection = Roma.config.connection
-      unless Event::Handler.set_ccl(connection.continuous_limit)
+      unless Event::Handler.set_continuous_limit(connection.continuous_limit)
         raise "config parse error : connection.continuous_limit"
       end
       Event::Handler::connection_expire_time = connection.expire_time
@@ -386,10 +386,10 @@ module Roma
       @routing_table.auto_recover = routing.auto_recover
 
       @routing_table.enabled_failover = false
-      @routing_table.set_leave_proc{|nid|
-        Roma::Messaging::ConPool.instance.close_same_host(nid)
-        Roma::Event::EMConPool.instance.close_same_host(nid)
-        Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('broadcast_cmd',["leave #{nid}",[@stats.my_node_id,nid,5]]))
+      @routing_table.set_leave_proc{|node_id|
+        Roma::Messaging::ConPool.instance.close_same_host(node_id)
+        Roma::Event::EMConPool.instance.close_same_host(node_id)
+        Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('broadcast_cmd',["leave #{node_id}",[@stats.my_node_id,node_id,5]]))
       }
       @routing_table.set_lost_proc{
         if @routing_table.lost_action == :shutdown
@@ -435,36 +435,36 @@ module Roma
       @routing_table = Roma::Routing::ChurnbasedRoutingTable.new(routing_data,fname)
       nodes = @routing_table.nodes
 
-      nodes.each{|nid|
+      nodes.each{|node_id|
         begin
-          con = Roma::Messaging::ConPool.instance.get_connection(nid)
+          con = Roma::Messaging::ConPool.instance.get_connection(node_id)
           con.write("join #{@stats.my_node_id}\r\n")
           if con.gets != "ADDED\r\n"
-            raise "Hotscale initialize failed.\n#{nid} is busy."
+            raise "Hotscale initialize failed.\n#{node_id} is busy."
           end
-          Roma::Messaging::ConPool.instance.return_connection(nid, con)
+          Roma::Messaging::ConPool.instance.return_connection(node_id, con)
         rescue
-          raise "Hotscale initialize failed.\n#{nid} unreachable connection."
+          raise "Hotscale initialize failed.\n#{node_id} unreachable connection."
         end
       }
       @routing_table.add_node(@stats.my_node_id)
     end
 
-    def get_routedump(nid)
-      rcv = receive_routing_dump(nid, "routingdump bin\r\n")
-      unless rcv
-        rcv = receive_routing_dump(nid, "routingdump\r\n")
-        routing_data = Marshal.load(rcv)
+    def get_routedump(node_id)
+      received = receive_routing_dump(node_id, "routingdump bin\r\n")
+      unless received
+        received = receive_routing_dump(node_id, "routingdump\r\n")
+        routing_data = Marshal.load(received)
       else
-        routing_data = Routing::RoutingData.decode_binary(rcv)
+        routing_data = Routing::RoutingData.decode_binary(received)
       end
       routing_data
     rescue
       nil
     end
 
-    def receive_routing_dump(nid, cmd)
-      con = Messaging::ConPool.instance.get_connection(nid)
+    def receive_routing_dump(node_id, cmd)
+      con = Messaging::ConPool.instance.get_connection(node_id)
       con.write(cmd)
       unless select [con], nil, nil, 1
         con.close
@@ -476,14 +476,14 @@ module Roma
         return nil
       end
 
-      rcv=''
-      while(rcv.length != len.to_i)
-        rcv = rcv + con.read(len.to_i - rcv.length)
+      received=''
+      while(received.length != len.to_i)
+        received = received + con.read(len.to_i - received.length)
       end
       con.read(2)
       con.gets
-      Messaging::ConPool.instance.return_connection(nid,con)
-      rcv
+      Messaging::ConPool.instance.return_connection(node_id,con)
+      received
     rescue Exception
       nil
     end
@@ -536,7 +536,7 @@ module Roma
         @log.warn("failover disable now!!")
       else
         version_check
-        @routing_table.delete_old_trans(@stats.routing_trans_timeout)
+        @routing_table.delete_old_transactions(@stats.routing_transaction_timeout)
         start_sync_routing_process
       end
 
@@ -553,10 +553,10 @@ module Roma
 
       if @cluster_replication_writer.run_replication
         if @cluster_replication_writer.change_mklhash?
-          nid = @cluster_replication_writer.replica_nodelist.sample
-          @cluster_replication_writer.update_mklhash(nid)
-          @cluster_replication_writer.update_nodelist(nid)
-          @cluster_replication_writer.update_rttable(nid)
+          node_id = @cluster_replication_writer.replica_nodelist.sample
+          @cluster_replication_writer.update_mklhash(node_id)
+          @cluster_replication_writer.update_nodelist(node_id)
+          @cluster_replication_writer.update_rttable(node_id)
         end
       end
 
@@ -566,24 +566,24 @@ module Roma
     end
 
     def nodes_check(nodes)
-      nodes.each{|nid|
-        return false unless node_check(nid)
+      nodes.each{|node_id|
+        return false unless node_check(node_id)
       }
       return true
     end
 
-    def node_check(nid)
+    def node_check(node_id)
       if @startup && @routing_table.enabled_failover == false
-        unless Roma::Messaging::ConPool.instance.check_connection(nid)
-          @log.info("I'm waiting for booting the #{nid} instance.")
+        unless Roma::Messaging::ConPool.instance.check_connection(node_id)
+          @log.info("I'm waiting for booting the #{node_id} instance.")
           return false
         end
       end
-      name = async_send_cmd(nid,"whoami\r\n",2)
+      name = async_send_cmd(node_id,"whoami\r\n",2)
       return false unless name
       if name != @stats.name
-        @log.error("#{nid} has diffarent name.")
-        @log.error("me = \"#{@stats.name}\"  #{nid} = \"#{name}\"")
+        @log.error("#{node_id} has diffarent name.")
+        @log.error("me = \"#{@stats.name}\"  #{node_id} = \"#{name}\"")
         return false
       end
       return true
@@ -591,12 +591,12 @@ module Roma
 
     def version_check
       nodes=@routing_table.nodes
-      nodes.each{|nid|
-        vs = async_send_cmd(nid,"version\r\n",2)
+      nodes.each{|node_id|
+        vs = async_send_cmd(node_id,"version\r\n",2)
         next unless vs
         if /VERSION\s(?:ROMA-)?(\d+)\.(\d+)\.(\d+)/ =~ vs
           ver = ($1.to_i << 16) + ($2.to_i << 8) + $3.to_i
-          @routing_table.set_version(nid, ver)
+          @routing_table.set_version(node_id, ver)
         end
       }
     end
@@ -643,82 +643,82 @@ module Roma
       t[:name] = 'sync_routing'
     end
 
-    def routing_hash_comparison(nid,id='0')
+    def routing_hash_comparison(node_id,id='0')
       return :skip if @stats.run_join || @stats.run_recover || @stats.run_balance
 
-      h = async_send_cmd(nid,"mklhash #{id}\r\n")
+      h = async_send_cmd(node_id,"mklhash #{id}\r\n")
       if h && h.start_with?("ERROR") == false && @routing_table.merkle_tree.get(id) != h
         if (id.length - 1) == @routing_table.divide_bits
-          sync_routing(nid,id)
+          sync_routing(node_id,id)
         else
-          routing_hash_comparison(nid,"#{id}0")
-          routing_hash_comparison(nid,"#{id}1")
+          routing_hash_comparison(node_id,"#{id}0")
+          routing_hash_comparison(node_id,"#{id}1")
         end
         return :inconsistent
       end
       :consistent
     end
 
-    def sync_routing(nid,id)
-      vnode = @routing_table.merkle_tree.to_vn(id)
+    def sync_routing(node_id,id)
+      vnode = @routing_table.merkle_tree.to_vnode(id)
       @log.warn("vnode=#{vnode} inconsistent")
 
-      res = async_send_cmd(nid,"getroute #{vnode}\r\n")
+      res = async_send_cmd(node_id,"getroute #{vnode}\r\n")
       return if res == nil || res.start_with?("ERROR")
-      clock,*nids = res.split(' ')
-      clock = @routing_table.set_route(vnode, clock.to_i, nids)
+      clock,*node_ids = res.split(' ')
+      clock = @routing_table.set_route(vnode, clock.to_i, node_ids)
 
       if clock.is_a?(Integer) == false
-        clock,nids = @routing_table.search_nodes_with_clk(vnode)
+        clock,node_ids = @routing_table.search_nodes_with_clk(vnode)
         cmd = "setroute #{vnode} #{clock-1}"
-        nids.each{|nid2| cmd << " #{nid2}" }
-        async_send_cmd(nid,"#{cmd}\r\n")
+        node_ids.each{|other_node_id| cmd << " #{other_node_id}" }
+        async_send_cmd(node_id,"#{cmd}\r\n")
       end
     end
 
-    def async_send_cmd(nid, cmd, tout=nil)
+    def async_send_cmd(node_id, cmd, tout=nil)
       con = res = nil
       if tout
         Timeout.timeout(tout){
-          con = Roma::Messaging::ConPool.instance.get_connection(nid)
+          con = Roma::Messaging::ConPool.instance.get_connection(node_id)
           unless con
-            @routing_table.proc_failed(nid) if @routing_table
-            @log.error("#{__FILE__}:#{__LINE__}:#{nid} connection refused,command is #{cmd}.")
+            @routing_table.proc_failed(node_id) if @routing_table
+            @log.error("#{__FILE__}:#{__LINE__}:#{node_id} connection refused,command is #{cmd}.")
             return nil
           end
           con.write(cmd)
           res = con.gets
         }
       else
-        con = Roma::Messaging::ConPool.instance.get_connection(nid)
+        con = Roma::Messaging::ConPool.instance.get_connection(node_id)
         unless con
-          @routing_table.proc_failed(nid) if @routing_table
-          @log.error("#{__FILE__}:#{__LINE__}:#{nid} connection refused,command is #{cmd}.")
+          @routing_table.proc_failed(node_id) if @routing_table
+          @log.error("#{__FILE__}:#{__LINE__}:#{node_id} connection refused,command is #{cmd}.")
           return nil
         end
         con.write(cmd)
         res = con.gets
       end
       if res == nil
-        @routing_table.proc_failed(nid) if @routing_table
+        @routing_table.proc_failed(node_id) if @routing_table
         return nil
       elsif res.start_with?("ERROR") == false
-        @routing_table.proc_succeed(nid) if @routing_table
-        Roma::Messaging::ConPool.instance.return_connection(nid, con)
+        @routing_table.proc_succeed(node_id) if @routing_table
+        Roma::Messaging::ConPool.instance.return_connection(node_id, con)
       end
       res.chomp
     rescue Exception => e
-      @routing_table.proc_failed(nid) if @routing_table
+      @routing_table.proc_failed(node_id) if @routing_table
       @log.error("#{__FILE__}:#{__LINE__}:#{e} #{$@}")
-      @log.error("#{__FILE__}:#{__LINE__}:Send command failed that node-id is #{nid},command is #{cmd}.")
+      @log.error("#{__FILE__}:#{__LINE__}:Send command failed that node-id is #{node_id},command is #{cmd}.")
       nil
     end
 
-    def async_broadcast_cmd(cmd,without_nids=nil,tout=nil)
-      without_nids=[@stats.my_node_id] unless without_nids
+    def async_broadcast_cmd(cmd,without_node_ids=nil,tout=nil)
+      without_node_ids=[@stats.my_node_id] unless without_node_ids
       res = {}
-      @routing_table.nodes.each{ |nid|
-        res[nid] = async_send_cmd(nid,cmd,tout) unless without_nids.include?(nid)
+      @routing_table.nodes.each{ |node_id|
+        res[node_id] = async_send_cmd(node_id,cmd,tout) unless without_node_ids.include?(node_id)
       }
       res
     rescue Exception => e

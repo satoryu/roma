@@ -22,11 +22,11 @@ module Roma
         @client = client
       end
 
-      # Sends +cmd+ to the node +nid+, and returns the lines of the reply.
+      # Sends +cmd+ to the node +node_id+, and returns the lines of the reply.
       # The value of a command that stores one is asked for unless +value+
       # is given, and a command that stops nodes is confirmed unless +yes+.
       # Raises Error if it is not confirmed, or the node doesn't reply.
-      def run(nid, cmd, value: nil, yes: false)
+      def run(node_id, cmd, value: nil, yes: false)
         name = cmd.split.first
         if HALT_COMMANDS.include?(name)
           confirm unless yes
@@ -35,7 +35,7 @@ module Roma
         elsif VALUE_COMMANDS.include?(name)
           cmd = "#{cmd}\r\n#{value || ask_value}"
         end
-        @client.command(nid, cmd)
+        @client.command(node_id, cmd)
       end
 
       private

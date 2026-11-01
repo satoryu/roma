@@ -10,7 +10,7 @@ class TextClientTest < Test::Unit::TestCase
   def setup
     super
     @kvs = fake_kvs
-    @client = Roma::Tools::TextClient.new([@kvs.nid], timeout: 0.5)
+    @client = Roma::Tools::TextClient.new([@kvs.node_id], timeout: 0.5)
   end
 
   def teardown
@@ -78,7 +78,7 @@ class TextClientTest < Test::Unit::TestCase
   # The next node is used after an error.
   def test_next_node
     down = down_node
-    client = Roma::Tools::TextClient.new([down, @kvs.nid], timeout: 0.5)
+    client = Roma::Tools::TextClient.new([down, @kvs.node_id], timeout: 0.5)
     assert_raise_message(/\A#{down}: /) { client.set('key1', 'v') }
     assert_equal 'STORED', client.set('key1', 'v')
   ensure

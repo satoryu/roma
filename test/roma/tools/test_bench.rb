@@ -15,7 +15,7 @@ class BenchTest < Test::Unit::TestCase
   end
 
   def bench(interval: 10)
-    Roma::Tools::Bench.new([@kvs.nid], out: @out, interval: interval)
+    Roma::Tools::Bench.new([@kvs.node_id], out: @out, interval: interval)
   end
 
   def test_set_and_get

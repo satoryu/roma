@@ -102,8 +102,8 @@ module Roma
           nk.delete(@my_node_id)
         end
 
-        nk.each_pair{|nid,keys|
-          res.merge!(forward_gets(nid,keys))
+        nk.each_pair{|node_id,keys|
+          res.merge!(forward_gets(node_id,keys))
         }
 
         res.each_pair{|key,cv|
@@ -159,11 +159,11 @@ module Roma
           Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:delete], key, res[4])
         end
 
-        nodes[1..-1].each{ |nid|
-          res2 = send_cmd(nid,"rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
+        nodes[1..-1].each{ |node_id|
+          res2 = send_cmd(node_id,"rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
           unless res2
-            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('rdelete',[nid,hash_name,s[1],res[2]]))
-            @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{nid}")
+            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('rdelete',[node_id,hash_name,s[1],res[2]]))
+            @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{node_id}")
           end
         }
         return send_data("NOT_FOUND\r\n") unless res[4]
@@ -208,11 +208,11 @@ module Roma
         end
 
         nodes.delete(@my_node_id)
-        nodes.each{ |nid|
-          res2 = send_cmd(nid,"rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
+        nodes.each{ |node_id|
+          res2 = send_cmd(node_id,"rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
           unless res2
-            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('rdelete',[nid,hash_name,s[1],res[2]]))
-            @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{nid}")
+            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('rdelete',[node_id,hash_name,s[1],res[2]]))
+            @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{node_id}")
           end
         }
         return send_data("NOT_FOUND\r\n") unless res[4]
@@ -479,18 +479,18 @@ module Roma
 
       private
 
-      def forward_get(nid, k, d)
-        con = get_connection(nid)
+      def forward_get(node_id, k, d)
+        con = get_connection(node_id)
         con.send("fget #{k}\r\n")
         res = con.gets
         if res == nil
-          @routing_table.proc_failed(nid)
-          @log.error("forward get failed:nid=#{nid} key=#{k}")
+          @routing_table.proc_failed(node_id)
+          @log.error("forward get failed:node_id=#{node_id} key=#{k}")
           return nil
         elsif res == "END\r\n"
           # value does not found
         elsif res.start_with?("ERROR")
-          @routing_table.proc_succeed(nid)
+          @routing_table.proc_succeed(node_id)
           con.close_connection
           return nil
         else
@@ -498,18 +498,18 @@ module Roma
           res << con.read_bytes(s[3].to_i + 2)
           res << con.gets
         end
-        return_connection(nid, con)
-        @routing_table.proc_succeed(nid)
+        return_connection(node_id, con)
+        @routing_table.proc_succeed(node_id)
         res
       rescue => e
-        @routing_table.proc_failed(nid) if e.message != "no connection"
+        @routing_table.proc_failed(node_id) if e.message != "no connection"
         @log.error("#{e.inspect}/#{$@}")
-        @log.error("forward get failed:nid=#{nid} key=#{k}")
+        @log.error("forward get failed:node_id=#{node_id} key=#{k}")
         nil
       end
 
-      def forward_gets(nid, keys)
-        con = get_connection(nid)
+      def forward_gets(node_id, keys)
+        con = get_connection(node_id)
         con.send("gets #{keys.join(' ')}\r\n")
         res = {}
         while((line = con.gets)!="END\r\n")
@@ -517,17 +517,17 @@ module Roma
           res[s[1]] = [s[4], con.read_bytes(s[3].to_i)]
           con.read_bytes(2)
         end
-        return_connection(nid, con)
-        @routing_table.proc_succeed(nid)
+        return_connection(node_id, con)
+        @routing_table.proc_succeed(node_id)
         res
       rescue
-        @routing_table.proc_failed(nid)
-        @log.error("forward gets failed:nid=#{nid} key=#{keys}")
+        @routing_table.proc_failed(node_id)
+        @log.error("forward gets failed:node_id=#{node_id} key=#{keys}")
         {}
       end
 
-      def forward_get_expt(nid, vnode, key, is_unix=nil)
-        con = get_connection(nid)
+      def forward_get_expt(node_id, vnode, key, is_unix=nil)
+        con = get_connection(node_id)
         con.send("get_expt #{key} #{is_unix}\r\n")
         res = +''
         while((line = con.gets)!="END\r\n")
@@ -535,12 +535,12 @@ module Roma
           res << line
         end
         res << line
-        return_connection(nid, con)
-        @routing_table.proc_succeed(nid)
+        return_connection(node_id, con)
+        @routing_table.proc_succeed(node_id)
         res
       rescue
-        @routing_table.proc_failed(nid)
-        @log.error("forward get_expt failed:nid=#{nid} key=#{key}")
+        @routing_table.proc_failed(node_id)
+        @log.error("forward get_expt failed:node_id=#{node_id} key=#{key}")
         nil
       end
 
@@ -617,11 +617,11 @@ module Roma
           return zredundant(nodes, hash_name, k, d, clock, expire_time, v)
         end
 
-        nodes.each{ |nid|
-          res = send_cmd(nid,"rset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}\r\n#{v}\r\n")
+        nodes.each{ |node_id|
+          res = send_cmd(node_id,"rset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}\r\n#{v}\r\n")
           if res == nil || res.start_with?("ERROR")
-            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('redundant',[nid,hash_name,k,d,clock,expire_time,v]))
-            @log.warn("redundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length} -> #{nid}")
+            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('redundant',[node_id,hash_name,k,d,clock,expire_time,v]))
+            @log.warn("redundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length} -> #{node_id}")
           end
         }
       end
@@ -629,11 +629,11 @@ module Roma
       def zredundant(nodes, hash_name, k, d, clock, expire_time, v)
         zv = Zlib::Deflate.deflate(v)
 
-        nodes.each{ |nid|
-          res = send_cmd(nid,"rzset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}\r\n#{zv}\r\n")
+        nodes.each{ |node_id|
+          res = send_cmd(node_id,"rzset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}\r\n#{zv}\r\n")
           if res == nil || res.start_with?("ERROR")
-            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('zredundant',[nid,hash_name,k,d,clock,expire_time,zv]))
-            @log.warn("zredundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length} -> #{nid}")
+            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('zredundant',[node_id,hash_name,k,d,clock,expire_time,zv]))
+            @log.warn("zredundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length} -> #{node_id}")
           end
         }
       end

@@ -26,7 +26,7 @@ module Roma
         @tree[id]
       end
 
-      def to_vn(id)
+      def to_vnode(id)
         id[1,id.length].to_i(2) << (@digest_bits-@divide_bits)
       end
 

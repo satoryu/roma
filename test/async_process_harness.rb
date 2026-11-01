@@ -10,7 +10,7 @@ require 'roma/storage/hash'
 # Runs the background processes of romad (Roma::AsyncProcess) in-process.
 #
 # - A fresh Roma::Stats and a real routing table are made for each harness.
-#   This node is NID; +nodes+ are the nodes in the routing table.
+#   This node is NODE_ID; +nodes+ are the nodes in the routing table.
 # - The roma hash is a HashStorage.
 # - Commands sent to one node (async_send_cmd) or to all (async_broadcast_cmd)
 #   are recorded and answered with +send_cmd_reply+. Pushing a vnode
@@ -20,21 +20,21 @@ require 'roma/storage/hash'
 #   which sleep between steps, run fast.
 #
 #   h = AsyncProcessHarness.new
-#   h.call(:asyncev_rdelete, [OTHER_NID, 'roma', 'key', 1]) # => true
+#   h.call(:asyncev_rdelete, [OTHER_NODE_ID, 'roma', 'key', 1]) # => true
 #   h.sent # => [["localhost_11212", "rdelete key\eroma 1\r\n"]]
 class AsyncProcessHarness
   include Roma::AsyncProcess
 
-  NID = 'localhost_11211'
-  OTHER_NID = 'localhost_11212'
+  NODE_ID = 'localhost_11211'
+  OTHER_NODE_ID = 'localhost_11212'
 
   attr_reader :stats, :routing_table, :storages, :storage, :sent, :broadcasts, :slept, :dir
   attr_accessor :send_cmd_reply
 
-  def initialize(nodes: [NID, OTHER_NID], vnode_nodes: nil)
+  def initialize(nodes: [NODE_ID, OTHER_NODE_ID], vnode_nodes: nil)
     @log = Logger.new(nil)
     @stats = Roma::Stats.send(:new)
-    @stats.address, @stats.port = NID.split('_')
+    @stats.address, @stats.port = NODE_ID.split('_')
     @dir = Dir.mktmpdir('roma_async')
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
     # Choose the nodes of every vnode, instead of at random.
@@ -73,8 +73,8 @@ class AsyncProcessHarness
     vnode
   end
 
-  def async_send_cmd(nid, cmd, _tout = nil)
-    @sent << [nid, cmd]
+  def async_send_cmd(node_id, cmd, _tout = nil)
+    @sent << [node_id, cmd]
     @send_cmd_reply
   end
 

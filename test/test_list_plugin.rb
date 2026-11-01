@@ -541,7 +541,7 @@ module ListPluginTests
 
   def test_alist_spushv
 
-    st, nid, vnode = create_storage_and_calc_vn('aa')
+    st, node_id, vnode = create_storage_and_calc_vn('aa')
 
     # create a data ,it's a past time
     pt =Time.now.to_i
@@ -552,13 +552,13 @@ module ListPluginTests
     @rc.alist_push("aa","33")
     @rc.alist_push("aa","11")
 
-    push_a_vnode_stream(st, vnode, nid)
+    push_a_vnode_stream(st, vnode, node_id)
 
     assert_equal(["55", "33", "11", "22", "44"], @rc.alist_to_s("aa")[1])
 
     # create a data out of list
     st.set(vnode,'aa',0,0xffffffff,'val-aa')
-    push_a_vnode_stream(st, vnode, nid)
+    push_a_vnode_stream(st, vnode, node_id)
     # do not write a value
     assert_equal(["55", "33", "11", "22", "44"], @rc.alist_to_s("aa")[1])
 
@@ -566,14 +566,14 @@ module ListPluginTests
     10.times{
       st.set(vnode,'aa',0,0xffffffff,'val-aa')
     }
-    push_a_vnode_stream(st, vnode, nid)
+    push_a_vnode_stream(st, vnode, node_id)
     # write over a value, cause increased a logical clock
     assert_equal('val-aa', @rc.get("aa",true))
   end
 
   def create_storage_and_calc_vn(k)
     # calc vnode
-    nid,d = @rc.routing_table.search_node("aa")
+    node_id,d = @rc.routing_table.search_node("aa")
     vnode = @rc.routing_table.get_vnode_id(d)
 
     st = Roma::Storage::HashStorage.new
@@ -581,12 +581,12 @@ module ListPluginTests
     st.storage_path = 'storage_test'
     st.opendb
 
-    [st,nid,vnode]
+    [st,node_id,vnode]
   end
   private :create_storage_and_calc_vn
 
-  def push_a_vnode_stream(st, vnode, nid)
-    con = Roma::Messaging::ConPool.instance.get_connection(nid)
+  def push_a_vnode_stream(st, vnode, node_id)
+    con = Roma::Messaging::ConPool.instance.get_connection(node_id)
     con.write("alist_spushv roma #{vnode}\r\n")
     con.gets # READY
     st.each_vn_dump(vnode){|data|
@@ -594,7 +594,7 @@ module ListPluginTests
     }
     con.write("\0"*20) # end of steram
     con.gets # STORED\r\n or error string
-    Roma::Messaging::ConPool.instance.return_connection(nid,con)
+    Roma::Messaging::ConPool.instance.return_connection(node_id,con)
   end
   private :push_a_vnode_stream
 

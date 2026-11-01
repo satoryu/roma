@@ -13,15 +13,15 @@ class MkrouteTest < Test::Unit::TestCase
     out.string
   end
 
-  def load_route(nid)
-    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{nid}.route"))
+  def load_route(node_id)
+    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{node_id}.route"))
   end
 
   def test_create
     out = mkroute(%w(host1:11211 host2_11211), divide_bits: 3)
     assert_equal "nodes => [\"host1_11211\", \"host2_11211\"]\nRouting table has created.\n", out
-    %w(host1_11211 host2_11211).each do |nid|
-      routing_data = load_route(nid)
+    %w(host1_11211 host2_11211).each do |node_id|
+      routing_data = load_route(node_id)
       assert_equal %w(host1_11211 host2_11211), routing_data.nodes
       assert_equal [32, 3, 2], [routing_data.digest_bits, routing_data.divide_bits, routing_data.redundancy]
       assert_equal 8, routing_data.routes.size
@@ -36,14 +36,14 @@ class MkrouteTest < Test::Unit::TestCase
 
   def test_replication_in_host
     mkroute(%w(host1_1 host1_2), divide_bits: 3, replication_in_host: true)
-    load_route('host1_1').routes.each_value { |nids| assert_equal 2, nids.size }
+    load_route('host1_1').routes.each_value { |node_ids| assert_equal 2, node_ids.size }
   end
 
   # Without replication_in_host, a host doesn't hold the same data twice.
   def test_without_replication_in_host
     mkroute(%w(host1_1 host1_2 host2_1), divide_bits: 3)
-    load_route('host1_1').routes.each_value do |nids|
-      assert_equal nids.size, nids.map { |nid| nid.split('_').first }.uniq.size
+    load_route('host1_1').routes.each_value do |node_ids|
+      assert_equal node_ids.size, node_ids.map { |node_id| node_id.split('_').first }.uniq.size
     end
   end
 

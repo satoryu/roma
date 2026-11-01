@@ -72,10 +72,10 @@ module Roma
         nodeslen.times{|i|
           len, = bin.unpack('n')
           bin = bin[2..-1]
-          nid, = bin.unpack("a#{len}")
+          node_id, = bin.unpack("a#{len}")
           bin = bin[len..-1]
-          nid.encode!("utf-8") if RUBY_VERSION >= "1.9.3"
-          routing_data.nodes << nid 
+          node_id.encode!("utf-8") if RUBY_VERSION >= "1.9.3"
+          routing_data.nodes << node_id 
         }
         (2**divide_bits).times{|i|
           vnode=i<<(digest_bits-divide_bits)
@@ -116,18 +116,18 @@ module Roma
         # 9 bytes
         ret = ['RT',format_version,digest_bits,divide_bits,redundancy,nodes.length].pack('a2nCCCn')
         rev_hash = {}
-        nodes.each_with_index{|nid,idx|
-          rev_hash[nid] = idx
-          # 2 + nid.length bytes
-          ret += [nid.length,nid].pack('na*')
+        nodes.each_with_index{|node_id,idx|
+          rev_hash[node_id] = idx
+          # 2 + node_id.length bytes
+          ret += [node_id.length,node_id].pack('na*')
         }
         (2**divide_bits).times{|i|
           vnode=i<<(digest_bits-divide_bits)
           # 5 bytes
           ret += [clocks[vnode],routes[vnode].length].pack('Nc')
-          routes[vnode].each{|nid|
+          routes[vnode].each{|node_id|
             # 2 bytes
-            ret += [rev_hash[nid]].pack('n')
+            ret += [rev_hash[node_id]].pack('n')
           }
         }
         ret
@@ -171,9 +171,9 @@ module Roma
         case s[0]
         when 'setroute'
           # setroute <vnode-id> <clock> <node-id> ...
-          nids=[]
-          s[3..-1].each{ |nid| nids << nid }
-          @routes[s[1].to_i]=nids
+          node_ids=[]
+          s[3..-1].each{ |node_id| node_ids << node_id }
+          @routes[s[1].to_i]=node_ids
           @clocks[s[1].to_i]=s[2].to_i
         when 'join'
           # join <node-id>
@@ -198,8 +198,8 @@ module Roma
 
       def create_nodes_from_routes
         buf_nodes={}
-        routes.each_value{|nids|
-          nids.each{|nid| buf_nodes[nid]=nid }
+        routes.each_value{|node_ids|
+          node_ids.each{|node_id| buf_nodes[node_id]=node_id }
         }
         @nodes=buf_nodes.values.sort
       end
@@ -207,27 +207,27 @@ module Roma
       # Returns the losted vnode-id list.
       def get_lost_vnodes
         ret=[]
-        routes.each_pair{|vnode,nids|
-          ret << vnode if nids.length == 0
+        routes.each_pair{|vnode,node_ids|
+          ret << vnode if node_ids.length == 0
         }
         ret
       end
 
-      def self.create(digest_bits,divide_bits,redundancy,nodes,repethost=false)
+      def self.create(digest_bits,divide_bits,redundancy,nodes,replication_in_host=false)
         ret=RoutingData.new(digest_bits,divide_bits,redundancy)
         ret.nodes=nodes.clone
 
-        rnlm=RandomNodeListMaker.new(nodes,repethost)
+        node_list_maker=RandomNodeListMaker.new(nodes,replication_in_host)
 
         (2**divide_bits).times do |i|
           vnode=i<<(digest_bits-divide_bits)
           ret.clocks[vnode]=0
-          ret.routes[vnode]=rnlm.list(redundancy)
+          ret.routes[vnode]=node_list_maker.list(redundancy)
         end
 
         # vnode balanceing process
-        rlist = ret.get_balanced_vn_replacement_list(repethost)
-        ret.balance!(rlist, repethost) if rlist
+        rlist = ret.get_balanced_vn_replacement_list(replication_in_host)
+        ret.balance!(rlist, replication_in_host) if rlist
 
         ret
       end
@@ -250,12 +250,12 @@ module Roma
 
       def get_histogram
         ret = {}
-        nodes.each{|nid|
-          ret[nid] = Array.new(redundancy,0)
+        nodes.each{|node_id|
+          ret[node_id] = Array.new(redundancy,0)
         }
-        routes.each_pair{|vnode,nids|
-          nids.each_with_index{|nid,i|
-            ret[nid][i] += 1
+        routes.each_pair{|vnode,node_ids|
+          node_ids.each_with_index{|node_id,i|
+            ret[node_id][i] += 1
           }
         }
         ret
@@ -264,16 +264,16 @@ module Roma
       private
 
       class RandomNodeListMaker
-        def initialize(nodes,repethost)
-          @repethost=repethost
+        def initialize(nodes,replication_in_host)
+          @replication_in_host=replication_in_host
           @nodes=nodes
           @host_idx={}
-          nodes.each{|nid|
-            h, _p = nid.split('_')
+          nodes.each{|node_id|
+            h, _p = node_id.split('_')
             if @host_idx.key?(h)
-              @host_idx[h] << nid
+              @host_idx[h] << node_id
             else
-              @host_idx[h]=[nid]
+              @host_idx[h]=[node_id]
             end
           }          
         end
@@ -284,13 +284,13 @@ module Roma
           ret=[]
           hosts=[]
           proc_other_one = :get_other_one
-          proc_other_one = :get_other_one_repethost if @repethost
+          proc_other_one = :get_other_one_repethost if @replication_in_host
           n.times{
-            nid=nil
-            nid=send(proc_other_one,hosts,ret)
-            break unless nid
-            hosts << nid.split('_')[0]
-            ret << nid
+            node_id=nil
+            node_id=send(proc_other_one,hosts,ret)
+            break unless node_id
+            hosts << node_id.split('_')[0]
+            ret << node_id
           }
           ret
         end
@@ -299,7 +299,7 @@ module Roma
         # +exp_nodes+:: exceptional nodes(ex.['roma0_11211'])
         def get_other_one_repethost(exp_hosts,exp_nodes)
           buf=@nodes.clone
-          buf.delete_if{|nid| exp_nodes.include?(nid)}
+          buf.delete_if{|node_id| exp_nodes.include?(node_id)}
           buf[rand(buf.length)]
         end
 

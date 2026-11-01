@@ -19,21 +19,21 @@ module Roma
       @@system_commands={}
       def self.system_commands; @@system_commands; end
 
-      @@ccl_start = 200
-      @@ccl_rate = 30
-      @@ccl_full = 300
+      @@continuous_limit_start = 200
+      @@continuous_limit_rate = 30
+      @@continuous_limit_full = 300
 
-      def self.get_ccl
-        "#{@@ccl_start}:#{@@ccl_rate}:#{@@ccl_full}"
+      def self.get_continuous_limit
+        "#{@@continuous_limit_start}:#{@@continuous_limit_rate}:#{@@continuous_limit_full}"
       end
 
-      def self.set_ccl(ccl)
-        if ccl =~ /^(\d+):(\d+):(\d+)$/
+      def self.set_continuous_limit(continuous_limit)
+        if continuous_limit =~ /^(\d+):(\d+):(\d+)$/
           s,r,f = $1.to_i,$2.to_i,$3.to_i
           return false if(s < 0 || f < 0 || r < 0 || r > 100 || s > f)
-          @@ccl_start = s
-          @@ccl_rate = r
-          @@ccl_full = f
+          @@continuous_limit_start = s
+          @@continuous_limit_rate = r
+          @@continuous_limit_full = f
           return true
         else
           return false
@@ -67,7 +67,7 @@ module Roma
       attr_reader :addr, :port
 
       def initialize(storages, routing_table)
-        @rbuf=''
+        @read_buffer=''
         unless has_event?
           public_methods.each{|m|
             if m.to_s.start_with?('ev_')
@@ -97,7 +97,7 @@ module Roma
       end
 
       def receive_data(data)
-        @rbuf << data
+        @read_buffer << data
         @last_access = Time.now
         @fiber.resume
       rescue Exception =>e
@@ -190,12 +190,12 @@ module Roma
             Roma::AsyncProcess::queue_latency.push(Roma::AsyncMessage.new('calc_latency_average', [ps, @lastcmd[0]]))
           end
 
-          d = EM.connection_count - @@ccl_start
+          d = EM.connection_count - @@continuous_limit_start
           if d > 0 &&
-              rand(100) < @@ccl_rate + (100 - @@ccl_rate) * d / (@@ccl_full - @@ccl_start)
+              rand(100) < @@continuous_limit_rate + (100 - @@continuous_limit_rate) * d / (@@continuous_limit_full - @@continuous_limit_start)
             send_data("ERROR\r\n")
             close_connection_after_writing
-            @log.warn("Connection count > #{@@ccl_start}:closed")
+            @log.warn("Connection count > #{@@continuous_limit_start}:closed")
           end
         end
       rescue Storage::StorageException => e
@@ -218,9 +218,9 @@ module Roma
           return nil
         end
 
-        if @rbuf.size >= size
-          r = @rbuf[0..size-1]
-          @rbuf = @rbuf[size..-1]
+        if @read_buffer.size >= size
+          r = @read_buffer[0..size-1]
+          @read_buffer = @read_buffer[size..-1]
           r
         else
           nil
@@ -234,7 +234,7 @@ module Roma
           if d
             return d
           else
-            remain = size - @rbuf.size
+            remain = size - @read_buffer.size
             Fiber.yield(remain)
             if Time.now.to_i - t > @@timeout * mult
               @log.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} read_bytes time out");
@@ -248,10 +248,10 @@ module Roma
 
       def gets
         while(@connected) do
-          if idx=@rbuf.index("\n")
+          if idx=@read_buffer.index("\n")
             return pop(idx+1)
           else
-            Fiber.yield(@rbuf.size)
+            Fiber.yield(@read_buffer.size)
           end
         end
         nil
@@ -266,7 +266,7 @@ module Roma
         ret = {}
         ret["connection.count"] = EM.connection_count
         ret["connection.descriptor_table_size"] = EM.set_descriptor_table_size
-        ret["connection.continuous_limit"] = Handler.get_ccl
+        ret["connection.continuous_limit"] = Handler.get_continuous_limit
         ret["connection.accepted_connection_expire_time"] = Handler.connection_expire_time
         ret["connection.handler_instance_count"] = Handler.connections.length
         ret["connection.pool_maxlength"] = Messaging::ConPool.instance.maxlength

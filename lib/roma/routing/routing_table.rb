@@ -35,26 +35,26 @@ module Roma
         init_merkle_tree
       end
 
-      def num_of_vn(ap)
+      def count_vnodes(ap)
         pn = short = lost = 0
         sn = Array.new(@routing_data.redundancy - 1, 0)
-        @routing_data.routes.each_pair do |vnode, nids|
-          if nids == nil || nids.length == 0
+        @routing_data.routes.each_pair do |vnode, node_ids|
+          if node_ids == nil || node_ids.length == 0
             lost += 1
             next
-          elsif nids[0] == ap
+          elsif node_ids[0] == ap
             pn += 1
-          elsif nids.include?(ap)
-            i = nids.index(ap) - 1
+          elsif node_ids.include?(ap)
+            i = node_ids.index(ap) - 1
             sn[i] += 1
           end
-          short += 1 if nids.length < @routing_data.redundancy
+          short += 1 if node_ids.length < @routing_data.redundancy
         end
         [pn, sn, short, lost]
       end
 
       def get_stat(ap)
-        pn, sn, short, lost = num_of_vn(ap)
+        pn, sn, short, lost = count_vnodes(ap)
         ret = {}
         ret['routing.redundant'] = @redundancy
         ret['routing.nodes.length'] = nodes.length
@@ -74,8 +74,8 @@ module Roma
 
       def init_merkle_tree
         @merkle_tree = MerkleTree.new(@routing_data.digest_bits,@routing_data.divide_bits)
-        @routing_data.routes.each_pair{ |vnode, nids|
-          @merkle_tree.set(vnode,nids)
+        @routing_data.routes.each_pair{ |vnode, node_ids|
+          @merkle_tree.set(vnode,node_ids)
         }
       end
 
@@ -101,18 +101,18 @@ module Roma
       end
 
       # delete dropping node from list
-      # +nid+: dropping node
-      def leave(nid)
-        @routing_data.nodes.delete(nid)
-        # delet nid from list
-        @routing_data.routes.each_pair{ |vnode, nids|
-          nids.delete_if{ |nid2| nid2 == nid}
-          if nids.length == 0
+      # +node_id+: dropping node
+      def leave(node_id)
+        @routing_data.nodes.delete(node_id)
+        # delet node_id from list
+        @routing_data.routes.each_pair{ |vnode, node_ids|
+          node_ids.delete_if{ |other_node_id| other_node_id == node_id}
+          if node_ids.length == 0
             @log.error("Vnode data is lost.(Vnode=#{vnode})")
           end
-          @merkle_tree.set(vnode,nids)
+          @merkle_tree.set(vnode,node_ids)
         }
-        @failure_counts.delete(nid)
+        @failure_counts.delete(node_id)
       end
 
       def dump
@@ -147,19 +147,19 @@ module Roma
         false
       end
 
-      def proc_failed(nid)
+      def proc_failed(node_id)
         t = Time.now
         if t - @fail_time > @failure_count_gap
-          @failure_counts[nid] += 1
-          if @failure_counts[nid] >= @failure_count_threshold
-            leave(nid)
+          @failure_counts[node_id] += 1
+          if @failure_counts[node_id] >= @failure_count_threshold
+            leave(node_id)
           end
         end
         @fail_time = t
       end
 
-      def proc_succeed(nid)
-        @failure_counts.delete(nid)
+      def proc_succeed(node_id)
+        @failure_counts.delete(node_id)
       end
 
       # Reconstruct vnodes from routes
@@ -182,13 +182,13 @@ module Roma
       def get_replaced_routing_data(regexp, replace)
         routing_data = Marshal.load(dump)
 
-        routing_data.nodes.map! do |nid|
-          nid.sub(regexp, replace)
+        routing_data.nodes.map! do |node_id|
+          node_id.sub(regexp, replace)
         end
 
-        routing_data.routes.each_value do |nids|
-          nids.map! do |nid|
-            nid.sub(regexp, replace)
+        routing_data.routes.each_value do |node_ids|
+          node_ids.map! do |node_id|
+            node_id.sub(regexp, replace)
           end
         end
         routing_data

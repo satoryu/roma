@@ -7,9 +7,9 @@ require 'plugin_test_harness'
 # node forwards commands to the owner.
 class PluginMapForwardTest < Test::Unit::TestCase
   HARNESS = PluginTestHarness.for(Roma::CommandPlugin::PluginMap)
-  NID = PluginTestHarness::NID
-  OWNER_NID = PluginTestHarness::REPLICA_NID
-  OTHER_NID = 'localhost_11213'
+  NODE_ID = PluginTestHarness::NODE_ID
+  OWNER_NODE_ID = PluginTestHarness::REPLICA_NODE_ID
+  OTHER_NODE_ID = 'localhost_11213'
 
   # Stands in for a node: replies +reply+, closes the connection (nil), or
   # can't be reached (:down).
@@ -25,8 +25,8 @@ class PluginMapForwardTest < Test::Unit::TestCase
   end
 
   def setup
-    @owner = HARNESS.new(nid: OWNER_NID, nodes: [OWNER_NID, OTHER_NID])
-    @conn = HARNESS.new(nodes: [OWNER_NID, OTHER_NID]).forward_to(@owner)
+    @owner = HARNESS.new(node_id: OWNER_NODE_ID, nodes: [OWNER_NODE_ID, OTHER_NODE_ID])
+    @conn = HARNESS.new(nodes: [OWNER_NODE_ID, OTHER_NODE_ID]).forward_to(@owner)
   end
 
   def map_set(conn, key, mapkey, value)
@@ -52,7 +52,7 @@ class PluginMapForwardTest < Test::Unit::TestCase
        'with a value' => ['map_set key1 mapkey1 0 0 1', 'v'])
   def test_forwarded_to_the_wrong_node(data)
     line, value = data
-    wrong = HARNESS.new(nid: OWNER_NID, nodes: [OTHER_NID, NID]).forward_to(@owner)
+    wrong = HARNESS.new(node_id: OWNER_NODE_ID, nodes: [OTHER_NODE_ID, NODE_ID]).forward_to(@owner)
     @conn.forward_to(wrong)
     assert_equal "SERVER_ERROR Routing table is inconsistent.\r\n", @conn.request(line, value)
   end

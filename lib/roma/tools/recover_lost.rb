@@ -80,25 +80,25 @@ module Roma
 
       # A vnode without nodes is given to a node, which the others are told.
       def recover_vnode(routing_data, hash_name, storage, vnode, progress)
-        nids = routing_data.routes[vnode]
-        assign = nids.nil? || nids.empty?
+        node_ids = routing_data.routes[vnode]
+        assign = node_ids.nil? || node_ids.empty?
         if assign
-          nids = [routing_data.nodes.sample(random: @random)]
-          @out.puts "#{progress} #{vnode} assign to #{nids.inspect}"
+          node_ids = [routing_data.nodes.sample(random: @random)]
+          @out.puts "#{progress} #{vnode} assign to #{node_ids.inspect}"
         else
-          @out.puts "#{progress} #{vnode} was auto assigned at #{nids.inspect}"
+          @out.puts "#{progress} #{vnode} was auto assigned at #{node_ids.inspect}"
         end
-        nids.each do |nid|
-          res = push(nid, hash_name, vnode) { |con| storage.each_vn_dump(vnode) { |data| write_data(con, clock_to_zero(data)) } }
-          raise Error, "Pushing vnode #{vnode} to #{nid} failed: #{res}" unless res == 'STORED'
+        node_ids.each do |node_id|
+          res = push(node_id, hash_name, vnode) { |con| storage.each_vn_dump(vnode) { |data| write_data(con, clock_to_zero(data)) } }
+          raise Error, "Pushing vnode #{vnode} to #{node_id} failed: #{res}" unless res == 'STORED'
         end
         return unless assign
 
-        cmd = "setroute #{vnode} #{routing_data.clocks[vnode]} #{nids[0]}"
-        res = @client.request(nids[0], cmd)
-        raise Error, "#{nids[0]} replied to #{cmd}: #{res}" unless res == 'STORED'
-        (routing_data.nodes - nids).each do |nid|
-          @client.request(nid, cmd)
+        cmd = "setroute #{vnode} #{routing_data.clocks[vnode]} #{node_ids[0]}"
+        res = @client.request(node_ids[0], cmd)
+        raise Error, "#{node_ids[0]} replied to #{cmd}: #{res}" unless res == 'STORED'
+        (routing_data.nodes - node_ids).each do |node_id|
+          @client.request(node_id, cmd)
         rescue Error => e
           @out.puts e.message
         end
@@ -110,20 +110,20 @@ module Roma
         @out.puts "hit => #{key}"
         vnode = (Digest::SHA1.hexdigest(key).hex % (2**routing_data.digest_bits)) & routing_data.search_mask
         _vn, last, _clk, expire_time, val = data
-        Array(routing_data.routes[vnode]).each do |nid|
+        Array(routing_data.routes[vnode]).each do |node_id|
           res = begin
-                  push(nid, hash_name, vnode) { |con| write_data(con, pack(vnode, last, 0, expire_time, key, val)) }
+                  push(node_id, hash_name, vnode) { |con| write_data(con, pack(vnode, last, 0, expire_time, key, val)) }
                 rescue Error => e
                   e.message
                 end
-          @out.puts "#{nid}=>#{res}"
+          @out.puts "#{node_id}=>#{res}"
         end
       end
 
       # Sends the data written in the block by the push command, and returns
       # the reply, STORED or an error.
-      def push(nid, hash_name, vnode)
-        @client.connect(nid) do |con|
+      def push(node_id, hash_name, vnode)
+        @client.connect(node_id) do |con|
           con.write("#{@pushv_cmd} #{hash_name} #{vnode}\r\n")
           res = con.gets
           next res.to_s.chomp unless res == "READY\r\n"

@@ -20,7 +20,7 @@ class RecoverLostTest < Test::Unit::TestCase
     super
     @node = fake_node
     @node.replies['setroute'] = "STORED\r\n"
-    @routing_data = Roma::Routing::RoutingData.create(32, 3, 1, [@node.nid])
+    @routing_data = Roma::Routing::RoutingData.create(32, 3, 1, [@node.node_id])
     serve_routing(@node, @routing_data)
     @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = @routing_data.routes.keys
@@ -59,13 +59,13 @@ class RecoverLostTest < Test::Unit::TestCase
 
   def test_recover_lost_vnodes
     vnode = lose(store('key1', 'value1'))
-    tool.recover(@node.nid, @dir)
-    assert_match(/\A1 vnodes where data was lost\.\nroma #{@dir}\/roma\n0\/1 #{vnode} assign to \["#{@node.nid}"\]\n\z/, @out.string)
+    tool.recover(@node.node_id, @dir)
+    assert_match(/\A1 vnodes where data was lost\.\nroma #{@dir}\/roma\n0\/1 #{vnode} assign to \["#{@node.node_id}"\]\n\z/, @out.string)
     # The vnode is pushed to a node, and it is told to own the vnode.
     assert_equal ['key1'], @node.dat[vnode].keys
     # The clock of the data is reset.
     assert_equal [vnode, 0, 'value1'], @node.dat[vnode]['key1'].unpack('NNNNa*').values_at(0, 2, 4)
-    assert_equal ["setroute #{vnode} 0 #{@node.nid}"], @node.commands.grep(/\Asetroute/)
+    assert_equal ["setroute #{vnode} 0 #{@node.node_id}"], @node.commands.grep(/\Asetroute/)
     assert_equal [File.join(@dir, 'roma')], @opened
     assert_equal [:closed], @closed
   end
@@ -75,18 +75,18 @@ class RecoverLostTest < Test::Unit::TestCase
   def test_tell_the_other_nodes
     other = fake_node
     down = down_node
-    @routing_data.nodes.push(other.nid, down)
+    @routing_data.nodes.push(other.node_id, down)
     vnode = lose(store('key1', 'value1'))
-    tool.recover(@node.nid, @dir)
-    assert_include other.commands, "setroute #{vnode} 0 #{@node.nid}"
+    tool.recover(@node.node_id, @dir)
+    assert_include other.commands, "setroute #{vnode} 0 #{@node.node_id}"
     assert_match(/^#{down}: .*refused/i, @out.string)
   end
 
   def test_setroute_refused
     @node.replies['setroute'] = "SERVER_ERROR busy\r\n"
     vnode = lose(store('key1', 'value1'))
-    assert_raise_message("#{@node.nid} replied to setroute #{vnode} 0 #{@node.nid}: SERVER_ERROR busy") do
-      tool.recover(@node.nid, @dir)
+    assert_raise_message("#{@node.node_id} replied to setroute #{vnode} 0 #{@node.node_id}: SERVER_ERROR busy") do
+      tool.recover(@node.node_id, @dir)
     end
   end
 
@@ -94,35 +94,35 @@ class RecoverLostTest < Test::Unit::TestCase
   def test_since
     vnode = store('key1', 'value1')
     @node.replies['history_of_lost'] = "#{vnode}\r\nEND\r\n"
-    tool.recover(@node.nid, @dir, since: '20260101000000')
+    tool.recover(@node.node_id, @dir, since: '20260101000000')
     assert_include @node.commands, 'history_of_lost 20260101000000'
-    assert_match(/^0\/1 #{vnode} was auto assigned at \["#{@node.nid}"\]$/, @out.string)
+    assert_match(/^0\/1 #{vnode} was auto assigned at \["#{@node.node_id}"\]$/, @out.string)
     assert_equal ['key1'], @node.dat[vnode].keys
     assert_empty @node.commands.grep(/\Asetroute/)
   end
 
   data('short' => '2026', 'not digits' => '2026010100000x')
   def test_since_format(since)
-    assert_raise_message('The time should be YYYYMMDDHHMMSS.') { tool.recover(@node.nid, @dir, since: since) }
+    assert_raise_message('The time should be YYYYMMDDHHMMSS.') { tool.recover(@node.node_id, @dir, since: since) }
     assert_empty @node.commands
   end
 
   def test_history_of_lost_error
     @node.replies['history_of_lost'] = "CLIENT_ERROR\r\n"
-    assert_raise_message("#{@node.nid} replied to history_of_lost: CLIENT_ERROR") do
-      tool.recover(@node.nid, @dir, since: '20260101000000')
+    assert_raise_message("#{@node.node_id} replied to history_of_lost: CLIENT_ERROR") do
+      tool.recover(@node.node_id, @dir, since: '20260101000000')
     end
   end
 
   def test_nothing_lost
-    tool.recover(@node.nid, @dir)
+    tool.recover(@node.node_id, @dir)
     assert_equal "0 vnodes where data was lost.\n", @out.string
     assert_empty @opened
   end
 
   def test_all
     vnode = store('key1', 'value1')
-    tool.recover(@node.nid, @dir, all: true)
+    tool.recover(@node.node_id, @dir, all: true)
     assert_equal ['key1'], @node.dat[vnode].keys
     assert_equal @routing_data.routes.keys.sort, @node.dat.keys.sort
     assert_not_match(/vnodes where data was lost/, @out.string)
@@ -131,23 +131,23 @@ class RecoverLostTest < Test::Unit::TestCase
   # The storage is closed even then.
   def test_push_failed
     @node.replies['spushv'] = "SERVER_ERROR busy\r\n"
-    assert_raise_message("Pushing vnode 0 to #{@node.nid} failed: SERVER_ERROR busy") do
-      tool.recover(@node.nid, @dir, all: true)
+    assert_raise_message("Pushing vnode 0 to #{@node.node_id} failed: SERVER_ERROR busy") do
+      tool.recover(@node.node_id, @dir, all: true)
     end
     assert_equal [:closed], @closed
   end
 
   def test_alist
     @node.replies['alist_spushv'] = "SERVER_ERROR busy\r\n"
-    assert_raise(Roma::Tools::Error) { tool(alist: true).recover(@node.nid, @dir, all: true) }
+    assert_raise(Roma::Tools::Error) { tool(alist: true).recover(@node.node_id, @dir, all: true) }
     assert_equal ['alist_spushv roma 0'], @node.commands.grep(/spushv/)
   end
 
   def test_recover_keys
     vnode = store('key1', 'value1')
     lost = lose(store('キー', 'value2'))
-    tool.recover_keys(@node.nid, @dir, %w(key1 key2 キー))
-    assert_equal "roma #{@dir}/roma\nhit => key1\n#{@node.nid}=>STORED\nhit => キー\n", @out.string
+    tool.recover_keys(@node.node_id, @dir, %w(key1 key2 キー))
+    assert_equal "roma #{@dir}/roma\nhit => key1\n#{@node.node_id}=>STORED\nhit => キー\n", @out.string
     assert_equal ['key1'], @node.dat[vnode].keys
     # The data is pushed with the clock reset.
     assert_equal [vnode, 0, 0x7fffffff, 'value1'], @node.dat[vnode]['key1'].unpack('NNNNa*').values_at(0, 2, 3, 4)
@@ -157,20 +157,20 @@ class RecoverLostTest < Test::Unit::TestCase
   # A multibyte key is packed by its bytes.
   def test_recover_multibyte_key
     vnode = store('キー', '値')
-    tool.recover_keys(@node.nid, @dir, ['キー'])
+    tool.recover_keys(@node.node_id, @dir, ['キー'])
     assert_equal ['キー'.b], @node.dat[vnode].keys
   end
 
   def test_recover_keys_refused
     store('key1', 'value1')
     @node.replies['spushv'] = "SERVER_ERROR busy\r\n"
-    tool.recover_keys(@node.nid, @dir, ['key1'])
-    assert_match(/^#{@node.nid}=>SERVER_ERROR busy$/, @out.string)
+    tool.recover_keys(@node.node_id, @dir, ['key1'])
+    assert_match(/^#{@node.node_id}=>SERVER_ERROR busy$/, @out.string)
   end
 
   def test_no_directories
     FileUtils.rm_rf(File.join(@dir, 'roma'))
-    assert_raise_message("#{@dir} has no directories of storage files.") { tool.recover(@node.nid, @dir, all: true) }
+    assert_raise_message("#{@dir} has no directories of storage files.") { tool.recover(@node.node_id, @dir, all: true) }
   end
 
   def test_node_down

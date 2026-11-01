@@ -25,8 +25,8 @@ class RoutingTableTest < Test::Unit::TestCase
 
   def test_num_of_vn
     # [primary, [secondary], short, lost]
-    assert_equal [2, [1], 1, 0], @rt.num_of_vn(A1)
-    assert_equal [2, [2], 1, 0], @rt.num_of_vn(B1)
+    assert_equal [2, [1], 1, 0], @rt.count_vnodes(A1)
+    assert_equal [2, [2], 1, 0], @rt.count_vnodes(B1)
   end
 
   def test_get_stat
@@ -43,7 +43,7 @@ class RoutingTableTest < Test::Unit::TestCase
     assert_equal [A1], @rt.nodes
     assert_equal [[A1], [A1], [A1], []], VN.map { |vnode| @rt.search_nodes(vnode) }
     # [primary, [secondary], short, lost]
-    assert_equal [3, [0], 3, 1], @rt.num_of_vn(A1)
+    assert_equal [3, [0], 3, 1], @rt.count_vnodes(A1)
   end
 
   def test_proc_failed_leaves_at_threshold

@@ -14,7 +14,7 @@ class UtilCommandReceiverTest < Test::Unit::TestCase
 
   def test_async_send_cmd
     node = FakeNode.new
-    assert_equal 'ROMA', @conn.async_send_cmd(node.nid, "whoami\r\n")
+    assert_equal 'ROMA', @conn.async_send_cmd(node.node_id, "whoami\r\n")
     # The node is down.
     assert_nil @conn.async_send_cmd('localhost_1', "whoami\r\n")
   ensure
@@ -24,9 +24,9 @@ class UtilCommandReceiverTest < Test::Unit::TestCase
 
   def test_async_broadcast_cmd
     node = FakeNode.new
-    @conn.routing_table.add_node(node.nid)
-    res = @conn.async_broadcast_cmd("whoami\r\n", [NID, OTHER_NID])
-    assert_equal({ node.nid => 'ROMA' }, res)
+    @conn.routing_table.add_node(node.node_id)
+    res = @conn.async_broadcast_cmd("whoami\r\n", [NODE_ID, OTHER_NODE_ID])
+    assert_equal({ node.node_id => 'ROMA' }, res)
   ensure
     node&.close
     Roma::Messaging::ConPool.instance.close_all

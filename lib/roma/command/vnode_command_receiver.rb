@@ -104,7 +104,7 @@ module Roma
 
       # reqpushv <vnode-id> <node-id> <is primary?>
       # src                                       dst
-      #  |<-['reqpushv <vnode> <nid> <p?>\r\n']         |
+      #  |<-['reqpushv <vnode> <node_id> <p?>\r\n']         |
       #  |                           ['PUSHED'\r\n]->|
       def ev_reqpushv(s)
         if s.length!=4
@@ -122,11 +122,11 @@ module Roma
         @log.error("#{e}\n#{$@}")
       end
 
-      def req_push_a_vnode(vnode, src_nid, is_primary)
-        con = Roma::Messaging::ConPool.instance.get_connection(src_nid)
+      def req_push_a_vnode(vnode, src_node_id, is_primary)
+        con = Roma::Messaging::ConPool.instance.get_connection(src_node_id)
         con.write("reqpushv #{vnode} #{@my_node_id} #{is_primary}\r\n")
         con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n'
-        Roma::Messaging::ConPool.instance.return_connection(src_nid,con)
+        Roma::Messaging::ConPool.instance.return_connection(src_node_id,con)
         # waiting for pushv
         count = 0
         while @routing_table.search_nodes(vnode).include?(@my_node_id)==false && count < 300
@@ -135,7 +135,7 @@ module Roma
         end
       rescue =>e
         @log.error("#{e}\n#{$@}")
-        @routing_table.proc_failed(src_nid)
+        @routing_table.proc_failed(src_node_id)
         false
       end
 

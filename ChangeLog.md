@@ -84,6 +84,8 @@ The abbreviated names of the routing are words now [#60](https://github.com/sato
 
 A client that reads the routing table by `routingdump` (in Marshal or YAML) needs the new names, too. `routingdump bin` doesn't change.
 
+The internal names are words, too, such as `@routing_table`, `node_id`, `vnode`, `clock`, `expire_time` and `hash_name` (`@rttable`, `nid`, `vn`, `clk`, `expt` and `hname` before). A plugin uses `params.vnode`, `data.clock` and `data.expire_time` of `Roma::Command::Definition`. `stats.routing_trans_timeout` is `stats.routing_transaction_timeout`. The protocol commands keep their names.
+
 ### File names
 The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins require, stays as a deprecated alias of `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)
 
