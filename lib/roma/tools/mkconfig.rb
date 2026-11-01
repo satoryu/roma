@@ -26,7 +26,7 @@ module Roma
         attr_accessor :all, :flag
 
         def initialize
-          flag = false
+          @flag = false
           @all = YAML.load <<-YAML
           menu:
             name:

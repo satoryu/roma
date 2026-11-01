@@ -107,7 +107,7 @@ module Roma
       end
 
       def mkdir(path)
-        pbuf = ''
+        pbuf = +''
         path.split('/').each{|p|
           pbuf << p
           begin

@@ -33,29 +33,27 @@ class TestScenarioTest < Test::Unit::TestCase
     @signals = []
   end
 
-  def scenario(nodes: 3)
+  # Unless +stops_by_int+, the romads stop only when they are killed.
+  def scenario(nodes: 3, stops_by_int: true)
     t = Roma::Tools::TestScenario.new(out: @out, work_dir: @dir, port: 11211, nodes: nodes, admin: @admin,
                                       timeout: 0.3, poll: 0.01, stop_timeout: 0.1)
     spawned = @spawned
     signals = @signals
     t.define_singleton_method(:spawn) { |*cmd| spawned << cmd; 100 + spawned.size }
     t.define_singleton_method(:kill) { |nid, sig| signals << [nid, sig] }
-    t.define_singleton_method(:wait) { |_pid, _flags = 0| true }
+    t.define_singleton_method(:wait) { |_pid, flags = 0| stops_by_int || flags.zero? }
     t
   end
 
   # No requests are sent.
   def without_bench
-    Roma::Tools::Bench.class_eval do
-      alias_method :real_run, :run
-      define_method(:run) { |*, **| nil }
-    end
+    idle = Object.new
+    def idle.run(*, **) = nil
+    def idle.stop = nil
+    Roma::Tools::Bench.define_singleton_method(:new) { |*, **| idle }
     yield
   ensure
-    Roma::Tools::Bench.class_eval do
-      alias_method :run, :real_run
-      remove_method :real_run
-    end
+    Roma::Tools::Bench.singleton_class.remove_method(:new)
   end
 
   def test_run
@@ -93,8 +91,7 @@ class TestScenarioTest < Test::Unit::TestCase
   # A romad that doesn't stop by INT is killed.
   def test_kill_on_stop
     @admin.lengths = [2, 1]
-    t = scenario(nodes: 2)
-    t.define_singleton_method(:wait) { |_pid, flags = 0| flags.zero? }
+    t = scenario(nodes: 2, stops_by_int: false)
     without_bench { t.run }
     assert_equal [['localhost_11212', :KILL], ['localhost_11211', :INT], ['localhost_11212', :INT],
                   ['localhost_11211', :KILL], ['localhost_11212', :KILL]], @signals

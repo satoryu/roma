@@ -94,7 +94,7 @@ module Roma
             key,hname = kh.split("\e")
             hname ||= @defhash
             if @storages.key?(hname)
-              vn, t, clk, expt, val = @storages[hname].get_raw(kvn[key], key, 0)
+              _vn, _t, clk, expt, val = @storages[hname].get_raw(kvn[key], key, 0)
               @stats.read_count += 1
               res[key] = [clk, val] if val && Time.now.to_i <= expt
             end
@@ -520,7 +520,7 @@ module Roma
         return_connection(nid, con)
         @rttable.proc_succeed(nid)
         res
-      rescue => e
+      rescue
         @rttable.proc_failed(nid)
         @log.error("forward gets failed:nid=#{nid} key=#{keys}")
         {}
@@ -529,7 +529,7 @@ module Roma
       def forward_get_expt(nid, vn, key, is_unix=nil)
         con = get_connection(nid)
         con.send("get_expt #{key} #{is_unix}\r\n")
-        res = ''
+        res = +''
         while((line = con.gets)!="END\r\n")
           raise 'connection closed' unless line
           res << line
@@ -538,7 +538,7 @@ module Roma
         return_connection(nid, con)
         @rttable.proc_succeed(nid)
         res
-      rescue => e
+      rescue
         @rttable.proc_failed(nid)
         @log.error("forward get_expt failed:nid=#{nid} key=#{key}")
         nil

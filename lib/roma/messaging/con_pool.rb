@@ -82,7 +82,7 @@ module Roma
       end
 
       def close_same_host(ap)
-        host,port = ap.split(/[:_]/)
+        host, _port = ap.split(/[:_]/)
         @pool.each_key{|eap|
           close_at(eap) if eap.split(/[:_]/)[0] == host
         }
