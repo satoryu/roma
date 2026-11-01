@@ -240,7 +240,7 @@ class CLITest < Test::Unit::TestCase
     calls = spy_tool(Roma::Tools::MkRecent, :make) do
       out, = roma('mkrecent', 'a', 'b', 'recent', '-h', '16', '-d', '4', '-n', '5')
     end
-    assert_equal [[:new, {}], [:make, %w(a b recent), { hash_bits: 16, divide_bits: 4, divnum: 5 }]], calls
+    assert_equal [[:new, {}], [:make, %w(a b recent), { hash_bits: 16, divide_bits: 4, division_count: 5 }]], calls
     assert_equal "Make recent data process has succeed.\n", out
   end
 

@@ -161,11 +161,11 @@ module Roma
          'Merge the storage files of two nodes into RECENT_PATH, keeping the newer data of each key'
     option :hash, aliases: '-h', type: :numeric, default: 32, banner: 'BITS', desc: 'Digest bit count'
     option :divide, aliases: '-d', type: :numeric, default: 9, banner: 'BITS', desc: 'Dividing bit count'
-    option :divnum, aliases: '-n', type: :numeric, default: 10, banner: 'NUM', desc: 'Number of the new divided files'
+    option :division_count, aliases: '-n', type: :numeric, default: 10, banner: 'NUM', desc: 'Number of the new divided files'
     def mkrecent(path1, path2, recent_path)
       require 'roma/tools/mk_recent'
       Roma::Tools::MkRecent.new.make(path1, path2, recent_path, hash_bits: options[:hash],
-                                     divide_bits: options[:divide], divnum: options[:divnum])
+                                     divide_bits: options[:divide], division_count: options[:division_count])
       puts 'Make recent data process has succeed.'
     end
 

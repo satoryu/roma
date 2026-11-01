@@ -31,7 +31,7 @@ class PluginTestHarness
   HASH_NAME = 'roma'
 
   Stats = Struct.new(:wb_command_map, :read_count, :write_count, :delete_count,
-                     :size_of_zredundant, :ap_str)
+                     :compression_threshold, :ap_str)
 
   # Stands in for $roma, the running romad, which some commands look at.
   Romad = Struct.new(:cr_writer)

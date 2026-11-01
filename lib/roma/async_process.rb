@@ -644,7 +644,7 @@ module Roma
         end
 
         con.write(data)
-        sleep @stats.stream_copy_wait_param
+        sleep @stats.stream_copy_wait
       end
       con.write("\0" * 20) # end of stream
 
@@ -694,7 +694,7 @@ module Roma
           end
         end
       end
-      t = Time.now.to_i - Roma.config.storage.delmark_expire_time
+      t = Time.now.to_i - Roma.config.storage.delete_mark_expire_time
       count = 0
       @storages.each_pair do |hname, st|
         break unless @stats.do_clean_up?

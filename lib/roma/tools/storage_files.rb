@@ -23,8 +23,8 @@ module Roma
 
       # Opens the files in +dir+ for +vnodes+. The storage is found by the
       # files unless +storage_class+ is given, and the files are counted
-      # unless +divnum+ is given. Raises Error if they can't be opened.
-      def self.open(dir, vnodes, divnum: nil, storage_class: nil)
+      # unless +division_count+ is given. Raises Error if they can't be opened.
+      def self.open(dir, vnodes, division_count: nil, storage_class: nil)
         unless storage_class
           file = Dir.glob(File.join(dir, '0.*')).first
           raise Error, "#{dir} has no storage files." unless file
@@ -32,10 +32,10 @@ module Roma
           storage_class = storage_class_of(ext, dir)
           # The files are 0.dbm, 1.dbm, ..., and maybe others such as
           # 0.cache.dbm and 0.sql3-journal.
-          divnum ||= Dir.children(dir).count { |f| f.match?(/\A\d+\.#{ext}\z/) }
+          division_count ||= Dir.children(dir).count { |f| f.match?(/\A\d+\.#{ext}\z/) }
         end
         storage = storage_class.new
-        storage.divnum = divnum
+        storage.divnum = division_count
         storage.vn_list = vnodes
         storage.storage_path = dir
         storage.opendb

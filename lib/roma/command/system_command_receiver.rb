@@ -1323,31 +1323,31 @@ module Roma
       def dcnice(p)
         case(p)
         when 1 # highest priority
-          @stats.stream_copy_wait_param = 0.001
+          @stats.stream_copy_wait = 0.001
           @storages.each_value{|st|
             st.each_vn_dump_sleep = 0.001
             st.each_vn_dump_sleep_count = 1000
           }
         when 2
-          @stats.stream_copy_wait_param = 0.005
+          @stats.stream_copy_wait = 0.005
           @storages.each_value{|st|
             st.each_vn_dump_sleep = 0.005
             st.each_vn_dump_sleep_count = 100
           }
         when 3 # default priority
-          @stats.stream_copy_wait_param = 0.01
+          @stats.stream_copy_wait = 0.01
           @storages.each_value{|st|
             st.each_vn_dump_sleep = 0.001
             st.each_vn_dump_sleep_count = 10
           }
         when 4
-          @stats.stream_copy_wait_param = 0.01
+          @stats.stream_copy_wait = 0.01
           @storages.each_value{|st|
             st.each_vn_dump_sleep = 0.005
             st.each_vn_dump_sleep_count = 10
           }
         when 5 # lowest priority
-          @stats.stream_copy_wait_param = 0.01
+          @stats.stream_copy_wait = 0.01
           @storages.each_value{|st|
             st.each_vn_dump_sleep = 0.01
             st.each_vn_dump_sleep_count = 10
@@ -1362,18 +1362,18 @@ module Roma
       def get_config_stat
         config = Roma.config
         ret = {}
-        ret['config.DEFAULT_LOST_ACTION'] = config.routing.lost_action
-        ret['config.LOG_SHIFT_AGE'] = config.log.shift_age
-        ret['config.LOG_SHIFT_SIZE'] = config.log.shift_size
-        ret['config.LOG_PATH'] = File.expand_path(config.log.path)
-        ret['config.RTTABLE_PATH'] = File.expand_path(config.routing.path)
-        ret['config.STORAGE_DELMARK_EXPTIME'] = config.storage.delmark_expire_time
-        ret['config.STORAGE_EXCEPTION_ACTION'] = config.storage.exception_action
-        ret['config.DATACOPY_STREAM_COPY_WAIT_PARAM'] = config.data_copy.stream_copy_wait_param
-        ret['config.PLUGIN_FILES'] = config.plugins.inspect
-        ret['config.WRITEBEHIND_PATH'] = File.expand_path(config.write_behind.path)
-        ret['config.WRITEBEHIND_SHIFT_SIZE'] = config.write_behind.shift_size
-        ret['config.CONNECTION_DESCRIPTOR_TABLE_SIZE'] = config.connection.descriptor_table_size
+        ret['config.routing.lost_action'] = config.routing.lost_action
+        ret['config.log.shift_age'] = config.log.shift_age
+        ret['config.log.shift_size'] = config.log.shift_size
+        ret['config.log.path'] = File.expand_path(config.log.path)
+        ret['config.routing.path'] = File.expand_path(config.routing.path)
+        ret['config.storage.delete_mark_expire_time'] = config.storage.delete_mark_expire_time
+        ret['config.storage.exception_action'] = config.storage.exception_action
+        ret['config.data_copy.stream_copy_wait'] = config.data_copy.stream_copy_wait
+        ret['config.plugins'] = config.plugins.inspect
+        ret['config.write_behind.path'] = File.expand_path(config.write_behind.path)
+        ret['config.write_behind.shift_size'] = config.write_behind.shift_size
+        ret['config.connection.descriptor_table_size'] = config.connection.descriptor_table_size
         ret
       end
 

@@ -35,7 +35,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
     assert_equal 'END', lines.last
     keys = lines[0..-2].map { |line| line.split(' ', 2).first }
     assert_include keys, 'version'
-    assert_include keys, 'config.LOG_PATH'
+    assert_include keys, 'config.log.path'
     assert_include keys, 'stats.address'
     assert_include keys, 'storages[roma].storage.divnum'
     assert_include keys, 'write-behind.run_replication'
@@ -135,7 +135,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
     assert_false @conn.romad.cr_writer.run_replication
   end
 
-  # priority => [stream_copy_wait_param, each_vn_dump_sleep, each_vn_dump_sleep_count]
+  # priority => [stream_copy_wait, each_vn_dump_sleep, each_vn_dump_sleep_count]
   data(1 => [0.001, 0.001, 1000], 2 => [0.005, 0.005, 100], 3 => [0.01, 0.001, 10],
        4 => [0.01, 0.005, 10], 5 => [0.01, 0.01, 10])
   def test_dcnice(data)
@@ -144,7 +144,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
     assert_equal replies('STORED'), @conn.request("dcnice #{priority}")
     assert_equal ["rdcnice #{priority}\r\n"], @conn.broadcasts
     assert_equal priority.to_i, @conn.stats.dcnice
-    assert_equal wait, @conn.stats.stream_copy_wait_param
+    assert_equal wait, @conn.stats.stream_copy_wait
     assert_equal sleep, @conn.storage.each_vn_dump_sleep
     assert_equal count, @conn.storage.each_vn_dump_sleep_count
     assert_equal "STORED\r\n", @conn.request("rdcnice #{priority}")

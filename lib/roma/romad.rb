@@ -169,9 +169,9 @@ module Roma
 
     def initialize_stats
       config = Roma.config
-      @stats.size_of_zredundant = config.redundant.zredundant_size
-      @stats.stream_copy_wait_param = config.data_copy.stream_copy_wait_param
-      @stats.stream_show_wait_param = config.log.stream_show_wait_param
+      @stats.compression_threshold = config.redundant.compression_threshold
+      @stats.stream_copy_wait = config.data_copy.stream_copy_wait
+      @stats.stream_show_wait = config.log.stream_show_wait
       @stats.wb_command_map = config.write_behind.command_map
       @stats.clean_up_interval = config.storage.clean_up_interval
       @stats.log_shift_size = config.log.shift_size
@@ -187,8 +187,8 @@ module Roma
       Event::Handler::connection_expire_time = connection.expire_time
       Messaging::ConPool.instance.expire_time = connection.pool.expire_time
       Messaging::ConPool.instance.maxlength = connection.pool.max
-      Event::EMConPool::instance.expire_time = connection.em_pool.expire_time
-      Event::EMConPool::instance.maxlength = connection.em_pool.max
+      Event::EMConPool::instance.expire_time = connection.event_machine_pool.expire_time
+      Event::EMConPool::instance.maxlength = connection.event_machine_pool.max
     end
 
     def initialize_wb_writer
@@ -341,7 +341,7 @@ module Roma
       storage = Roma.config.storage
       path = "#{storage.path}/#{@stats.ap_str}"
       st_class = storage.engine_class
-      st_divnum = storage.divnum
+      st_division_count = storage.division_count
       st_option = storage.option
       Dir.glob("#{path}/*").each{|f|
         if File.directory?(f)
@@ -350,7 +350,7 @@ module Roma
           st.storage_path = "#{path}/#{hname}"
           st.vn_list = @rttable.vnodes
           st.st_class = st_class
-          st.divnum = st_divnum
+          st.divnum = st_division_count
           st.option = st_option
           @storages[hname] = st
         end
@@ -361,7 +361,7 @@ module Roma
         st.storage_path = "#{path}/#{hname}"
         st.vn_list = @rttable.vnodes
         st.st_class = st_class
-        st.divnum = st_divnum
+        st.divnum = st_division_count
         st.option = st_option
         @storages[hname] = st
       end

@@ -85,7 +85,7 @@ module Roma
         st = Roma.config.storage.engine_class.new
         st.storage_path = "#{Roma.config.storage.path}/#{@stats.ap_str}/#{hname}"
         st.vn_list = @rttable.vnodes
-        st.divnum = Roma.config.storage.divnum
+        st.divnum = Roma.config.storage.division_count
         st.option = Roma.config.storage.option
         @storages[hname] = st
         @storages[hname].opendb
