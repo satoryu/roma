@@ -256,8 +256,9 @@ module Roma
       return unless Roma::Config.const_defined? :PLUGIN_FILES
 
       Roma::Config::PLUGIN_FILES.each do|f|
-        require "roma/plugin/#{f}"
-        @log.info("roma/plugin/#{f} loaded")
+        path = plugin_path(f)
+        require path
+        @log.info("#{path} loaded")
       end
       Roma::CommandPlugin.plugins.each do|plugin|
           Roma::Command::Receiver.class_eval do
@@ -269,6 +270,13 @@ module Roma
       if @stats.disabled_cmd_protect
         Command::Receiver::mk_evlist
       end
+    end
+
+    # The plugins of ROMA are in roma/command_plugin. Other plugins may be in
+    # roma/plugin, where they were before.
+    def plugin_path(file)
+      path = "roma/command_plugin/#{file}"
+      $LOAD_PATH.resolve_feature_path(path) ? path : "roma/plugin/#{file}"
     end
 
     def initialize_handler

@@ -9,7 +9,7 @@ module Roma
       TREE_TOP = "menu"
       LIB_PATH = Pathname(__FILE__).dirname.parent.parent
       CONFIG_TEMPLATE_PATH = File.expand_path(File.join(LIB_PATH, "roma/config.rb"))
-      PLUGIN_DIR = File.expand_path(File.join(LIB_PATH, File.join("roma", "plugin")))
+      PLUGIN_DIR = File.expand_path(File.join(LIB_PATH, File.join("roma", "command_plugin")))
       BNUM_COEFFICIENT = 2 #reccomend1-4.
       DIVIDED_FILES = 10
       REDUNDANCY = 2

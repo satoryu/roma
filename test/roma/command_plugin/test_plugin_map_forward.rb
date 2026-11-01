@@ -1,5 +1,5 @@
 require 'test_helper'
-require 'roma/plugin/plugin_map'
+require 'roma/command_plugin/plugin_map'
 require 'plugin_test_harness'
 
 # Forwarding of the commands defined with Roma::Command::Definition, through

@@ -1,16 +1,16 @@
 require 'test_helper'
 require 'command_test_harness'
 require 'receiver_command_test_helper'
-require 'roma/plugin/plugin_gui'
-require 'roma/plugin/plugin_debug'
-require 'roma/plugin/plugin_test'
+require 'roma/command_plugin/plugin_gui'
+require 'roma/command_plugin/plugin_debug'
+require 'roma/command_plugin/plugin_test'
 
 class GuiAndDebugPluginsTest < Test::Unit::TestCase
   include ReceiverCommandTestHelper
 
   HARNESS = Class.new(CommandTestHarness) do
     include Roma::CommandPlugin::PluginGui
-    include Roma::CommandPlugin::PluginOperation
+    include Roma::CommandPlugin::PluginDebug
     include Roma::CommandPlugin::PluginTest
   end
 

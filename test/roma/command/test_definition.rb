@@ -12,9 +12,9 @@ module DefinitionTestCommands1
     when 'ex_runtime'
       raise s[1]
     when 'ex_client'
-      raise Roma::Command::Definition::ClientErrorException, s[1]
+      raise Roma::Command::Definition::ClientError, s[1]
     when 'ex_server'
-      raise Roma::Command::Definition::ServerErrorException, s[1]
+      raise Roma::Command::Definition::ServerError, s[1]
     end
     s
   end
@@ -32,9 +32,9 @@ module DefinitionTestCommands1
     when 'ex_runtime'
       raise ctx.argv[1]
     when 'ex_client'
-      raise Roma::Command::Definition::ClientErrorException, ctx.argv[1]
+      raise Roma::Command::Definition::ClientError, ctx.argv[1]
     when 'ex_server'
-      raise Roma::Command::Definition::ServerErrorException, ctx.argv[1]
+      raise Roma::Command::Definition::ServerError, ctx.argv[1]
     end
     ctx
   end
@@ -52,9 +52,9 @@ module DefinitionTestCommands1
     when 'ex_runtime'
       raise ctx.argv[1]
     when 'ex_client'
-      raise Roma::Command::Definition::ClientErrorException, ctx.argv[1]
+      raise Roma::Command::Definition::ClientError, ctx.argv[1]
     when 'ex_server'
-      raise Roma::Command::Definition::ServerErrorException, ctx.argv[1]
+      raise Roma::Command::Definition::ServerError, ctx.argv[1]
     end
     ctx
   end
@@ -130,7 +130,7 @@ class DefinitionTestReceiver
   end
 
   def command_argument_validation_num s, num
-    raise ClientErrorException, "number of arguments (#{s.length - 1} for #{num - 1})" if s.length != num
+    raise ClientError, "number of arguments (#{s.length - 1} for #{num - 1})" if s.length != num
   end
 end
 

@@ -1,12 +1,2 @@
-
-module Roma
-  module CommandPlugin
-
-    module PluginCommandAliases
-      include ::Roma::CommandPlugin
-
-      # Please add your self if you want.
-
-    end
-  end
-end
+# Deprecated: require 'roma/command_plugin/plugin_cmd_aliases' instead.
+require 'roma/command_plugin/plugin_cmd_aliases'

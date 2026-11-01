@@ -1,7 +1,7 @@
 require 'test_helper'
-require 'roma/plugin/plugin_alist'
+require 'roma/command_plugin/plugin_alist'
 require 'roma/messaging/con_pool'
-require 'roma/plugin/plugin_storage'
+require 'roma/command_plugin/plugin_storage'
 require 'plugin_test_harness'
 
 module ListPluginTests
@@ -607,7 +607,7 @@ class ListPluginInProcessTest < Test::Unit::TestCase
 
   def setup
     harness = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage,
-                                    Roma::CommandPlugin::PluginAshiatoList).new
+                                    Roma::CommandPlugin::PluginAlist).new
     @rc = PluginTestHarness::Client.new(harness)
   end
 

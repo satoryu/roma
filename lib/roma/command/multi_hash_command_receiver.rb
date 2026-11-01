@@ -15,7 +15,7 @@ module Roma
           "#{@defhash}"
         else
           unless @storages.key?(s[1])
-            raise(Roma::Command::Definition::ClientErrorException,
+            raise(Roma::Command::Definition::ClientError,
                   "#{s[1]} does not find.")
           end
           @defhash = s[1]
@@ -26,16 +26,16 @@ module Roma
       # mounthash <name>
       def_command_with_relay :mounthash do |s|
         if s.length != 2
-          raise(Roma::Command::Definition::ClientErrorException,
+          raise(Roma::Command::Definition::ClientError,
                 "usage:mounthash <name>")
         end
         if @storages.key?(s[1])
-          raise(Roma::Command::Definition::ServerErrorException,
+          raise(Roma::Command::Definition::ServerError,
                 "#{s[1]} already mounted.")
         end
         # check a directory existence
         unless File.directory? "#{Config::STORAGE_PATH}/#{@stats.ap_str}/#{s[1]}"
-          raise(Roma::Command::Definition::ServerErrorException,
+          raise(Roma::Command::Definition::ServerError,
                 "#{s[1]} does not find.")
         end
         createhash(s[1], 'MOUNTED')
@@ -44,11 +44,11 @@ module Roma
       # umounthash <name>
       def_command_with_relay :umounthash do |s|
         if s.length != 2
-          raise(Roma::Command::Definition::ClientErrorException,
+          raise(Roma::Command::Definition::ClientError,
                 "usage:umounthash <name>")
         end
         unless @storages.key?(s[1])
-          raise(Roma::Command::Definition::ServerErrorException,
+          raise(Roma::Command::Definition::ServerError,
                 "#{s[1]} does not find.")
         end
         umounthash(s[1])
@@ -57,7 +57,7 @@ module Roma
       # createhash <name>
       def_command_with_relay :createhash do |s|
         if s.length != 2
-          raise(Roma::Command::Definition::ClientErrorException,
+          raise(Roma::Command::Definition::ClientError,
                 "usage:createhash <name>")
         end
         createhash(s[1], 'CREATED')
@@ -66,7 +66,7 @@ module Roma
       # deletehash <name>
       def_command_with_relay :deletehash do |s|
         if s.length != 2
-          raise(Roma::Command::Definition::ClientErrorException,
+          raise(Roma::Command::Definition::ClientError,
                 "usage:deletehash <name>")
         end
         deletehash(s[1])

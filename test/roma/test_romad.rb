@@ -268,6 +268,20 @@ class RomadInitializeTest < Test::Unit::TestCase
     assert_equal %w(hash1 hash2), @romad.storages.keys.sort
   end
 
+  def test_plugin_path
+    assert_equal 'roma/command_plugin/plugin_storage.rb', call(:plugin_path, 'plugin_storage.rb')
+  end
+
+  # Plugins of others may be in roma/plugin, where ROMA's were.
+  def test_plugin_path_of_another_plugin
+    FileUtils.mkdir_p(File.join(@dir, 'roma/plugin'))
+    File.write(File.join(@dir, 'roma/plugin/plugin_another.rb'), '')
+    $LOAD_PATH.unshift(@dir)
+    assert_equal 'roma/plugin/plugin_another.rb', call(:plugin_path, 'plugin_another.rb')
+  ensure
+    $LOAD_PATH.delete(@dir)
+  end
+
   def test_initialize_wb_writer
     call(:initialize_wb_writer)
     assert_kind_of Roma::WriteBehind::FileWriter, @romad.wb_writer

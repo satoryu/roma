@@ -1,12 +1,12 @@
 require 'test_helper'
-require 'roma/plugin/plugin_alist'
-require 'roma/plugin/plugin_storage'
+require 'roma/command_plugin/plugin_alist'
+require 'roma/command_plugin/plugin_storage'
 require 'plugin_test_harness'
 
-# Unit tests for the paths of PluginAshiatoList that ListPluginTests doesn't
+# Unit tests for the paths of PluginAlist that ListPluginTests doesn't
 # take: errors, writes the storage refuses, ranges and forwarding.
 class PluginAlistTest < Test::Unit::TestCase
-  HARNESS = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage, Roma::CommandPlugin::PluginAshiatoList)
+  HARNESS = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage, Roma::CommandPlugin::PluginAlist)
   NID = PluginTestHarness::NID
   OWNER_NID = PluginTestHarness::REPLICA_NID
 

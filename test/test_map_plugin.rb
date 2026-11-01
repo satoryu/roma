@@ -1,9 +1,9 @@
 require 'test_helper'
-require 'roma/plugin/plugin_map'
+require 'roma/command_plugin/plugin_map'
 
 # End-to-end tests for the map plugin: they go through romad, including
 # forwarding to the node that owns the key (MapPluginForceForwardTest).
-# Each command's behavior is covered by test/roma/plugin/test_plugin_map.rb.
+# Each command's behavior is covered by test/roma/command_plugin/test_plugin_map.rb.
 module MapPluginTests
   include RomaTestUtils
 
