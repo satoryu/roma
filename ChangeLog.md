@@ -31,6 +31,19 @@ The tools print errors on the standard error and exit with 1.
 ### File names
 The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins require, stays as a deprecated alias of `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)
 
+The plugins are in `roma/command_plugin/`, after their namespace `Roma::CommandPlugin`, and named after their files [#49](https://github.com/satoryu/roma/pull/49):
+
+| Before | After |
+| --- | --- |
+| `roma/plugin/plugin_*.rb` | `roma/command_plugin/plugin_*.rb` |
+| `Roma::CommandPlugin::PluginAshiatoList` | `Roma::CommandPlugin::PluginAlist` |
+| `Roma::CommandPlugin::PluginCommandAliases` | `Roma::CommandPlugin::PluginCmdAliases` |
+| `Roma::CommandPlugin::PluginOperation` | `Roma::CommandPlugin::PluginDebug` |
+| `Roma::CommandPlugin::PluginMapCount` | `Roma::CommandPlugin::PluginMapcount` |
+| `Roma::Command::Definition::ClientErrorException`, `ServerErrorException` | `ClientError`, `ServerError`, which inherit `StandardError` |
+
+`PLUGIN_FILES` in config.rb doesn't change. romad finds the files in `roma/command_plugin/`, then in `roma/plugin/` for other plugins. The old files and names stay as deprecated aliases.
+
 ### Fixes
 * A romad that isn't a daemon stops by TERM and HUP [#39](https://github.com/satoryu/roma/pull/39)
 * romad stops by INT and TERM under load too [#43](https://github.com/satoryu/roma/pull/43)

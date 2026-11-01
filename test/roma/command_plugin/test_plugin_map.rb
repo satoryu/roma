@@ -1,6 +1,6 @@
 require 'test/unit'
 require 'plugin_test_harness'
-require 'roma/plugin/plugin_map'
+require 'roma/command_plugin/plugin_map'
 
 # Unit tests for the map plugin commands. They run in-process, so no romad is
 # started. Forwarding between nodes is covered by test/test_map_plugin.rb.

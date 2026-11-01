@@ -1,7 +1,7 @@
 require 'test_helper'
 require 'zlib'
 require 'roma/write_behind'
-require 'roma/plugin/plugin_storage'
+require 'roma/command_plugin/plugin_storage'
 require 'plugin_test_harness'
 
 # Unit tests for the paths of PluginStorage that StorageCommandTests doesn't

@@ -2,8 +2,14 @@ module Roma
   module Command
     module Definition
 
-      class ClientErrorException < Exception; end
-      class ServerErrorException < Exception; end
+      # Raised in a command, they are replied as CLIENT_ERROR and SERVER_ERROR.
+      class ClientError < StandardError; end
+      class ServerError < StandardError; end
+
+      # Deprecated: the old names of ClientError and ServerError.
+      ClientErrorException = ClientError
+      ServerErrorException = ServerError
+      deprecate_constant :ClientErrorException, :ServerErrorException
 
       def self.included(base)
         # include ClassMethods module into an eigen-class of a +base+
@@ -26,9 +32,9 @@ module Roma
               # command relay
               res.merge! broadcast_cmd("r#{cmd} #{s[1..-1].join(' ')}\r\n")
               send_data("#{res}\r\n")
-            rescue ClientErrorException => e
+            rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerErrorException => e
+            rescue ServerError => e
               send_data("SERVER_ERROR #{e.message}\r\n")
             rescue LocalJumpError => e
               @log.warn("#{e} #{$@}")
@@ -40,9 +46,9 @@ module Roma
           define_method "ev_r#{cmd}" do |s|
             begin
               send_data("#{instance_exec(s, &block)}\r\n")
-            rescue ClientErrorException => e
+            rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerErrorException => e
+            rescue ServerError => e
               send_data("SERVER_ERROR #{e.message}\r\n")
             rescue LocalJumpError => e
               @log.warn("#{e} #{$@}")
@@ -83,9 +89,9 @@ module Roma
               ctx = CommandContext.new(s, params, stored)
               instance_exec(ctx, &block)
               @stats.read_count += 1
-            rescue ClientErrorException => e
+            rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerErrorException => e
+            rescue ServerError => e
               send_data("SERVER_ERROR #{e.message}\r\n")
             rescue LocalJumpError => e
               @log.warn("#{e} #{$@}")
@@ -154,9 +160,9 @@ module Roma
                   send_data("NOT_#{msg}\r\n")
                 end
               end
-            rescue ClientErrorException => e
+            rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerErrorException => e
+            rescue ServerError => e
               send_data("SERVER_ERROR #{e.message}\r\n")
             rescue LocalJumpError => e
               @log.warn("#{e} #{$@}")
@@ -192,9 +198,9 @@ module Roma
               stored = nil if stored.vn == nil || Time.now.to_i > stored.expt
               ctx = CommandContext.new(s, params, stored)
               instance_exec(ctx, &block)
-            rescue ClientErrorException => e
+            rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerErrorException => e
+            rescue ServerError => e
               send_data("SERVER_ERROR #{e.message}\r\n")
             rescue LocalJumpError => e
               @log.warn("#{e} #{$@}")
@@ -267,9 +273,9 @@ module Roma
                   send_data("NOT_#{msg}\r\n")
                 end
               end
-            rescue ClientErrorException => e
+            rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerErrorException => e
+            rescue ServerError => e
               send_data("SERVER_ERROR #{e.message}\r\n")
             rescue LocalJumpError => e
               @log.warn("#{e} #{$@}")
@@ -309,9 +315,9 @@ module Roma
 
               instance_exec(ctx, &block)
               @stats.read_count += 1
-            rescue ClientErrorException => e
+            rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerErrorException => e
+            rescue ServerError => e
               send_data("SERVER_ERROR #{e.message}\r\n")
             rescue LocalJumpError => e
               @log.warn("#{e} #{$@}")
@@ -349,9 +355,9 @@ module Roma
               stored = nil if stored.vn == nil || Time.now.to_i > stored.expt
               ctx = CommandContext.new(s, params, stored)
               instance_exec(ctx, &block)
-            rescue ClientErrorException => e
+            rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerErrorException => e
+            rescue ServerError => e
               send_data("SERVER_ERROR #{e.message}\r\n")
             rescue LocalJumpError => e
               @log.warn("#{e} #{$@}")
