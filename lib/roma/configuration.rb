@@ -128,7 +128,7 @@ module Roma
     class Storage < Group
       # The name of a storage, such as :dbm of the gem roma-storage-dbm, or a
       # storage class.
-      setting :engine, :ruby_hash, type: [Symbol, Class], check: ->(v) { v.is_a?(Class) || v.match?(/\A[a-z][a-z0-9_]*\z/) }
+      setting :engine, :hash, type: [Symbol, Class], check: ->(v) { v.is_a?(Class) || v.match?(/\A[a-z][a-z0-9_]*\z/) }
       setting :path, '.', type: String
       setting :divnum, 10, type: Integer, check: ->(v) { v.positive? }
       setting :option, '', type: [String, NilClass]
@@ -139,15 +139,19 @@ module Roma
       setting :clean_up_interval, 60 * 5, type: Integer
 
       # The storage class of engine. A name such as :dbm requires
-      # roma/storage/dbm of the gem roma-storage-dbm (or
-      # roma/storage/dbm_storage, as roma-storage has ruby_hash_storage), and
-      # is the class in it named like DbmStorage, in any case. Raises Error if
-      # the file or the class is missing.
+      # roma/storage/dbm of the gem roma-storage-dbm, and is the class in it
+      # named like DbmStorage, in any case. :hash is in roma-storage, which
+      # ROMA needs. Raises Error if the file or the class is missing.
       def engine_class
         return engine if engine.is_a?(Class)
 
-        file = ["roma/storage/#{engine}", "roma/storage/#{engine}_storage"].find { |f| require_storage(f) }
-        unless file
+        file = "roma/storage/#{engine}"
+        begin
+          require file
+        rescue LoadError => e
+          # A LoadError of another file, which the storage requires, is raised.
+          raise unless e.path == file
+
           gem = "roma-storage-#{engine}"
           raise Error, "storage.engine #{engine.inspect} needs #{gem}. Install it by gem install #{gem}."
         end
@@ -156,18 +160,6 @@ module Roma
         name = Roma::Storage.constants.find { |c| c.to_s.casecmp?(class_name.delete('_')) }
         raise Error, "#{file} has no storage class such as Roma::Storage::#{class_name}." unless name
         Roma::Storage.const_get(name)
-      end
-
-      private
-
-      # Requires +file+, or returns false if it is not found. A LoadError of
-      # another file, which +file+ requires, is raised.
-      def require_storage(file)
-        require file
-        true
-      rescue LoadError => e
-        raise unless e.path == file
-        false
       end
     end
 

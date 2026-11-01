@@ -7,6 +7,7 @@
 * Tokyo Cabinet is no longer supported: its tools and options are removed [#27](https://github.com/satoryu/roma/pull/27)
 * The file storages are the gems roma-storage-dbm and roma-storage-sqlite3 [#28](https://github.com/satoryu/roma/pull/28), and roma-storage-groonga [#41](https://github.com/satoryu/roma/pull/41)
 * roma-client and nkf are no longer needed [#33](https://github.com/satoryu/roma/pull/33)
+* roma-storage 0.2 or later, where the storage on memory is `Roma::Storage::HashStorage` in `roma/storage/hash` (`RubyHashStorage` before)
 
 ### The roma command
 The tools in `bin/` are subcommands of the new `roma` command now (`roma help` lists them), and the old commands are removed ([#8](https://github.com/satoryu/roma/issues/8)).
@@ -61,7 +62,7 @@ end
 | `CONNECTION_CONTINUOUS_LIMIT`, `CONNECTION_EXPTIME`, `DNS_CACHING` | `connection.continuous_limit`, `connection.expire_time`, `connection.dns_caching` |
 | `CONNECTION_POOL_EXPTIME`, `CONNECTION_POOL_MAX` | `connection.pool.expire_time`, `connection.pool.max` |
 | `CONNECTION_EMPOOL_EXPTIME`, `CONNECTION_EMPOOL_MAX` | `connection.em_pool.expire_time`, `connection.em_pool.max` |
-| `STORAGE_CLASS` | `storage.engine`: the name of a storage gem, such as `:dbm` for roma-storage-dbm, or a class |
+| `STORAGE_CLASS` | `storage.engine`: `:hash` (the default, on memory), the name of a storage gem such as `:dbm` for roma-storage-dbm, or a class |
 | `STORAGE_PATH`, `STORAGE_DIVNUM`, `STORAGE_OPTION` | `storage.path`, `storage.divnum`, `storage.option` |
 | `STORAGE_EXCEPTION_ACTION`, `STORAGE_DELMARK_EXPTIME`, `STORAGE_CLEAN_UP_INTERVAL` | `storage.exception_action`, `storage.delmark_expire_time`, `storage.clean_up_interval` |
 | `DATACOPY_STREAM_COPY_WAIT_PARAM` | `data_copy.stream_copy_wait_param` |

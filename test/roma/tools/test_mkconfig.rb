@@ -36,23 +36,23 @@ class MkconfigTest < Test::Unit::TestCase
 
   # Ruby Hash, a wrong answer, the plugins by default, a Ruby client, and
   # the defaults for the machines.
-  def test_ruby_hash
+  def test_hash
     out = mkconfig('1', '', '0', '2', '1', '', '')
     assert_match(/Please set FileDescriptor bigger than 10\./, out)
-    assert_match(/After\r\n.*storage.engine: :ruby_hash/m, out)
-    assert_match(/^  config.storage.engine = :ruby_hash$/, config)
+    assert_match(/After\r\n.*storage.engine: :hash/m, out)
+    assert_match(/^  config.storage.engine = :hash$/, config)
     assert_match(/^  config.storage.option = ""$/, config)
     assert_match(/^  config.plugins = \["plugin_storage.rb"\]$/, config)
   end
 
   # romad can load the file. In another process, not to change Roma.config.
-  def test_ruby_hash_config_loads
+  def test_hash_config_loads
     mkconfig('1', '', '2', '1', '', '')
     script = 'require "roma/configuration"; Roma.load_config(ARGV[0]); print Roma.config.storage.engine_class'
     out, err, status = Open3.capture3(RbConfig.ruby, '-I', File.expand_path('../../../lib', __dir__),
                                       '-e', script, @path)
     assert_true status.success?, err
-    assert_equal 'Roma::Storage::RubyHashStorage', out
+    assert_equal 'Roma::Storage::HashStorage', out
   end
 
   # Groonga asks the memory, the processes, the servers and the data, and
@@ -104,7 +104,7 @@ class MkconfigTest < Test::Unit::TestCase
     out = mkconfig('2', plugins.size.to_s, '4', mode: :with_menu)
     assert_match(/Please select by number\./, out)
     assert_match(/^  config.plugins = #{Regexp.escape(plugins[0..-2].to_s)}$/, config)
-    assert_match(/^  config.storage.engine = :ruby_hash$/, config)
+    assert_match(/^  config.storage.engine = :hash$/, config)
   end
 
   data('exit' => 'exit', 'quit' => 'quit', 'balse' => 'balse', 'end of input' => nil)
@@ -119,6 +119,6 @@ class MkconfigTest < Test::Unit::TestCase
     assert_match(/were not created!/, mkconfig('n', '1', '', '2', '1', '', ''))
     assert_equal 'old', config
     mkconfig('y', '1', '', '2', '1', '', '')
-    assert_match(/:ruby_hash/, config)
+    assert_match(/:hash/, config)
   end
 end

@@ -5,13 +5,13 @@ require 'roma/stats'
 require 'roma/async_process'
 require 'roma/messaging/con_pool'
 require 'roma/routing/churnbased_routing_table'
-require 'roma/storage/ruby_hash_storage'
+require 'roma/storage/hash'
 
 # Runs the background processes of romad (Roma::AsyncProcess) in-process.
 #
 # - A fresh Roma::Stats and a real routing table are made for each harness.
 #   This node is NID; +nodes+ are the nodes in the routing table.
-# - The roma hash is a RubyHashStorage.
+# - The roma hash is a HashStorage.
 # - Commands sent to one node (async_send_cmd) or to all (async_broadcast_cmd)
 #   are recorded and answered with +send_cmd_reply+. Pushing a vnode
 #   (push_a_vnode_stream, req_push_a_vnode) really connects to the node, so
@@ -40,10 +40,10 @@ class AsyncProcessHarness
     # Choose the nodes of every vnode, instead of at random.
     rd.v_idx.each_key { |vn| rd.v_idx[vn] = vnode_nodes.dup } if vnode_nodes
     @rttable = Roma::Routing::ChurnbasedRoutingTable.new(rd, File.join(@dir, 'test.route'))
-    @storage = Roma::Storage::RubyHashStorage.new
+    @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = rd.v_idx.keys
     @storage.storage_path = @dir
-    @storage.st_class = Roma::Storage::RubyHashStorage
+    @storage.st_class = Roma::Storage::HashStorage
     @storage.each_vn_dump_sleep = 0
     @storage.each_clean_up_sleep = 0
     @storage.opendb

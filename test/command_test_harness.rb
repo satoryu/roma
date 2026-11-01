@@ -6,7 +6,7 @@ require 'roma/stats'
 require 'roma/command/receiver'
 require 'roma/event/em_con_pool'
 require 'roma/routing/churnbased_routing_table'
-require 'roma/storage/ruby_hash_storage'
+require 'roma/storage/hash'
 
 # Runs ROMA's own commands (stat, balse, set_*/rset_*, the routing, vnode,
 # background and multi-hash commands and so on) in-process, without romad
@@ -144,10 +144,10 @@ class CommandTestHarness
     @log = Log.new
     @romad = Romad.new
     @dir = Dir.mktmpdir('roma_command')
-    @storage = Roma::Storage::RubyHashStorage.new
+    @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = [0]
     @storage.storage_path = @dir
-    @storage.st_class = Roma::Storage::RubyHashStorage
+    @storage.st_class = Roma::Storage::HashStorage
     @storage.opendb
     @storages = { @defhash => @storage }
     rd = Roma::Routing::RoutingData.create(32, 3, 2, [NID, OTHER_NID])

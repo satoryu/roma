@@ -411,7 +411,7 @@ class CLITest < Test::Unit::TestCase
   def test_mkconfig
     _out, err, status = run_roma('mkconfig', stdin: "1\n\n2\n1\n\n\n")
     assert_true status.success?, err
-    assert_match(/^  config.storage.engine = :ruby_hash$/, File.read(File.join(@dir, 'config.rb')))
+    assert_match(/^  config.storage.engine = :hash$/, File.read(File.join(@dir, 'config.rb')))
   end
 
   data('short' => '-m', 'long' => '--with-menu', 'underscore' => '--with_menu')

@@ -215,7 +215,7 @@ class PluginStorageWriteBehindTest < Test::Unit::TestCase
 
   def setup
     @conn = HARNESS.new
-    @conn.storages['other'] = Roma::Storage::RubyHashStorage.new.tap do |st|
+    @conn.storages['other'] = Roma::Storage::HashStorage.new.tap do |st|
       st.vn_list = [0]
       st.opendb
     end

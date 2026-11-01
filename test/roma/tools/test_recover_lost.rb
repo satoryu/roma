@@ -2,7 +2,7 @@ require 'test_helper'
 require 'stringio'
 require 'tool_test_helper'
 require 'roma/routing/routing_data'
-require 'roma/storage/ruby_hash_storage'
+require 'roma/storage/hash'
 require 'roma/tools/recover_lost'
 require 'roma/configuration'
 
@@ -22,7 +22,7 @@ class RecoverLostTest < Test::Unit::TestCase
     @node.replies['setroute'] = "STORED\r\n"
     @rd = Roma::Routing::RoutingData.create(32, 3, 1, [@node.nid])
     serve_routing(@node, @rd)
-    @storage = Roma::Storage::RubyHashStorage.new
+    @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = @rd.v_idx.keys
     @storage.each_vn_dump_sleep = 0
     @storage.opendb

@@ -503,7 +503,7 @@ module Roma
         if res.key?("storage")
           case res["storage"].value
           when "Ruby Hash"
-            results["storage.engine"] = :ruby_hash
+            results["storage.engine"] = :hash
             results["storage.option"] = ""
           when "Groonga"
             bnum = Calculate.get_bnum(res)
