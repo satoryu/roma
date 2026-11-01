@@ -178,8 +178,8 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     @conn.request("leave #{OTHER_NID}")
     lost = @routing_table.routes.select { |_vn, nids| nids.empty? }.keys
     assert_equal 4, lost.size
-    assert_equal lost.map { |vn| "#{vn}\r\n" }.join + "END\r\n", @conn.request('history_of_lost')
-    assert_equal lost.map { |vn| "#{vn}\r\n" }.join + "END\r\n", @conn.request('history_of_lost 20000101000000')
+    assert_equal lost.map { |vnode| "#{vnode}\r\n" }.join + "END\r\n", @conn.request('history_of_lost')
+    assert_equal lost.map { |vnode| "#{vnode}\r\n" }.join + "END\r\n", @conn.request('history_of_lost 20000101000000')
 
     future = (Time.now + 3600).strftime('%Y%m%d%H%M%S')
     assert_equal "END\r\n", @conn.request("history_of_lost #{future}")
@@ -346,10 +346,10 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_get_key_info
     d = Digest::SHA1.hexdigest('key1').hex % @routing_table.hash_space_size
-    vn = @routing_table.get_vnode_id(d)
+    vnode = @routing_table.get_vnode_id(d)
     expected = "d = #{d} 0x#{d.to_s(16)}\r\n" \
-               "vn = #{vn} 0x#{vn.to_s(16)}\r\n" \
-               "nodes = #{@routing_table.search_nodes(vn).inspect}\r\n" \
+               "vn = #{vnode} 0x#{vnode.to_s(16)}\r\n" \
+               "nodes = #{@routing_table.search_nodes(vnode).inspect}\r\n" \
                "END\r\n"
     assert_equal expected, @conn.request('get_key_info key1')
 

@@ -8,7 +8,7 @@ module Roma
       include Roma::CommandPlugin
       include Roma::Command::Definition
       
-      # map_set <key> <mapkey> <flags> <expt> <bytes> [forward]\r\n
+      # map_set <key> <mapkey> <flags> <expire_time> <bytes> [forward]\r\n
       # <data block>\r\n
       #
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
@@ -17,10 +17,10 @@ module Roma
         v = Marshal.load(ctx.stored.value) if ctx.stored
           
         v[ctx.argv[2]] = ctx.params.value
-        expt = chg_time_expt(ctx.argv[4].to_i)
+        expire_time = chg_time_expt(ctx.argv[4].to_i)
         
         # [flags, expire time, value, kind of counter(:write/:delete), result message]
-        [0, expt, Marshal.dump(v), :write, 'STORED']
+        [0, expire_time, Marshal.dump(v), :write, 'STORED']
       end
 
       # map_get <key> <mapkey> [forward]\r\n
@@ -49,7 +49,7 @@ module Roma
         
         v.delete(ctx.argv[2])
         
-        [0, ctx.stored.expt, Marshal.dump(v), :delete, 'DELETED']
+        [0, ctx.stored.expire_time, Marshal.dump(v), :delete, 'DELETED']
       end
 
       # map_clear <key> [forward]\r\n
@@ -58,7 +58,7 @@ module Roma
       def_write_command_with_key :map_clear do |ctx|
         next send_data("NOT_FOUND\r\n") unless ctx.stored
 
-        [0, ctx.stored.expt, Marshal.dump({}), :delete, 'CLEARED']
+        [0, ctx.stored.expire_time, Marshal.dump({}), :delete, 'CLEARED']
       end
 
 

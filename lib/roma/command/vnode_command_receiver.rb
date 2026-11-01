@@ -21,7 +21,7 @@ module Roma
 
       # spushv <hash-name> <vnode-id>
       # src                             dst
-      #  |  ['spushv' <hname> <vn>\r\n]->|
+      #  |  ['spushv' <hash_name> <vnode>\r\n]->|
       #  |<-['READY'\r\n]                |
       #  |                 [<dumpdata>]->|
       #  |                       :       |
@@ -47,7 +47,7 @@ module Roma
         @log.debug("#{__method__}:#{s.inspect} received.")
         loop {
           context_bin = read_bytes(20, @stats.spushv_read_timeout)
-          vn, last, clk, expt, klen = context_bin.unpack('NNNNN')
+          vnode, last, clock, expire_time, klen = context_bin.unpack('NNNNN')
           break if klen == 0 # end of dump ?
           k = read_bytes(klen)
           vlen_bin = read_bytes(4, @stats.spushv_read_timeout)
@@ -62,21 +62,21 @@ module Roma
             v = read_bytes(vlen, @stats.spushv_read_timeout)
 
             createhash(s[1], 'CREATED') unless @storages[s[1]]
-            if @storages[s[1]].load_stream_dump(vn, last, clk, expt, k, v)
+            if @storages[s[1]].load_stream_dump(vnode, last, clock, expire_time, k, v)
               count += 1
-#              @log.debug("#{__method__}:[#{vn} #{last} #{clk} #{expt} #{k}] was stored.")
+#              @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
             else
               rcount += 1
-#              @log.warn("#{__method__}:[#{vn} #{last} #{clk} #{expt} #{k}] was rejected.")
+#              @log.warn("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was rejected.")
             end
           else
             createhash(s[1], 'CREATED') unless @storages[s[1]]
-            if @storages[s[1]].load_stream_dump(vn, last, clk, expt, k, nil)
-#              @log.debug("#{__method__}:[#{vn} #{last} #{clk} #{expt} #{k}] was stored.")
+            if @storages[s[1]].load_stream_dump(vnode, last, clock, expire_time, k, nil)
+#              @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
               count += 1
             else
               rcount += 1
-#              @log.warn("#{__method__}:[#{vn} #{last} #{clk} #{expt} #{k}] was rejected.")
+#              @log.warn("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was rejected.")
             end
           end
         }
@@ -104,7 +104,7 @@ module Roma
 
       # reqpushv <vnode-id> <node-id> <is primary?>
       # src                                       dst
-      #  |<-['reqpushv <vn> <nid> <p?>\r\n']         |
+      #  |<-['reqpushv <vnode> <nid> <p?>\r\n']         |
       #  |                           ['PUSHED'\r\n]->|
       def ev_reqpushv(s)
         if s.length!=4
@@ -122,14 +122,14 @@ module Roma
         @log.error("#{e}\n#{$@}")
       end
 
-      def req_push_a_vnode(vn, src_nid, is_primary)
+      def req_push_a_vnode(vnode, src_nid, is_primary)
         con = Roma::Messaging::ConPool.instance.get_connection(src_nid)
-        con.write("reqpushv #{vn} #{@my_node_id} #{is_primary}\r\n")
+        con.write("reqpushv #{vnode} #{@my_node_id} #{is_primary}\r\n")
         con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n'
         Roma::Messaging::ConPool.instance.return_connection(src_nid,con)
         # waiting for pushv
         count = 0
-        while @routing_table.search_nodes(vn).include?(@my_node_id)==false && count < 300
+        while @routing_table.search_nodes(vnode).include?(@my_node_id)==false && count < 300
           sleep 0.1
           count += 1
         end

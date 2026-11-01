@@ -57,8 +57,8 @@ module Roma
           end
         end # def_command_with_relay
 
-        CommandParams = Struct.new(:key, :hash_name, :digest, :vn, :nodes, :value)
-        StoredData = Struct.new(:vn, :last, :clk, :flg, :expt, :value)
+        CommandParams = Struct.new(:key, :hash_name, :digest, :vnode, :nodes, :value)
+        StoredData = Struct.new(:vnode, :last, :clock, :flg, :expire_time, :value)
         CommandContext = Struct.new(:argv, :params, :stored)
 
         def def_read_command_with_key(cmd, forward = :one_line, &block)
@@ -69,8 +69,8 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vn = @routing_table.get_vnode_id(params.digest)
-              params.nodes = @routing_table.search_nodes_for_write(params.vn)
+              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s)
@@ -83,9 +83,9 @@ module Roma
                 return send_data("SERVER_ERROR #{params.hash_name} does not exists.\r\n")
               end
 
-              stored.vn, stored.last, stored.clk, stored.expt, stored.value =
-                @storages[params.hash_name].get_raw(params.vn, params.key, params.digest)
-              stored = nil if stored.vn == nil || Time.now.to_i > stored.expt
+              stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
+                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
               instance_exec(ctx, &block)
               @stats.read_count += 1
@@ -108,8 +108,8 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vn = @routing_table.get_vnode_id(params.digest)
-              params.nodes = @routing_table.search_nodes_for_write(params.vn)
+              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s)
@@ -122,9 +122,9 @@ module Roma
                 return send_data("SERVER_ERROR #{params.hash_name} does not exists.\r\n")
               end
 
-              stored.vn, stored.last, stored.clk, stored.expt, stored.value =
-                @storages[params.hash_name].get_raw(params.vn, params.key, params.digest)
-              stored = nil if stored.vn == nil || Time.now.to_i > stored.expt
+              stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
+                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
               if stored && @stats.wb_command_map.key?("#{cmd}__prev".to_sym)
                 Roma::WriteBehindProcess::push(params.hash_name,
                                                @stats.wb_command_map["#{cmd}__prev".to_sym],
@@ -134,11 +134,11 @@ module Roma
 
               ret = instance_exec(ctx, &block)
               if ret.instance_of? Array
-                _flg, expt, value, count, msg = ret
-                ret = @storages[ctx.params.hash_name].set(ctx.params.vn, 
+                _flg, expire_time, value, count, msg = ret
+                ret = @storages[ctx.params.hash_name].set(ctx.params.vnode, 
                                                           ctx.params.key,
                                                           ctx.params.digest,
-                                                          expt,
+                                                          expire_time,
                                                           value)
                 if count == :write
                   @stats.write_count += 1
@@ -154,7 +154,7 @@ module Roma
                   end
                   redundant(ctx.params.nodes[1..-1], ctx.params.hash_name,
                             ctx.params.key, ctx.params.digest, ret[2],
-                            expt, ret[4])
+                            expire_time, ret[4])
                   send_data("#{msg}\r\n")
                 else
                   send_data("NOT_#{msg}\r\n")
@@ -179,8 +179,8 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vn = @routing_table.get_vnode_id(params.digest)
-              params.nodes = @routing_table.search_nodes_for_write(params.vn)
+              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s)
@@ -193,9 +193,9 @@ module Roma
                 return send_data("SERVER_ERROR #{params.hash_name} does not exists.\r\n")
               end
 
-              stored.vn, stored.last, stored.clk, stored.expt, stored.value =
-                @storages[params.hash_name].get_raw(params.vn, params.key, params.digest)
-              stored = nil if stored.vn == nil || Time.now.to_i > stored.expt
+              stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
+                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
               instance_exec(ctx, &block)
             rescue ClientError => e
@@ -217,8 +217,8 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vn = @routing_table.get_vnode_id(params.digest)
-              params.nodes = @routing_table.search_nodes_for_write(params.vn)
+              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               params.value = read_bytes(s[idx_of_val_len].to_i)
               read_bytes(2)
               if params.nodes[0] != @my_node_id
@@ -233,9 +233,9 @@ module Roma
                 return send_data("SERVER_ERROR #{params.hash_name} does not exists.\r\n")
               end
 
-              stored.vn, stored.last, stored.clk, stored.expt, stored.value =
-                @storages[params.hash_name].get_raw(params.vn, params.key, params.digest)
-              stored = nil if stored.vn == nil || Time.now.to_i > stored.expt
+              stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
+                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
 
               if stored && @stats.wb_command_map.key?("#{cmd}__prev".to_sym)
                 Roma::WriteBehindProcess::push(params.hash_name,
@@ -247,11 +247,11 @@ module Roma
               
               ret = instance_exec(ctx, &block)
               if ret.instance_of? Array
-                _flg, expt, value, count, msg = ret
-                ret = @storages[ctx.params.hash_name].set(ctx.params.vn, 
+                _flg, expire_time, value, count, msg = ret
+                ret = @storages[ctx.params.hash_name].set(ctx.params.vnode, 
                                                           ctx.params.key,
                                                           ctx.params.digest,
-                                                          expt,
+                                                          expire_time,
                                                           value)
                 if count == :write
                   @stats.write_count += 1
@@ -267,7 +267,7 @@ module Roma
                   end
                   redundant(ctx.params.nodes[1..-1], ctx.params.hash_name, 
                             ctx.params.key, ctx.params.digest, ret[2], 
-                            expt, ret[4])
+                            expire_time, ret[4])
                   send_data("#{msg}\r\n")
                 else
                   send_data("NOT_#{msg}\r\n")
@@ -292,8 +292,8 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vn = @routing_table.get_vnode_id(params.digest)
-              params.nodes = @routing_table.search_nodes_for_write(params.vn)
+              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               params.value = read_bytes(s[idx_of_val_len].to_i)
               read_bytes(2)
               if params.nodes[0] != @my_node_id
@@ -308,9 +308,9 @@ module Roma
                 return send_data("SERVER_ERROR #{params.hash_name} does not exists.\r\n")
               end
 
-              stored.vn, stored.last, stored.clk, stored.expt, stored.value =
-                @storages[params.hash_name].get_raw(params.vn, params.key, params.digest)
-              stored = nil if stored.vn == nil || Time.now.to_i > stored.expt
+              stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
+                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
 
               instance_exec(ctx, &block)
@@ -334,8 +334,8 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vn = @routing_table.get_vnode_id(params.digest)
-              params.nodes = @routing_table.search_nodes_for_write(params.vn)
+              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               params.value = read_bytes(s[idx_of_val_len].to_i)
               read_bytes(2)
               if params.nodes[0] != @my_node_id
@@ -350,9 +350,9 @@ module Roma
                 return send_data("SERVER_ERROR #{params.hash_name} does not exists.\r\n")
               end
 
-              stored.vn, stored.last, stored.clk, stored.expt, stored.value =
-                @storages[params.hash_name].get_raw(params.vn, params.key, params.digest)
-              stored = nil if stored.vn == nil || Time.now.to_i > stored.expt
+              stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
+                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
               instance_exec(ctx, &block)
             rescue ClientError => e

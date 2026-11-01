@@ -111,17 +111,17 @@ class CommandTestHarness
       @clean_up_stops += 1
     end
 
-    def wb_rotate(hname)
-      @rotated << hname
-      !!@wb_current_files.delete(hname)
+    def wb_rotate(hash_name)
+      @rotated << hash_name
+      !!@wb_current_files.delete(hash_name)
     end
 
-    def wb_get_path(hname)
-      "wb/#{NID}/#{hname}"
+    def wb_get_path(hash_name)
+      "wb/#{NID}/#{hash_name}"
     end
 
-    def wb_get_current_file_path(hname)
-      @wb_current_files[hname]
+    def wb_get_current_file_path(hash_name)
+      @wb_current_files[hash_name]
     end
 
     def wb_get_stat

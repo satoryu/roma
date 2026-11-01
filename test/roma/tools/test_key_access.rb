@@ -41,11 +41,11 @@ class KeyAccessTest < Test::Unit::TestCase
     assert_equal "hash : roma\nhash : roma2\nnot exist\n", @out.string
   end
 
-  # A deleted key leaves a mark, whose expt is 0.
+  # A deleted key leaves a mark, whose expire_time is 0.
   def test_deleted
     storage = @storages[File.join(@dir, 'roma')]
-    vn = [0, 1 << 31]['key1'.sum % 2]
-    storage.delete(vn, 'key1', 0)
+    vnode = [0, 1 << 31]['key1'.sum % 2]
+    storage.delete(vnode, 'key1', 0)
     assert_false access('key1')
   end
 end

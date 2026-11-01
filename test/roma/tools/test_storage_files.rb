@@ -16,7 +16,7 @@ class StorageFilesTest < Test::Unit::TestCase
     %w(roma2 roma1).each { |h| FileUtils.mkdir_p(File.join(@dir, h)) }
     File.write(File.join(@dir, 'file'), '')
     hashes = []
-    Roma::Tools::StorageFiles.each_hash(@dir) { |hname, dir| hashes << [hname, dir] }
+    Roma::Tools::StorageFiles.each_hash(@dir) { |hash_name, dir| hashes << [hash_name, dir] }
     assert_equal [['roma1', File.join(@dir, 'roma1')], ['roma2', File.join(@dir, 'roma2')]], hashes
   end
 

@@ -13,8 +13,8 @@ class PluginMapcountTest < Test::Unit::TestCase
     @conn = PluginTestHarness.for(Roma::CommandPlugin::PluginMapcount).new
   end
 
-  def request(cmd, key, sub_keys, expt = 0)
-    @conn.request("#{cmd} #{key} #{expt} #{sub_keys.bytesize}", sub_keys)
+  def request(cmd, key, sub_keys, expire_time = 0)
+    @conn.request("#{cmd} #{key} #{expire_time} #{sub_keys.bytesize}", sub_keys)
   end
 
   # Returns the single value in a reply, or nil for "END\r\n".
@@ -27,13 +27,13 @@ class PluginMapcountTest < Test::Unit::TestCase
     rest[0, len.to_i]
   end
 
-  def json(cmd, sub_keys = '', expt = 0)
-    v = parse_value(request(cmd, 'key1', sub_keys, expt))
+  def json(cmd, sub_keys = '', expire_time = 0)
+    v = parse_value(request(cmd, 'key1', sub_keys, expire_time))
     v && JSON.parse(v)
   end
 
-  def marshal(cmd, sub_keys = '', expt = 0)
-    v = parse_value(request(cmd, 'key1', sub_keys, expt))
+  def marshal(cmd, sub_keys = '', expire_time = 0)
+    v = parse_value(request(cmd, 'key1', sub_keys, expire_time))
     v && Marshal.load(v)
   end
 
@@ -86,7 +86,7 @@ class PluginMapcountTest < Test::Unit::TestCase
 
   def test_countup_expt
     json('mapcount_countup', 'subkey1', 100)
-    assert_in_delta Time.now.to_i + 100, @conn.redundant_calls.last[:expt], 2
+    assert_in_delta Time.now.to_i + 100, @conn.redundant_calls.last[:expire_time], 2
     # An absolute time in the past makes the key expire immediately.
     json('mapcount_countup', 'subkey1', Time.now.to_i - 1)
     assert_nil json('mapcount_get')

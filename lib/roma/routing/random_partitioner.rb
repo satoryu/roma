@@ -34,14 +34,14 @@ module Roma
         idx = {}
         myhost = exclude_nodes[0].split(/[:_]/)[0]
 
-        @routing_data.routes.each_pair do |vn, nids|
+        @routing_data.routes.each_pair do |vnode, nids|
           unless list_include?(nids, exclude_nodes)
             if myhost_include?(nids, myhost)
-              myhost_idx[vn] = nids
+              myhost_idx[vnode] = nids
             else
-              idx[vn] = nids # other hosts
+              idx[vnode] = nids # other hosts
             end
-            short_idx[vn] = nids if nids.length < @routing_data.redundancy
+            short_idx[vnode] = nids if nids.length < @routing_data.redundancy
           end
         end
 
@@ -58,8 +58,8 @@ module Roma
         return nil if idx.length == 0
 
         ks = idx.keys
-        vn = ks[rand(ks.length)]
-        nids = idx[vn]
+        vnode = ks[rand(ks.length)]
+        nids = idx[vnode]
 
         if !rep_host && nids[0].split(/[:_]/)[0] == myhost
           is_primary = true
@@ -67,15 +67,15 @@ module Roma
           is_primary = rand(@routing_data.redundancy) == 0
         end
 
-        [vn, nids, is_primary]
+        [vnode, nids, is_primary]
       end
 
       # select a vnodes where short of redundancy.
       def select_vn_for_recover(exclude_nodes, _rep_host)
         ret = []
-        @routing_data.routes.each_pair do |vn, nids|
+        @routing_data.routes.each_pair do |vnode, nids|
           if nids.length < @routing_data.redundancy && list_include?(nids, exclude_nodes) == false
-            ret << [vn, nids]
+            ret << [vnode, nids]
           end
         end
         if ret.length == 0
@@ -110,19 +110,19 @@ module Roma
       def select_vn_for_balance(exclude_nodes, _rep_host)
         short_idx = {}
         idx = {}
-        @routing_data.routes.each_pair do |vn, nids|
+        @routing_data.routes.each_pair do |vnode, nids|
           unless list_include?(nids, exclude_nodes)
-            idx[vn] = nids
-            short_idx[vn] = nids if nids.length < @routing_data.redundancy
+            idx[vnode] = nids
+            short_idx[vnode] = nids if nids.length < @routing_data.redundancy
           end
         end
         idx = short_idx if short_idx.length > 0
 
         ks = idx.keys
         return nil if ks.length == 0
-        vn = ks[rand(ks.length)]
-        nids = idx[vn]
-        [vn, nids, rand(@routing_data.redundancy) == 0]
+        vnode = ks[rand(ks.length)]
+        nids = idx[vnode]
+        [vnode, nids, rand(@routing_data.redundancy) == 0]
       end
     end
   end

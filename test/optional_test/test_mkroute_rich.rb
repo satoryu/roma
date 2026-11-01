@@ -14,10 +14,10 @@ if ENV['OPTIONAL']
 
     def test_make_rich_routing
       # digest bit count 32
-      # vn bit count 16
+      # vnode bit count 16
       # redundancy 2
       # array of node ID ['roma0_3300','roma1_3300','roma2_3300']
-      routing_data=Roma::Routing::RoutingData.create(32,16,2,['roma0_3300','roma1_3300','roma2_3300']) # vn bit count 16
+      routing_data=Roma::Routing::RoutingData.create(32,16,2,['roma0_3300','roma1_3300','roma2_3300']) # vnode bit count 16
 
       assert( routing_data.routes.length==65536 )
       assert( routing_data.nodes.length==3 )

@@ -5,8 +5,8 @@ module Roma
       # The randomly selected +from+'s vertual-node changes to +to+.
       # +idx+:: As for 0 is primary, 1 or more are secondary.
       def randomly_change_nid!(idx, from, to, repethost = false)
-        vns = []
-        routes.each_pair do |vn, nids|
+        vnodes = []
+        routes.each_pair do |vnode, nids|
           cnt = 0
           nids.each_with_index do |nid, i|
             if idx == i
@@ -19,14 +19,14 @@ module Roma
               end
             end
           end
-          vns << vn if cnt == nids.length
+          vnodes << vnode if cnt == nids.length
         end
-        return nil if vns.length == 0
-        vn = vns[rand(vns.length)]
-        #puts "#{vn} #{routes[vn]}"
-        routes[vn][idx] = to
-        #puts "#{vn} #{routes[vn]}"
-        vn
+        return nil if vnodes.length == 0
+        vnode = vnodes[rand(vnodes.length)]
+        #puts "#{vnode} #{routes[vnode]}"
+        routes[vnode][idx] = to
+        #puts "#{vnode} #{routes[vnode]}"
+        vnode
       end
 
       # Returns min/max values and correspondent node-id of the histogram.
@@ -57,9 +57,9 @@ module Roma
           loop do # until balanced
             min, min_nid, max, max_nid = routing_data.get_min_max_histogram(idx)
             break if max - min < 2 || min_nid == max_nid
-            vn = routing_data.randomly_change_nid!(idx, max_nid, min_nid, repethost)
-            return nil unless vn # error
-            ret << {:vn=>vn, :idx=>idx, :from=>max_nid, :to=>min_nid}
+            vnode = routing_data.randomly_change_nid!(idx, max_nid, min_nid, repethost)
+            return nil unless vnode # error
+            ret << {:vnode=>vnode, :idx=>idx, :from=>max_nid, :to=>min_nid}
           end
         end
         ret
@@ -67,7 +67,7 @@ module Roma
       
       def balance!(vn_replacement_list, repethost = false)
         vn_replacement_list.each do |rep|
-          routes[rep[:vn]][rep[:idx]] = rep[:to]
+          routes[rep[:vnode]][rep[:idx]] = rep[:to]
         end
       end
 

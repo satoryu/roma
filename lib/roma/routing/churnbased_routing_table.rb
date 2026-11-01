@@ -98,8 +98,8 @@ module Roma
         @log_fd=File.open(@log_name,"a")
       end
 
-      def write_log_setroute(vn, clk, nids)
-        log="setroute #{vn} #{clk}"
+      def write_log_setroute(vnode, clock, nids)
+        log="setroute #{vnode} #{clock}"
         nids.each{ |nid| log << " #{nid}" }
         write_log(log)
       end
@@ -158,9 +158,9 @@ module Roma
       # select a vnodes where short of redundancy.
       def select_a_short_vnodes(exclued_nodes)
         ret = []
-        @routing_data.routes.each_pair{|vn, nids|
+        @routing_data.routes.each_pair{|vnode, nids|
           if nids.length < @routing_data.redundancy && list_include?(nids,exclued_nodes) == false
-            ret << [vn,nids]
+            ret << [vnode,nids]
           end
         }
         ret
@@ -170,19 +170,19 @@ module Roma
       def sample_vnode(without_nodes)
         short_idx = {}
         idx = {}
-        @routing_data.routes.each_pair{|vn, nids|
+        @routing_data.routes.each_pair{|vnode, nids|
           unless list_include?(nids, without_nodes)
-            idx[vn] = nids
-            short_idx[vn] = nids if nids.length < @routing_data.redundancy
+            idx[vnode] = nids
+            short_idx[vnode] = nids if nids.length < @routing_data.redundancy
           end
         }
         idx = short_idx if short_idx.length > 0
 
         ks = idx.keys
         return nil if ks.length == 0
-        vn = ks[rand(ks.length)]
-        nids = idx[vn]
-        [vn, nids]
+        vnode = ks[rand(ks.length)]
+        nids = idx[vnode]
+        [vnode, nids]
       end
 
       def list_include?(list,nodes)
@@ -193,19 +193,19 @@ module Roma
       end
       private :list_include?
 
-      def set_route(vn, clk, nids)
-        return "#{vn} is not found." unless @routing_data.routes.key?(vn)
+      def set_route(vnode, clock, nids)
+        return "#{vnode} is not found." unless @routing_data.routes.key?(vnode)
         @lock.synchronize {
-          return "It's old table." if @routing_data.clocks[vn] > clk
+          return "It's old table." if @routing_data.clocks[vnode] > clock
           nids.each{ |nid|
             add_node(nid) unless @routing_data.nodes.include?(nid)
           }
-          @routing_data.routes[vn] = nids.clone
-          clk += 1
-          @routing_data.clocks[vn] = clk
-          @merkle_tree.set(vn, nids)
-          write_log_setroute(vn, clk, nids)
-          return clk
+          @routing_data.routes[vnode] = nids.clone
+          clock += 1
+          @routing_data.clocks[vnode] = clock
+          @merkle_tree.set(vnode, nids)
+          write_log_setroute(vnode, clock, nids)
+          return clock
         }
       end
 
@@ -245,15 +245,15 @@ module Roma
         lost_vnodes=[]
         short_vnodes=[]
         @lock.synchronize {
-          @routing_data.routes.each_pair{ |vn, nids|
+          @routing_data.routes.each_pair{ |vnode, nids|
             buf = nids.clone
             if buf.delete(nid)
-              set_route_and_inc_clk_inside_sync(vn, buf)
+              set_route_and_inc_clk_inside_sync(vnode, buf)
               if buf.length == 0
-                lost_vnodes << vn
-                @log.error("Vnode data is lost.(Vnode=#{vn})")
+                lost_vnodes << vnode
+                @log.error("Vnode data is lost.(Vnode=#{vnode})")
               elsif buf.length < @routing_data.redundancy
-                short_vnodes << vn
+                short_vnodes << vnode
               end
             end
           }
@@ -261,8 +261,8 @@ module Roma
         if lost_vnodes.length > 0
           @lost_proc.call if @lost_proc
           if @lost_action == :auto_assign
-            lost_vnodes.each{ |vn|
-              set_route_and_inc_clk_inside_sync( vn, next_alive_vnode(vn) )
+            lost_vnodes.each{ |vnode|
+              set_route_and_inc_clk_inside_sync( vnode, next_alive_vnode(vnode) )
             }
           end
         elsif short_vnodes.length > 0
@@ -280,20 +280,20 @@ module Roma
       end
       private :set_event
 
-      def set_route_and_inc_clk_inside_sync(vn, nodes)
-        @routing_data.routes[vn] = nodes
-        clk = @routing_data.clocks[vn] + 1
-        @routing_data.clocks[vn] = clk
-        @merkle_tree.set(vn, nodes)
-        write_log_setroute(vn, clk, nodes)
-        clk
+      def set_route_and_inc_clk_inside_sync(vnode, nodes)
+        @routing_data.routes[vnode] = nodes
+        clock = @routing_data.clocks[vnode] + 1
+        @routing_data.clocks[vnode] = clock
+        @merkle_tree.set(vnode, nodes)
+        write_log_setroute(vnode, clock, nodes)
+        clock
       end
       private :set_route_and_inc_clk_inside_sync
 
-      def next_alive_vnode(vn)
-        svn = vn
-        while( (vn = @routing_data.next_vnode(vn)) != svn )
-          return @routing_data.routes[vn].clone if @routing_data.routes[vn].length != 0
+      def next_alive_vnode(vnode)
+        svn = vnode
+        while( (vnode = @routing_data.next_vnode(vnode)) != svn )
+          return @routing_data.routes[vnode].clone if @routing_data.routes[vnode].length != 0
         end
         []
       end
@@ -307,49 +307,49 @@ module Roma
         @routing_data.routes.clone
       end
 
-      def search_nodes_for_write(vn)
-        return @trans[vn][0].clone if @trans.key?(vn)
-        @routing_data.routes[vn].clone
+      def search_nodes_for_write(vnode)
+        return @trans[vnode][0].clone if @trans.key?(vnode)
+        @routing_data.routes[vnode].clone
       rescue
         nil
       end
 
-      def search_nodes_with_clk(vn)
+      def search_nodes_with_clk(vnode)
         @lock.synchronize {
-          return [@routing_data.clocks[vn], @routing_data.routes[vn].clone]
+          return [@routing_data.clocks[vnode], @routing_data.routes[vnode].clone]
         }
       rescue
         nil
       end
 
-      # +vn+: vnode-id
+      # +vnode+: vnode-id
       # +nids+: node-id list
-      def transaction(vn, nids)
-        return false if @trans.key?(vn)
-        @trans[vn]=[nids.clone, Time.now]
+      def transaction(vnode, nids)
+        return false if @trans.key?(vnode)
+        @trans[vnode]=[nids.clone, Time.now]
         true
       end
 
-      def commit(vn)
-        return false unless @trans.key?(vn)
+      def commit(vnode)
+        return false unless @trans.key?(vnode)
         @lock.synchronize {
-          @routing_data.routes[vn]=@trans[vn][0]
-          @trans.delete(vn)
-          clk = @routing_data.clocks[vn] + 1
-          @routing_data.clocks[vn] = clk
-          @merkle_tree.set(vn, @routing_data.routes[vn])
-          write_log_setroute(vn, clk, @routing_data.routes[vn])
-          return clk
+          @routing_data.routes[vnode]=@trans[vnode][0]
+          @trans.delete(vnode)
+          clock = @routing_data.clocks[vnode] + 1
+          @routing_data.clocks[vnode] = clock
+          @merkle_tree.set(vnode, @routing_data.routes[vnode])
+          write_log_setroute(vnode, clock, @routing_data.routes[vnode])
+          return clock
         }
       end
 
-      def rollback(vn)
-        @trans.delete(vn)
+      def rollback(vnode)
+        @trans.delete(vnode)
       end
 
       # +sec+: elapsed-time
       def delete_old_trans(sec=3600)
-        @trans.delete_if{|vn,val| val[1] < Time.now-sec }
+        @trans.delete_if{|vnode,val| val[1] < Time.now-sec }
       end
 
       # Returns the status of vnode balance.
@@ -359,7 +359,7 @@ module Roma
         n = (2**divide_bits) / nodes.length
 
         pcount = scount = 0
-        @routing_data.routes.each_pair{ |vn, nids|
+        @routing_data.routes.each_pair{ |vnode, nids|
           next if nids == nil or nids.length == 0
           if nids[0] == ap
             pcount += 1
@@ -379,7 +379,7 @@ module Roma
       end
 
       def has_node?(my_node_id)
-        self.each_vnode do |vn, nids|
+        self.each_vnode do |vnode, nids|
           return true if nids.include?(my_node_id)
         end
         false

@@ -68,8 +68,8 @@ class PluginTestHarness
   # Methods that would talk to other nodes. They are prepended so that they
   # win over the plugins' own definitions (e.g. PluginStorage#redundant).
   module Stubs
-    def redundant(nodes, hname, k, d, clk, expt, v)
-      @redundant_calls << { nodes: nodes, hname: hname, key: k, expt: expt, value: v }
+    def redundant(nodes, hash_name, k, d, clock, expire_time, v)
+      @redundant_calls << { nodes: nodes, hash_name: hash_name, key: k, expire_time: expire_time, value: v }
     end
 
     # Without an owner to forward to, only replicas are sent commands.

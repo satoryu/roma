@@ -168,52 +168,52 @@ module Roma
     end
 
     def asyncev_redundant(args)
-      nid, hname, k, d, clk, expt, v = args
+      nid, hash_name, k, d, clock, expire_time, v = args
       @log.debug("#{__method__} #{args.inspect}")
       unless @routing_table.nodes.include?(nid)
-        @log.warn("async redundant failed:#{nid} does not found in routing table.#{k}\e#{hname} #{d} #{clk} #{expt} #{v.length}")
+        @log.warn("async redundant failed:#{nid} does not found in routing table.#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}")
         return true # no retry
       end
-      res = async_send_cmd(nid, "rset #{k}\e#{hname} #{d} #{clk} #{expt} #{v.length}\r\n#{v}\r\n", 10)
+      res = async_send_cmd(nid, "rset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}\r\n#{v}\r\n", 10)
       if res.nil? || res.start_with?('ERROR')
-        @log.warn("async redundant failed:#{k}\e#{hname} #{d} #{clk} #{expt} #{v.length} -> #{nid}")
+        @log.warn("async redundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length} -> #{nid}")
         return false # retry
       end
       true
     end
 
     def asyncev_zredundant(args)
-      nid, hname, k, d, clk, expt, zv = args
+      nid, hash_name, k, d, clock, expire_time, zv = args
       @log.debug("#{__method__} #{args.inspect}")
       unless @routing_table.nodes.include?(nid)
-        @log.warn("async zredundant failed:#{nid} does not found in routing table.#{k}\e#{hname} #{d} #{clk} #{expt} #{zv.length}")
+        @log.warn("async zredundant failed:#{nid} does not found in routing table.#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}")
         return true # no retry
       end
-      res = async_send_cmd(nid, "rzset #{k}\e#{hname} #{d} #{clk} #{expt} #{zv.length}\r\n#{zv}\r\n", 10)
+      res = async_send_cmd(nid, "rzset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}\r\n#{zv}\r\n", 10)
       if res.nil? || res.start_with?('ERROR')
-        @log.warn("async zredundant failed:#{k}\e#{hname} #{d} #{clk} #{expt} #{zv.length} -> #{nid}")
+        @log.warn("async zredundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length} -> #{nid}")
         return false # retry
       end
       true
     end
 
     def asyncev_rdelete(args)
-      nid, hname, k, clk = args
+      nid, hash_name, k, clock = args
       @log.debug("#{__method__} #{args.inspect}")
       unless @routing_table.nodes.include?(nid)
-        @log.warn("async rdelete failed:#{nid} does not found in routing table.#{k}\e#{hname} #{clk}")
+        @log.warn("async rdelete failed:#{nid} does not found in routing table.#{k}\e#{hash_name} #{clock}")
         return true # no retry
       end
-      res = async_send_cmd(nid, "rdelete #{k}\e#{hname} #{clk}\r\n", 10)
+      res = async_send_cmd(nid, "rdelete #{k}\e#{hash_name} #{clock}\r\n", 10)
       unless res
-        @log.warn("async redundant failed:#{k}\e#{hname} #{clk} -> #{nid}")
+        @log.warn("async redundant failed:#{k}\e#{hash_name} #{clock} -> #{nid}")
         return false # retry
       end
       true
     end
 
     def asyncev_reqpushv(args)
-      vn, nid, p = args
+      vnode, nid, p = args
       @log.debug("#{__method__} #{args.inspect}")
       if @stats.run_iterate_storage
         @log.warn("#{__method__}:already be iterated storage process.")
@@ -221,7 +221,7 @@ module Roma
         @stats.run_iterate_storage = true
         t = Thread.new do
           begin
-            sync_a_vnode(vn.to_i, nid, p == 'true')
+            sync_a_vnode(vnode.to_i, nid, p == 'true')
           rescue => e
             @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
           ensure
@@ -342,11 +342,11 @@ module Roma
         break unless @do_acquired_recover_process
         break if @routing_table.num_of_vn(@stats.my_node_id)[2] == 0 # short vnodes
 
-        vn, nodes, is_primary = @routing_table.select_vn_for_recover(exclude_nodes, @stats.rep_host)
-        break unless vn
+        vnode, nodes, is_primary = @routing_table.select_vn_for_recover(exclude_nodes, @stats.rep_host)
+        break unless vnode
 
         if nodes.length != 0
-          ret = req_push_a_vnode(vn, nodes[0], is_primary)
+          ret = req_push_a_vnode(vnode, nodes[0], is_primary)
           if ret == :rejected
             sleep 1
           elsif ret == false
@@ -372,12 +372,12 @@ module Roma
       while @routing_table.vnode_balance(@stats.my_node_id) == :less && count < nv
         break unless @do_join_process
 
-        vn, nodes, is_primary = @routing_table.select_vn_for_join(exclude_nodes, @stats.rep_host)
-        unless vn
+        vnode, nodes, is_primary = @routing_table.select_vn_for_join(exclude_nodes, @stats.rep_host)
+        unless vnode
           @log.warn("#{__method__}:vnode does not found")
           return false
         end
-        ret = req_push_a_vnode(vn, nodes[0], is_primary)
+        ret = req_push_a_vnode(vnode, nodes[0], is_primary)
         if ret == :rejected
           sleep 5
         else
@@ -402,12 +402,12 @@ module Roma
       while @routing_table.vnode_balance(@stats.my_node_id) == :less && count < nv
         break unless @do_balance_process
 
-        vn, nodes, is_primary = @routing_table.select_vn_for_balance(exclude_nodes, @stats.rep_host)
-        unless vn
+        vnode, nodes, is_primary = @routing_table.select_vn_for_balance(exclude_nodes, @stats.rep_host)
+        unless vnode
           @log.warn("#{__method__}:vnode does not found")
           return false
         end
-        ret = req_push_a_vnode(vn, nodes[0], is_primary)
+        ret = req_push_a_vnode(vnode, nodes[0], is_primary)
         if ret == :rejected
           sleep 5
         else
@@ -422,9 +422,9 @@ module Roma
       @do_balance_process = false
     end
 
-    def req_push_a_vnode(vn, src_nid, is_primary)
+    def req_push_a_vnode(vnode, src_nid, is_primary)
       con = Roma::Messaging::ConPool.instance.get_connection(src_nid)
-      con.write("reqpushv #{vn} #{@stats.my_node_id} #{is_primary}\r\n")
+      con.write("reqpushv #{vnode} #{@stats.my_node_id} #{is_primary}\r\n")
       res = con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n' | 'ERROR\r\n'
       if res == "REJECTED\r\n"
         @log.warn("#{__method__}:request was rejected from #{src_nid}.")
@@ -437,12 +437,12 @@ module Roma
       Roma::Messaging::ConPool.instance.return_connection(src_nid, con)
       # waiting for pushv
       count = 0
-      while @routing_table.search_nodes(vn).include?(@stats.my_node_id) == false && count < @stats.reqpushv_timeout_count
+      while @routing_table.search_nodes(vnode).include?(@stats.my_node_id) == false && count < @stats.reqpushv_timeout_count
         sleep 0.1
         count += 1
       end
       if count >= @stats.reqpushv_timeout_count
-        @log.warn("#{__method__}:request has been time-out.vn=#{vn} nid=#{src_nid}")
+        @log.warn("#{__method__}:request has been time-out.vnode=#{vnode} nid=#{src_nid}")
         return :timeout
       end
       true
@@ -463,18 +463,18 @@ module Roma
       @do_release_process = true
       while @routing_table.has_node?(@stats.my_node_id)
         break unless @do_release_process
-        @routing_table.each_vnode do |vn, nids|
+        @routing_table.each_vnode do |vnode, nids|
           break unless @do_release_process
           if nids.include?(@stats.my_node_id)
 
             to_nid, new_nids = @routing_table.select_node_for_release(@stats.my_node_id, @stats.rep_host, nids)
-            res = sync_a_vnode_for_release(vn, to_nid, new_nids)
+            res = sync_a_vnode_for_release(vnode, to_nid, new_nids)
             if res == :abort
               @log.error("#{__method__}:release_process aborted due to SERVER_ERROR received.")
               @do_release_process = false
             end
             if res == false
-              @log.warn("#{__method__}:error at vn=#{vn} to_nid=#{to_nid} new_nid=#{new_nids}")
+              @log.warn("#{__method__}:error at vnode=#{vnode} to_nid=#{to_nid} new_nid=#{new_nids}")
               redo
             end
           end
@@ -488,39 +488,39 @@ module Roma
       Roma::Messaging::ConPool.instance.close_all
     end
 
-    def sync_a_vnode_for_release(vn, to_nid, new_nids)
-      nids = @routing_table.search_nodes(vn)
+    def sync_a_vnode_for_release(vnode, to_nid, new_nids)
+      nids = @routing_table.search_nodes(vnode)
 
       if nids.include?(to_nid) == false
-        @log.debug("#{__method__}:#{vn} #{to_nid}")
+        @log.debug("#{__method__}:#{vnode} #{to_nid}")
         # change routing data at the vnode and synchronize a data
         nids << to_nid
-        return false unless @routing_table.transaction(vn, nids)
+        return false unless @routing_table.transaction(vnode, nids)
 
         # synchronize a data
-        @storages.each_key do |hname|
-          res = push_a_vnode_stream(hname, vn, to_nid)
+        @storages.each_key do |hash_name|
+          res = push_a_vnode_stream(hash_name, vnode, to_nid)
 
           if res != 'STORED'
-            @routing_table.rollback(vn)
-            @log.error("#{__method__}:push_a_vnode was failed:hname=#{hname} vn=#{vn}:#{res}")
+            @routing_table.rollback(vnode)
+            @log.error("#{__method__}:push_a_vnode was failed:hash_name=#{hash_name} vnode=#{vnode}:#{res}")
             return :abort if res.start_with?('SERVER_ERROR')
             return false
           end
         end
 
-        if (clk = @routing_table.commit(vn)) == false
-          @routing_table.rollback(vn)
+        if (clock = @routing_table.commit(vnode)) == false
+          @routing_table.rollback(vnode)
           @log.error("#{__method__}:routing table commit failed")
           return false
         end
 
-        clk = @routing_table.set_route(vn, clk, new_nids)
-        if clk.is_a?(Integer) == false
-          clk, new_nids = @routing_table.search_nodes_with_clk(vn)
+        clock = @routing_table.set_route(vnode, clock, new_nids)
+        if clock.is_a?(Integer) == false
+          clock, new_nids = @routing_table.search_nodes_with_clk(vnode)
         end
 
-        cmd = "setroute #{vn} #{clk - 1}"
+        cmd = "setroute #{vnode} #{clock - 1}"
         new_nids.each { |nn| cmd << " #{nn}" }
         res = async_broadcast_cmd("#{cmd}\r\n")
         @log.debug("#{__method__}:async_broadcast_cmd(#{cmd}) #{res}")
@@ -532,48 +532,48 @@ module Roma
       false
     end
 
-    def sync_a_vnode(vn, to_nid, is_primary = nil)
-      nids = @routing_table.search_nodes(vn)
+    def sync_a_vnode(vnode, to_nid, is_primary = nil)
+      nids = @routing_table.search_nodes(vnode)
 
       if nids.include?(to_nid) == false || (is_primary && nids[0] != to_nid)
-        @log.debug("#{__method__}:#{vn} #{to_nid} #{is_primary}")
+        @log.debug("#{__method__}:#{vnode} #{to_nid} #{is_primary}")
         # change routing data at the vnode and synchronize a data
         nids << to_nid
-        return false unless @routing_table.transaction(vn, nids)
+        return false unless @routing_table.transaction(vnode, nids)
 
         # synchronize a data
-        @storages.each_key do |hname|
-          res = push_a_vnode_stream(hname, vn, to_nid)
+        @storages.each_key do |hash_name|
+          res = push_a_vnode_stream(hash_name, vnode, to_nid)
 
           if res != 'STORED'
-            @routing_table.rollback(vn)
-            @log.error("#{__method__}:push_a_vnode was failed:hname=#{hname} vn=#{vn}:#{res}")
+            @routing_table.rollback(vnode)
+            @log.error("#{__method__}:push_a_vnode was failed:hash_name=#{hash_name} vnode=#{vnode}:#{res}")
             return false
           end
         end
 
-        if (clk = @routing_table.commit(vn)) == false
-          @routing_table.rollback(vn)
+        if (clock = @routing_table.commit(vnode)) == false
+          @routing_table.rollback(vnode)
           @log.error("#{__method__}:routing table commit failed")
           return false
         end
 
         nids = edit_nodes(nids, to_nid, is_primary)
-        clk = @routing_table.set_route(vn, clk, nids)
-        if clk.is_a?(Integer) == false
-          clk, nids = @routing_table.search_nodes_with_clk(vn)
+        clock = @routing_table.set_route(vnode, clock, nids)
+        if clock.is_a?(Integer) == false
+          clock, nids = @routing_table.search_nodes_with_clk(vnode)
         end
 
-        cmd = "setroute #{vn} #{clk - 1}"
+        cmd = "setroute #{vnode} #{clock - 1}"
         nids.each { |nn| cmd << " #{nn}" }
         res = async_broadcast_cmd("#{cmd}\r\n")
         @log.debug("#{__method__}:async_broadcast_cmd(#{cmd}) #{res}")
       else
         # synchronize a data
-        @storages.each_key do |hname|
-          res = push_a_vnode_stream(hname, vn, to_nid)
+        @storages.each_key do |hash_name|
+          res = push_a_vnode_stream(hash_name, vnode, to_nid)
           if res != 'STORED'
-            @log.error("#{__method__}:push_a_vnode was failed:hname=#{hname} vn=#{vn}:#{res}")
+            @log.error("#{__method__}:push_a_vnode was failed:hash_name=#{hash_name} vnode=#{vnode}:#{res}")
             return false
           end
         end
@@ -618,8 +618,8 @@ module Roma
       nodes
     end
 
-    def push_a_vnode_stream(hname, vn, nid)
-      @log.debug("#{__method__}:hname=#{hname} vn=#{vn} nid=#{nid}")
+    def push_a_vnode_stream(hash_name, vnode, nid)
+      @log.debug("#{__method__}:hash_name=#{hash_name} vnode=#{vnode} nid=#{nid}")
 
       stop_clean_up
 
@@ -627,7 +627,7 @@ module Roma
 
       @do_push_a_vnode_stream = true
 
-      con.write("spushv #{hname} #{vn}\r\n")
+      con.write("spushv #{hash_name} #{vnode}\r\n")
 
       res = con.gets # READY\r\n or error string
       if res != "READY\r\n"
@@ -635,11 +635,11 @@ module Roma
         return res.chomp
       end
 
-      res_dump = @storages[hname].each_vn_dump(vn) do |data|
+      res_dump = @storages[hash_name].each_vn_dump(vnode) do |data|
 
         unless @do_push_a_vnode_stream
           con.close
-          @log.error("#{__method__}:canceled in hname=#{hname} vn=#{vn} nid=#{nid}")
+          @log.error("#{__method__}:canceled in hash_name=#{hash_name} vnode=#{vnode} nid=#{nid}")
           return 'CANCELED'
         end
 
@@ -652,7 +652,7 @@ module Roma
       Roma::Messaging::ConPool.instance.return_connection(nid, con)
       res.chomp! if res
       if res_dump == false
-        @log.error("#{__method__}:each_vn_dump in hname=#{hname} vn=#{vn} nid=#{nid}")
+        @log.error("#{__method__}:each_vn_dump in hash_name=#{hash_name} vnode=#{vnode} nid=#{nid}")
         return 'CANCELED'
       end
       res
@@ -685,30 +685,30 @@ module Roma
       @log.info("#{__method__}:start")
       me = @stats.my_node_id
       vnhash = {}
-      @routing_table.each_vnode do |vn, nids|
+      @routing_table.each_vnode do |vnode, nids|
         if nids.include?(me)
           if nids[0] == me
-            vnhash[vn] = :primary
+            vnhash[vnode] = :primary
           else
-            vnhash[vn] = "secondary#{nids.index(me)}".to_sym
+            vnhash[vnode] = "secondary#{nids.index(me)}".to_sym
           end
         end
       end
       t = Time.now.to_i - Roma.config.storage.delete_mark_expire_time
       count = 0
-      @storages.each_pair do |hname, st|
+      @storages.each_pair do |hash_name, st|
         break unless @stats.do_clean_up?
-        st.each_clean_up(t, vnhash) do |key, vn|
-          # @log.debug("#{__method__}:key=#{key} vn=#{vn}")
-          if @stats.run_receive_a_vnode.key?("#{hname}_#{vn}")
+        st.each_clean_up(t, vnhash) do |key, vnode|
+          # @log.debug("#{__method__}:key=#{key} vnode=#{vnode}")
+          if @stats.run_receive_a_vnode.key?("#{hash_name}_#{vnode}")
             false
           else
-            nodes = @routing_table.search_nodes_for_write(vn)
+            nodes = @routing_table.search_nodes_for_write(vnode)
             if nodes && nodes.length > 1
               nodes[1..-1].each do |nid|
-                res = async_send_cmd(nid, "out #{key}\e#{hname} #{vn}\r\n")
+                res = async_send_cmd(nid, "out #{key}\e#{hash_name} #{vnode}\r\n")
                 unless res
-                  @log.warn("send out command failed:#{key}\e#{hname} #{vn} -> #{nid}")
+                  @log.warn("send out command failed:#{key}\e#{hash_name} #{vnode} -> #{nid}")
                 end
                 # @log.debug("#{__method__}:res=#{res}")
               end
@@ -782,19 +782,19 @@ module Roma
     end
 
     def asyncev_start_storage_flush_process(args)
-      hname, dn = args
+      hash_name, db_index = args
       @log.debug("#{__method__} #{args.inspect}")
 
-      st = @storages[hname]
-      if st.dbs[dn] != :safecopy_flushing
-        @log.error("Can not flush storage. stat = #{st.dbs[dn]}")
+      st = @storages[hash_name]
+      if st.dbs[db_index] != :safecopy_flushing
+        @log.error("Can not flush storage. stat = #{st.dbs[db_index]}")
         return true
       end
       t = Thread.new do
         begin
-          st.flush_db(dn)
-          st.set_db_stat(dn, :safecopy_flushed)
-          @log.info("#{__method__}:storage has flushed. (#{hname}, #{dn})")
+          st.flush_db(db_index)
+          st.set_db_stat(db_index, :safecopy_flushed)
+          @log.info("#{__method__}:storage has flushed. (#{hash_name}, #{db_index})")
         rescue => e
           @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
         ensure
@@ -805,17 +805,17 @@ module Roma
     end
 
     def asyncev_start_storage_cachecleaning_process(args)
-      hname, dn = args
+      hash_name, db_index = args
       @log.debug("#{__method__} #{args.inspect}")
 
-      st = @storages[hname]
-      if st.dbs[dn] != :cachecleaning
-        @log.error("Can not start cachecleaning process. stat = #{st.dbs[dn]}")
+      st = @storages[hash_name]
+      if st.dbs[db_index] != :cachecleaning
+        @log.error("Can not start cachecleaning process. stat = #{st.dbs[db_index]}")
         return true
       end
       t = Thread.new do
         begin
-          storage_cachecleaning_process(hname, dn)
+          storage_cachecleaning_process(hash_name, db_index)
         rescue => e
           @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
         ensure
@@ -825,39 +825,39 @@ module Roma
       true
     end
 
-    def storage_cachecleaning_process(hname, dn)
+    def storage_cachecleaning_process(hash_name, db_index)
       count = 0
       rcount = 0
-      st = @storages[hname]
+      st = @storages[hash_name]
 
       @do_storage_cachecleaning_process = true
       loop do
         # get keys in a cache up to 100 kyes
-        keys = st.get_keys_in_cache(dn)
+        keys = st.get_keys_in_cache(db_index)
         break if keys.nil? || keys.length == 0
         break unless @do_storage_cachecleaning_process
 
         # @log.debug("#{__method__}:#{keys.length} keys found")
 
         # copy cache -> db
-        st.each_cache_by_keys(dn, keys) do |vn, last, clk, expt, k, v|
+        st.each_cache_by_keys(db_index, keys) do |vnode, last, clock, expire_time, k, v|
           break unless @do_storage_cachecleaning_process
-          if st.load_stream_dump_for_cachecleaning(vn, last, clk, expt, k, v)
+          if st.load_stream_dump_for_cachecleaning(vnode, last, clock, expire_time, k, v)
             count += 1
-            # @log.debug("#{__method__}:[#{vn} #{last} #{clk} #{expt} #{k}] was stored.")
+            # @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
           else
             rcount += 1
-            # @log.debug("#{__method__}:[#{vn} #{last} #{clk} #{expt} #{k}] was rejected.")
+            # @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was rejected.")
           end
         end
 
         # remove keys in a cache
-        keys.each { |key| st.out_cache(dn, key) }
+        keys.each { |key| st.out_cache(db_index, key) }
       end
       if @do_storage_cachecleaning_process == false
         @log.warn("#{__method__}:uncompleted")
       else
-        st.set_db_stat(dn, :normal)
+        st.set_db_stat(db_index, :normal)
       end
       @log.debug("#{__method__}:#{count} keys loaded.")
       @log.debug("#{__method__}:#{rcount} keys rejected.") if rcount > 0
@@ -1041,13 +1041,13 @@ module Roma
     def replicate_existing_data_process(args)
       @log.info("#{__method__} :start.")
 
-      @storages.each_key do |hname|
-        @routing_table.routes.each_key do |vn|
+      @storages.each_key do |hash_name|
+        @routing_table.routes.each_key do |vnode|
           raise unless $roma.cluster_replication_writer.run_existing_data_replication
-          args[0].routes[vn].each do |replica_nid|
-            res = push_a_vnode_stream(hname, vn, replica_nid)
+          args[0].routes[vnode].each do |replica_nid|
+            res = push_a_vnode_stream(hash_name, vnode, replica_nid)
             if res != 'STORED'
-              @log.error("#{__method__}:push_a_vnode was failed:hname=#{hname} vn=#{vn}:#{res}")
+              @log.error("#{__method__}:push_a_vnode was failed:hash_name=#{hash_name} vnode=#{vnode}:#{res}")
               return false
             end
           end

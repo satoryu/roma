@@ -23,11 +23,11 @@ module Roma
 
         return ev_gets(s) if s.length > 2
 
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes(vnode)
 
         unless nodes.include?(@my_node_id)
           @log.warn("forward get #{s[1]}")
@@ -40,11 +40,11 @@ module Roma
           return
         end
 
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
-        data = @storages[hname].get(vn, key, 0)
+        data = @storages[hash_name].get(vnode, key, 0)
         @stats.read_count += 1
         send_data("VALUE #{s[1]} 0 #{data.length}\r\n#{data}\r\n") if data
         send_data("END\r\n")
@@ -52,22 +52,22 @@ module Roma
 
       # fget <key>
       def ev_fget(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes(vnode)
 
         unless nodes.include?(@my_node_id)
-          @log.error("fget failed key=#{s[1]} vn=#{vn}")
+          @log.error("fget failed key=#{s[1]} vnode=#{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
-        data = @storages[hname].get(vn, key, 0)
+        data = @storages[hash_name].get(vnode, key, 0)
         @stats.read_count += 1
         send_data("VALUE #{s[1]} 0 #{data.length}\r\n#{data}\r\n") if data
         send_data("END\r\n")
@@ -80,8 +80,8 @@ module Roma
         s[1..-1].each{|kh|
           key, = kh.split("\e") # split a hash-name
           d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-          kvn[key] = vn = @routing_table.get_vnode_id(d)
-          nodes = @routing_table.search_nodes(vn)
+          kvn[key] = vnode = @routing_table.get_vnode_id(d)
+          nodes = @routing_table.search_nodes(vnode)
           unless nodes.empty? # check the node existence
             nk[nodes[0]]=[] unless nk.key?(nodes[0])
             nk[nodes[0]] << kh
@@ -91,12 +91,12 @@ module Roma
         res = {} # result data {key1=>val1,key2=>val2,...}
         if nk.key?(@my_node_id)
           nk[@my_node_id].each{|kh|
-            key,hname = kh.split("\e")
-            hname ||= @default_hash_name
-            if @storages.key?(hname)
-              _vn, _t, clk, expt, val = @storages[hname].get_raw(kvn[key], key, 0)
+            key,hash_name = kh.split("\e")
+            hash_name ||= @default_hash_name
+            if @storages.key?(hash_name)
+              _vn, _t, clock, expire_time, val = @storages[hash_name].get_raw(kvn[key], key, 0)
               @stats.read_count += 1
-              res[key] = [clk, val] if val && Time.now.to_i <= expt
+              res[key] = [clock, val] if val && Time.now.to_i <= expire_time
             end
           }
           nk.delete(@my_node_id)
@@ -107,8 +107,8 @@ module Roma
         }
 
         res.each_pair{|key,cv|
-          clk, val = cv
-          send_data("VALUE #{key} 0 #{val.length} #{clk}\r\n#{val}\r\n")
+          clock, val = cv
+          send_data("VALUE #{key} 0 #{val.length} #{clock}\r\n#{val}\r\n")
         }
         send_data("END\r\n")
       end
@@ -121,14 +121,14 @@ module Roma
           return send_data("CLIENT_ERROR Wrong number of arguments.\r\n")
         end
 
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
 
         if nodes[0] != @my_node_id
-          cmd = "fdelete #{key}\e#{hname}"
+          cmd = "fdelete #{key}\e#{hash_name}"
           s[2..-1].each{|c| cmd << " #{c}"}
           cmd << "\r\n"
           @log.warn("forward delete #{s[1]}")
@@ -139,31 +139,31 @@ module Roma
           return send_data("#{res}\r\n")
         end
 
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
 
         if @stats.wb_command_map.key?(:delete__prev)
-          data = @storages[hname].get(vn, key, d)
-          Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:delete__prev], key, data) if data
+          data = @storages[hash_name].get(vnode, key, d)
+          Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:delete__prev], key, data) if data
         end
         
-        res = @storages[hname].delete(vn, key, d)
+        res = @storages[hash_name].delete(vnode, key, d)
         @stats.delete_count += 1
 
         return send_data("NOT_DELETED\r\n") unless res
         return send_data("NOT_FOUND\r\n") if res == :deletemark
 
         if @stats.wb_command_map.key?(:delete)
-          Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:delete], key, res[4])
+          Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:delete], key, res[4])
         end
 
         nodes[1..-1].each{ |nid|
-          res2 = send_cmd(nid,"rdelete #{key}\e#{hname} #{res[2]}\r\n")
+          res2 = send_cmd(nid,"rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
           unless res2
-            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('rdelete',[nid,hname,s[1],res[2]]))
-            @log.warn("rdelete failed:#{s[1]}\e#{hname} #{d} #{res[2]} -> #{nid}")
+            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('rdelete',[nid,hash_name,s[1],res[2]]))
+            @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{nid}")
           end
         }
         return send_data("NOT_FOUND\r\n") unless res[4]
@@ -178,41 +178,41 @@ module Roma
 
       # fdelete <key> [<time>] [noreply]\r\n
       def ev_fdelete(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.error("fdelete failed delete key=#{s[1]} vn=#{vn}")
+          @log.error("fdelete failed delete key=#{s[1]} vnode=#{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
 
         if @stats.wb_command_map.key?(:delete__prev)
-          data = @storages[hname].get(vn, key, d)
-          Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:delete__prev], key, data) if data
+          data = @storages[hash_name].get(vnode, key, d)
+          Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:delete__prev], key, data) if data
         end
         
-        res = @storages[hname].delete(vn, key, d)
+        res = @storages[hash_name].delete(vnode, key, d)
         @stats.delete_count += 1
 
         return send_data("NOT_DELETED\r\n") unless res
         return send_data("NOT_FOUND\r\n") if res == :deletemark
 
         if @stats.wb_command_map.key?(:delete)
-          Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:delete], key, res[4])
+          Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:delete], key, res[4])
         end
 
         nodes.delete(@my_node_id)
         nodes.each{ |nid|
-          res2 = send_cmd(nid,"rdelete #{key}\e#{hname} #{res[2]}\r\n")
+          res2 = send_cmd(nid,"rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
           unless res2
-            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('rdelete',[nid,hname,s[1],res[2]]))
-            @log.warn("rdelete failed:#{s[1]}\e#{hname} #{d} #{res[2]} -> #{nid}")
+            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('rdelete',[nid,hash_name,s[1],res[2]]))
+            @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{nid}")
           end
         }
         return send_data("NOT_FOUND\r\n") unless res[4]
@@ -227,15 +227,15 @@ module Roma
 
       # rdelete <key> <clock>
       def ev_rdelete(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vn = @routing_table.get_vnode_id(d)
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        vnode = @routing_table.get_vnode_id(d)
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
-        if @storages[hname].rdelete(vn, key, d, s[2].to_i)
+        if @storages[hash_name].rdelete(vnode, key, d, s[2].to_i)
           send_data("DELETED\r\n")
         else
           send_data("NOT_FOUND\r\n")
@@ -271,41 +271,41 @@ module Roma
       # <command name> <key> <flags> <exptime> <bytes> <cas-id>[noreply]\r\n
       # <data block>\r\n
       def ev_cas(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
         v = read_bytes(s[4].to_i)
         read_bytes(2)
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
-          @log.warn("forward cas key=#{key} vn=#{vn} to #{nodes[0]}")
-          res = send_cmd(nodes[0],"fcas #{key}\e#{hname} #{d} #{s[3]} #{v.length} #{s[5]}\r\n#{v}\r\n")
+          @log.warn("forward cas key=#{key} vnode=#{vnode} to #{nodes[0]}")
+          res = send_cmd(nodes[0],"fcas #{key}\e#{hash_name} #{d} #{s[3]} #{v.length} #{s[5]}\r\n#{v}\r\n")
           if res == nil || res.start_with?("ERROR")
             return send_data("SERVER_ERROR Message forward failed.\r\n")
           end
           return send_data("#{res}\r\n")
         end
 
-        store_cas(hname, vn, key, d, s[5].to_i, s[3].to_i, v, nodes[1..-1])
+        store_cas(hash_name, vnode, key, d, s[5].to_i, s[3].to_i, v, nodes[1..-1])
       end
 
       def ev_fcas(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = s[2].to_i
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.error("fcas failed key = #{s[1]} vn = #{vn}")
+          @log.error("fcas failed key = #{s[1]} vnode = #{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
         nodes.delete(@my_node_id)
-        store_cas(hname, vn, key, d, s[5].to_i, s[3].to_i, v, nodes)
+        store_cas(hash_name, vnode, key, d, s[5].to_i, s[3].to_i, v, nodes)
       end
 
       # incr <key> <value> [noreply]\r\n
@@ -316,15 +316,15 @@ module Roma
       def ev_decr(s); incr_decr(:decr,s); end
       def ev_fdecr(s); fincr_fdecr(:decr,s); end
 
-      # set_expt <key> <expt>
+      # set_expt <key> <expire_time>
       def ev_set_expt(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
-          @log.warn("forward set_expt key=#{key} vn=#{vn} to #{nodes[0]}")
+          @log.warn("forward set_expt key=#{key} vnode=#{vnode} to #{nodes[0]}")
           res = send_cmd(nodes[0],"fset_expt #{s[1]} #{s[2]}\r\n")
           if res
             return send_data("#{res}\r\n")
@@ -332,30 +332,30 @@ module Roma
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         end
         
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
 
         if @stats.wb_command_map.key?(:set_expt__prev)
 @log.debug(":set_export__prev")
-          # [vn, t, clk, expt, val]
-          data = @storages[hname].get_raw(vn, key, d)
-          Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
+          # [vnode, t, clock, expire_time, val]
+          data = @storages[hash_name].get_raw(vnode, key, d)
+          Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
         end
 
-        expt = chg_time_expt(s[2].to_i)
-        ret = @storages[hname].set_expt(vn, key, d, expt)
+        expire_time = chg_time_expt(s[2].to_i)
+        ret = @storages[hash_name].set_expt(vnode, key, d, expire_time)
 
         if ret
           if @stats.wb_command_map.key?(:set_expt)
 @log.debug(":set_export")
-            Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:set_expt], key, expt.to_s)
+            Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:set_expt], key, expire_time.to_s)
           end
-          redundant(nodes[1..-1], hname, key, d, ret[2], ret[3], ret[4])
+          redundant(nodes[1..-1], hash_name, key, d, ret[2], ret[3], ret[4])
           if $roma.cluster_replication_writer.run_replication
             fnc = 'set_expt'
-            Roma::WriteBehindProcess::push(nil, "#{fnc} #{s[1]} #{expt}\r\n", s[1], expt)
+            Roma::WriteBehindProcess::push(nil, "#{fnc} #{s[1]} #{expire_time}\r\n", s[1], expire_time)
           end
           send_data("STORED\r\n")
         else
@@ -363,40 +363,40 @@ module Roma
         end
       end
 
-      # fset_expt <key> <expt>
+      # fset_expt <key> <expire_time>
       def ev_fset_expt(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.error("fset_expt failed key = #{s[1]} vn = #{vn}")
+          @log.error("fset_expt failed key = #{s[1]} vnode = #{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
         
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
 
         if @stats.wb_command_map.key?(:set_expt__prev)
-          # [vn, t, clk, expt, val]
-          data = @storages[hname].get_raw(vn, key, d)
-          Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
+          # [vnode, t, clock, expire_time, val]
+          data = @storages[hash_name].get_raw(vnode, key, d)
+          Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
         end
 
-        expt = chg_time_expt(s[2].to_i)
-        ret = @storages[hname].set_expt(vn, key, d, expt)
+        expire_time = chg_time_expt(s[2].to_i)
+        ret = @storages[hash_name].set_expt(vnode, key, d, expire_time)
 
         if ret
           if @stats.wb_command_map.key?(:set_expt)
-            Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:set_expt], key, expt.to_s)
+            Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:set_expt], key, expire_time.to_s)
           end
-          redundant(nodes[1..-1], hname, key, d, ret[2], ret[3], ret[4])
+          redundant(nodes[1..-1], hash_name, key, d, ret[2], ret[3], ret[4])
           if $roma.cluster_replication_writer.run_replication
             fnc = 'set_expt'
-            Roma::WriteBehindProcess::push(nil, "#{fnc} #{s[1]} #{expt}\r\n", s[1], expt)
+            Roma::WriteBehindProcess::push(nil, "#{fnc} #{s[1]} #{expire_time}\r\n", s[1], expire_time)
           end
           send_data("STORED\r\n")
         else
@@ -422,20 +422,20 @@ module Roma
           return send_data("CLIENT_ERROR Wrong format of arguments.\r\n")
         end
 
-        key, hname = s[1].split("\e")
-        hname ||= @default_hash_name
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        key, hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
 
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vn = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.get_vnode_id(d)
 
-        nodes = @routing_table.search_nodes(vn)
+        nodes = @routing_table.search_nodes(vnode)
         unless nodes.include?(@my_node_id)
           @log.warn("forward get_expt #{s[1]} #{s[2]}")
-          res = forward_get_expt(nodes[0], vn, s[1], s[2])
+          res = forward_get_expt(nodes[0], vnode, s[1], s[2])
           if res
             send_data(res)
           else
@@ -444,14 +444,14 @@ module Roma
           return
         end
 
-        data = @storages[hname].db_get(vn, key)
+        data = @storages[hash_name].db_get(vnode, key)
         if data
           if is_unix
-            expt = data.unpack('NNNNa*')[3]
+            expire_time = data.unpack('NNNNa*')[3]
           else
-            expt = Time.at(data.unpack('NNNNa*')[3])
+            expire_time = Time.at(data.unpack('NNNNa*')[3])
           end
-          send_data("#{expt}\r\n")
+          send_data("#{expire_time}\r\n")
         end
         send_data("END\r\n")
       end
@@ -526,7 +526,7 @@ module Roma
         {}
       end
 
-      def forward_get_expt(nid, vn, key, is_unix=nil)
+      def forward_get_expt(nid, vnode, key, is_unix=nil)
         con = get_connection(nid)
         con.send("get_expt #{key} #{is_unix}\r\n")
         res = +''
@@ -544,55 +544,55 @@ module Roma
         nil
       end
 
-      def store(fnc, hname, vn, k, d, expt, v, nodes)
-        expt = chg_time_expt(expt)
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+      def store(fnc, hash_name, vnode, k, d, expire_time, v, nodes)
+        expire_time = chg_time_expt(expire_time)
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
 
         if @stats.wb_command_map.key?("#{fnc.to_s}__prev".to_sym)
-          data = @storages[hname].get(vn, k, d)
-          Roma::WriteBehindProcess::push(hname, @stats.wb_command_map["#{fnc.to_s}__prev".to_sym], k, data) if data
+          data = @storages[hash_name].get(vnode, k, d)
+          Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map["#{fnc.to_s}__prev".to_sym], k, data) if data
         end
 
-        ret = @storages[hname].send(fnc, vn, k, d, expt ,v)
+        ret = @storages[hash_name].send(fnc, vnode, k, d, expire_time ,v)
         @stats.write_count += 1
 
         if ret
           if @stats.wb_command_map.key?(fnc)
-            Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[fnc], k, ret[4])
+            Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[fnc], k, ret[4])
           end
-          redundant(nodes, hname, k, d, ret[2], expt, ret[4])
+          redundant(nodes, hash_name, k, d, ret[2], expire_time, ret[4])
           if $roma.cluster_replication_writer.run_replication
-            k = "#{k}\e#{hname}" if hname != @default_hash_name
-            Roma::WriteBehindProcess::push(nil, "#{fnc} #{k} 1 #{expt} #{v.length} \r\n#{v}\r\n", k, v)
+            k = "#{k}\e#{hash_name}" if hash_name != @default_hash_name
+            Roma::WriteBehindProcess::push(nil, "#{fnc} #{k} 1 #{expire_time} #{v.length} \r\n#{v}\r\n", k, v)
           end
           send_data("STORED\r\n")
         else
-          @log.error("#{fnc} NOT_STORED:#{hname} #{vn} #{k} #{d} #{expt}")
+          @log.error("#{fnc} NOT_STORED:#{hash_name} #{vnode} #{k} #{d} #{expire_time}")
           send_data("NOT_STORED\r\n")
         end
       end
 
-      def store_cas(hname, vn, k, d, clk, expt, v, nodes)
-        expt = chg_time_expt(expt)
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+      def store_cas(hash_name, vnode, k, d, clock, expire_time, v, nodes)
+        expire_time = chg_time_expt(expire_time)
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
 
         if @stats.wb_command_map.key?(:cas__prev)
-          data = @storages[hname].get(vn, k, d)
-          Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:cas__prev], k, data) if data
+          data = @storages[hash_name].get(vnode, k, d)
+          Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:cas__prev], k, data) if data
         end
 
-        ret = @storages[hname].cas(vn, k, d, clk, expt ,v)
+        ret = @storages[hash_name].cas(vnode, k, d, clock, expire_time ,v)
         @stats.write_count += 1
 
         case ret
         when nil
-          @log.error("cas NOT_STORED:#{hname} #{vn} #{k} #{d} #{expt} #{clk}")
+          @log.error("cas NOT_STORED:#{hash_name} #{vnode} #{k} #{d} #{expire_time} #{clock}")
           send_data("NOT_STORED\r\n")
         when :not_found
           send_data("NOT_FOUND\r\n")
@@ -600,40 +600,40 @@ module Roma
           send_data("EXISTS\r\n")
         else
           if @stats.wb_command_map.key?(:cas)
-            Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:cas], k, ret[4])
+            Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[:cas], k, ret[4])
           end
           if $roma.cluster_replication_writer.run_replication
-            rk = hname != @default_hash_name ? "#{k}\e#{hname}" : k
-            fnc = 'set' # To restrain a defference between main and replica cluster due to clk 
-            Roma::WriteBehindProcess::push(nil, "#{fnc} #{rk} 0 #{expt} #{v.length} \r\n#{v}\r\n", rk, v)
+            rk = hash_name != @default_hash_name ? "#{k}\e#{hash_name}" : k
+            fnc = 'set' # To restrain a defference between main and replica cluster due to clock 
+            Roma::WriteBehindProcess::push(nil, "#{fnc} #{rk} 0 #{expire_time} #{v.length} \r\n#{v}\r\n", rk, v)
           end
-          redundant(nodes, hname, k, d, ret[2], expt, ret[4])
+          redundant(nodes, hash_name, k, d, ret[2], expire_time, ret[4])
           send_data("STORED\r\n")          
         end
       end
 
-      def redundant(nodes, hname, k, d, clk, expt, v)
+      def redundant(nodes, hash_name, k, d, clock, expire_time, v)
         if @stats.compression_threshold > 0 && @stats.compression_threshold < v.length 
-          return zredundant(nodes, hname, k, d, clk, expt, v)
+          return zredundant(nodes, hash_name, k, d, clock, expire_time, v)
         end
 
         nodes.each{ |nid|
-          res = send_cmd(nid,"rset #{k}\e#{hname} #{d} #{clk} #{expt} #{v.length}\r\n#{v}\r\n")
+          res = send_cmd(nid,"rset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}\r\n#{v}\r\n")
           if res == nil || res.start_with?("ERROR")
-            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('redundant',[nid,hname,k,d,clk,expt,v]))
-            @log.warn("redundant failed:#{k}\e#{hname} #{d} #{clk} #{expt} #{v.length} -> #{nid}")
+            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('redundant',[nid,hash_name,k,d,clock,expire_time,v]))
+            @log.warn("redundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length} -> #{nid}")
           end
         }
       end
 
-      def zredundant(nodes, hname, k, d, clk, expt, v)
+      def zredundant(nodes, hash_name, k, d, clock, expire_time, v)
         zv = Zlib::Deflate.deflate(v)
 
         nodes.each{ |nid|
-          res = send_cmd(nid,"rzset #{k}\e#{hname} #{d} #{clk} #{expt} #{zv.length}\r\n#{zv}\r\n")
+          res = send_cmd(nid,"rzset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}\r\n#{zv}\r\n")
           if res == nil || res.start_with?("ERROR")
-            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('zredundant',[nid,hname,k,d,clk,expt,zv]))
-            @log.warn("zredundant failed:#{k}\e#{hname} #{d} #{clk} #{expt} #{zv.length} -> #{nid}")
+            Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('zredundant',[nid,hash_name,k,d,clock,expire_time,zv]))
+            @log.warn("zredundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length} -> #{nid}")
           end
         }
       end
@@ -650,15 +650,15 @@ module Roma
           return send_data("CLIENT_ERROR Wrong value size.\r\n")
         end
 
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
         v = read_bytes(bytes)
         read_bytes(2)
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
-          @log.warn("forward #{fnc} key=#{key} vn=#{vn} to #{nodes[0]}")
+          @log.warn("forward #{fnc} key=#{key} vnode=#{vnode} to #{nodes[0]}")
           res = send_cmd(nodes[0],"f#{fnc} #{s[1]} #{d} #{s[3]} #{s[4]}\r\n#{v}\r\n")
           if res == nil || res.start_with?("ERROR")
             return send_data("SERVER_ERROR Message forward failed.\r\n")
@@ -666,50 +666,50 @@ module Roma
           return send_data("#{res}\r\n")
         end
 
-        store(fnc, hname, vn, key, d, s[3].to_i, v, nodes[1..-1])
+        store(fnc, hash_name, vnode, key, d, s[3].to_i, v, nodes[1..-1])
       end
 
       def fset(fnc,s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = s[2].to_i
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.error("f#{fnc} failed key = #{s[1]} vn = #{vn}")
+          @log.error("f#{fnc} failed key = #{s[1]} vnode = #{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
         nodes.delete(@my_node_id)
-        store(fnc, hname, vn, key, d, s[3].to_i, v, nodes)
+        store(fnc, hash_name, vnode, key, d, s[3].to_i, v, nodes)
       end
 
-      def store_incr_decr(fnc, hname, vn, k, d, v, nodes)
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+      def store_incr_decr(fnc, hash_name, vnode, k, d, v, nodes)
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
 
         if @stats.wb_command_map.key?("#{fnc.to_s}__prev".to_sym)
-          data = @storages[hname].get(vn, k, d)
-          Roma::WriteBehindProcess::push(hname, @stats.wb_command_map["#{fnc.to_s}__prev".to_sym], k, data) if data
+          data = @storages[hash_name].get(vnode, k, d)
+          Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map["#{fnc.to_s}__prev".to_sym], k, data) if data
         end
 
-        res = @storages[hname].send(fnc, vn, k, d, v)
+        res = @storages[hash_name].send(fnc, vnode, k, d, v)
         @stats.write_count += 1
 
         if res
           if @stats.wb_command_map.key?(fnc)
-            Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[fnc], k, res[4])
+            Roma::WriteBehindProcess::push(hash_name, @stats.wb_command_map[fnc], k, res[4])
           end
           if $roma.cluster_replication_writer.run_replication
-            rk = hname != @default_hash_name ? "#{k}\e#{hname}" : k
+            rk = hash_name != @default_hash_name ? "#{k}\e#{hash_name}" : k
             Roma::WriteBehindProcess::push(nil, "#{fnc} #{rk} #{v}\r\n", rk, v)
           end
-          redundant(nodes, hname, k, d, res[2], res[3], res[4])
+          redundant(nodes, hash_name, k, d, res[2], res[3], res[4])
           send_data("#{res[4]}\r\n")
         else
           send_data("NOT_FOUND\r\n")
@@ -717,14 +717,14 @@ module Roma
       end
 
       def incr_decr(fnc,s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
         v = s[2].to_i
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
-          @log.debug("forward #{fnc} key=#{s[1]} vn=#{vn} to #{nodes[0]}")
+          @log.debug("forward #{fnc} key=#{s[1]} vnode=#{vnode} to #{nodes[0]}")
           res = send_cmd(nodes[0],"f#{fnc} #{s[1]} #{d} #{s[2]}\r\n")
           if res == nil || res.start_with?("ERROR")
             return send_data("SERVER_ERROR Message forward failed.\r\n")
@@ -732,24 +732,24 @@ module Roma
           return send_data("#{res}\r\n")
         end
 
-        store_incr_decr(fnc, hname, vn, key, d, v, nodes[1..-1])
+        store_incr_decr(fnc, hash_name, vnode, key, d, v, nodes[1..-1])
       end
 
       def fincr_fdecr(fnc,s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = s[2].to_i
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         v = s[3].to_i
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.debug("f#{fnc} failed key = #{s[1]} vn = #{vn}")
+          @log.debug("f#{fnc} failed key = #{s[1]} vnode = #{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
         
         nodes.delete(@my_node_id)
-        store_incr_decr(fnc, hname, vn, key, d, v, nodes)
+        store_incr_decr(fnc, hash_name, vnode, key, d, v, nodes)
       end
 
     end # module PluginStorage

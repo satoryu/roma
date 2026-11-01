@@ -32,8 +32,8 @@ class RomaTestClient
       d & @search_mask
     end
 
-    def search_nodes(vn)
-      @routing_data.routes[vn].clone
+    def search_nodes(vnode)
+      @routing_data.routes[vnode].clone
     end
 
     def search_node(key)
@@ -91,27 +91,27 @@ class RomaTestClient
 
   # storage commands
 
-  def set(key, val, expt = 0, raw = false)
-    store('set', key, val, expt, raw)
+  def set(key, val, expire_time = 0, raw = false)
+    store('set', key, val, expire_time, raw)
   end
 
-  def add(key, val, expt = 0, raw = false)
-    store('add', key, val, expt, raw)
+  def add(key, val, expire_time = 0, raw = false)
+    store('add', key, val, expire_time, raw)
   end
 
-  def replace(key, val, expt = 0, raw = false)
-    store('replace', key, val, expt, raw)
+  def replace(key, val, expire_time = 0, raw = false)
+    store('replace', key, val, expire_time, raw)
   end
 
-  def append(key, val, expt = 0)
-    store('append', key, val, expt, true)
+  def append(key, val, expire_time = 0)
+    store('append', key, val, expire_time, true)
   end
 
-  def prepend(key, val, expt = 0)
-    store('prepend', key, val, expt, true)
+  def prepend(key, val, expire_time = 0)
+    store('prepend', key, val, expire_time, true)
   end
 
-  def cas(key, expt = 0, raw = false)
+  def cas(key, expire_time = 0, raw = false)
     raise 'A block is required' unless block_given?
 
     ret = request(key, "gets #{k(key)}", nil, :value_casid_receiver)
@@ -120,7 +120,7 @@ class RomaTestClient
     val = Marshal.load(val) unless raw
     updated = yield val
     val = raw ? updated : Marshal.dump(updated)
-    request(key, "cas #{k(key)} 0 #{expt.to_i} #{val.bytesize} #{casid}", val)
+    request(key, "cas #{k(key)} 0 #{expire_time.to_i} #{val.bytesize} #{casid}", val)
   end
 
   def delete(key)
@@ -253,12 +253,12 @@ class RomaTestClient
     request_with_value(key, "alist_swap_and_sized_insert #{k(key)} #{array_size}", value)
   end
 
-  def alist_expired_swap_and_insert(key, expt, value)
-    request_with_value(key, "alist_expired_swap_and_insert #{k(key)} #{expt}", value)
+  def alist_expired_swap_and_insert(key, expire_time, value)
+    request_with_value(key, "alist_expired_swap_and_insert #{k(key)} #{expire_time}", value)
   end
 
-  def alist_expired_swap_and_sized_insert(key, expt, array_size, value)
-    request_with_value(key, "alist_expired_swap_and_sized_insert #{k(key)} #{expt} #{array_size}", value)
+  def alist_expired_swap_and_sized_insert(key, expire_time, array_size, value)
+    request_with_value(key, "alist_expired_swap_and_sized_insert #{k(key)} #{expire_time} #{array_size}", value)
   end
 
   def alist_push(key, value)
@@ -277,12 +277,12 @@ class RomaTestClient
     request_with_value(key, "alist_swap_and_sized_push #{k(key)} #{array_size}", value)
   end
 
-  def alist_expired_swap_and_push(key, expt, value)
-    request_with_value(key, "alist_expired_swap_and_push #{k(key)} #{expt}", value)
+  def alist_expired_swap_and_push(key, expire_time, value)
+    request_with_value(key, "alist_expired_swap_and_push #{k(key)} #{expire_time}", value)
   end
 
-  def alist_expired_swap_and_sized_push(key, expt, array_size, value)
-    request_with_value(key, "alist_expired_swap_and_sized_push #{k(key)} #{expt} #{array_size}", value)
+  def alist_expired_swap_and_sized_push(key, expire_time, array_size, value)
+    request_with_value(key, "alist_expired_swap_and_sized_push #{k(key)} #{expire_time} #{array_size}", value)
   end
 
   def alist_update_at(key, index, value)
@@ -291,8 +291,8 @@ class RomaTestClient
 
   # map plugin commands
 
-  def map_set(key, mapkey, value, expt = 0)
-    request_with_value(key, "map_set #{k(key)} #{mapkey} 0 #{expt}", value)
+  def map_set(key, mapkey, value, expire_time = 0)
+    request_with_value(key, "map_set #{k(key)} #{mapkey} 0 #{expire_time}", value)
   end
 
   def map_get(key, mapkey)
@@ -345,20 +345,20 @@ class RomaTestClient
     mapcount('mapcount_get_ms', key, sub_keys, 0, :marshal)
   end
 
-  def mapcount_countup(key, sub_keys, expt = 0)
-    mapcount('mapcount_countup', key, sub_keys, expt, :json)
+  def mapcount_countup(key, sub_keys, expire_time = 0)
+    mapcount('mapcount_countup', key, sub_keys, expire_time, :json)
   end
 
-  def mapcount_countup_ms(key, sub_keys, expt = 0)
-    mapcount('mapcount_countup_ms', key, sub_keys, expt, :marshal)
+  def mapcount_countup_ms(key, sub_keys, expire_time = 0)
+    mapcount('mapcount_countup_ms', key, sub_keys, expire_time, :marshal)
   end
 
-  def mapcount_update(key, sub_keys = nil, expt = 0)
-    mapcount('mapcount_update', key, sub_keys, expt, :json)
+  def mapcount_update(key, sub_keys = nil, expire_time = 0)
+    mapcount('mapcount_update', key, sub_keys, expire_time, :json)
   end
 
-  def mapcount_update_ms(key, sub_keys = nil, expt = 0)
-    mapcount('mapcount_update_ms', key, sub_keys, expt, :marshal)
+  def mapcount_update_ms(key, sub_keys = nil, expire_time = 0)
+    mapcount('mapcount_update_ms', key, sub_keys, expire_time, :marshal)
   end
 
   private
@@ -367,9 +367,9 @@ class RomaTestClient
     "#{key}\e#{@default_hash_name}"
   end
 
-  def store(cmd, key, val, expt, raw)
+  def store(cmd, key, val, expire_time, raw)
     val = Marshal.dump(val) unless raw
-    request(key, "#{cmd} #{k(key)} 0 #{expt.to_i} #{val.bytesize}", val)
+    request(key, "#{cmd} #{k(key)} 0 #{expire_time.to_i} #{val.bytesize}", val)
   end
 
   def request_with_value(key, cmd, value)
@@ -377,7 +377,7 @@ class RomaTestClient
     request(key, "#{cmd} #{value.bytesize}", value)
   end
 
-  def mapcount(cmd, key, sub_keys, expt, format)
+  def mapcount(cmd, key, sub_keys, expire_time, format)
     sub_keys_str =
       case sub_keys
       when String then sub_keys
@@ -385,7 +385,7 @@ class RomaTestClient
       when Hash then sub_keys.map { |sk, v| "#{sk}:#{v}" }.join(',')
       else ''
       end
-    ret = request(key, "#{cmd} #{k(key)} #{expt.to_i} #{sub_keys_str.bytesize}", sub_keys_str, :value_list_receiver)
+    ret = request(key, "#{cmd} #{k(key)} #{expire_time.to_i} #{sub_keys_str.bytesize}", sub_keys_str, :value_list_receiver)
     return nil if ret.empty?
     res = format == :marshal ? Marshal.load(ret[0]) : JSON.parse(ret[0])
     res['last_updated_date'] = Time.parse(res['last_updated_date']) if res['last_updated_date']

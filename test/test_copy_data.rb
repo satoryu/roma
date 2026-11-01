@@ -21,13 +21,13 @@ class CopyDataTest < Test::Unit::TestCase
   end
 
   def test_spushv
-    # key wihch's vn = 0
+    # key wihch's vnode = 0
     keys = []
     n = 1000
     n.times do |i|
       d = Digest::SHA1.hexdigest(i.to_s).hex % @rc.routing_table.hash_space_size
-      vn = @rc.routing_table.get_vnode_id(d)
-      if vn == 0
+      vnode = @rc.routing_table.get_vnode_id(d)
+      if vnode == 0
         keys << i.to_s
       end
     end
@@ -41,9 +41,9 @@ class CopyDataTest < Test::Unit::TestCase
     end
   end
 
-  def push_a_vnode_stream(hname, vn, nid, keys)
+  def push_a_vnode_stream(hash_name, vnode, nid, keys)
     con = Roma::Messaging::ConPool.instance.get_connection(nid)
-    con.write("spushv #{hname} #{vn}\r\n")
+    con.write("spushv #{hash_name} #{vnode}\r\n")
 
     res = con.gets # READY\r\n or error string
     if res != "READY\r\n"
@@ -53,7 +53,7 @@ class CopyDataTest < Test::Unit::TestCase
 
     keys.each do |k|
       v = k + '-stream'
-      data = [vn, Time.now.to_i, 1, 0x7fffffff, k.length, k, v.length, v].pack("NNNNNa#{k.length}Na#{v.length}")
+      data = [vnode, Time.now.to_i, 1, 0x7fffffff, k.length, k, v.length, v].pack("NNNNNa#{k.length}Na#{v.length}")
       con.write(data)
     end
     con.write("\0" * 20) # end of steram
@@ -103,12 +103,12 @@ class CopyDataTest < Test::Unit::TestCase
     end
   end
 
-  def reqpushv(_hname, vn, is_primary = false)
-    @node.dat.delete(vn)
+  def reqpushv(_hname, vnode, is_primary = false)
+    @node.dat.delete(vnode)
     con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
     res = nil
     10.times do
-      con.write("reqpushv #{vn} #{@node.nid} #{is_primary}\r\n")
+      con.write("reqpushv #{vnode} #{@node.nid} #{is_primary}\r\n")
       res = con.gets
       break if res == "PUSHED\r\n"
       sleep 0.5
@@ -116,7 +116,7 @@ class CopyDataTest < Test::Unit::TestCase
     assert_equal("PUSHED\r\n", res)
     con.close
 
-    wait_for("vnode #{vn} to be pushed") { @node.dat.key?(vn) }
-    @node.dat[vn]
+    wait_for("vnode #{vnode} to be pushed") { @node.dat.key?(vnode) }
+    @node.dat[vnode]
   end
 end

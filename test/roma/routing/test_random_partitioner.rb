@@ -45,13 +45,13 @@ class RandomPartitionerTest < Test::Unit::TestCase
   def test_select_vn_for_join_prefers_vnodes_of_other_hosts
     make_rt([[A1, B1], [B1, A3], [A1, A3], [B1, A1]])
     # vnodes 0, 1 and 3 hold B1 itself, which is excluded.
-    vn, nids, = @rt.select_vn_for_join([B1], true)
-    assert_equal [VN[2], [A1, A3]], [vn, nids]
+    vnode, nids, = @rt.select_vn_for_join([B1], true)
+    assert_equal [VN[2], [A1, A3]], [vnode, nids]
 
     # A2 is on hosta, so vnodes with no hosta node come first.
     make_rt([[A1, B1], [B1, C1], [A1, A3], [A3, B1]])
-    vn, nids, = @rt.select_vn_for_join([A2], true)
-    assert_equal [VN[1], [B1, C1]], [vn, nids]
+    vnode, nids, = @rt.select_vn_for_join([A2], true)
+    assert_equal [VN[1], [B1, C1]], [vnode, nids]
   end
 
   def test_select_vn_for_join_takes_primary_from_own_host

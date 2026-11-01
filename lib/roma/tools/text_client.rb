@@ -22,9 +22,9 @@ module Roma
       # Returns the reply, STORED or NOT_STORED. Raises Error for another
       # reply, such as SERVER_ERROR, after which the node may read the value
       # as a command, so the connection is closed.
-      def set(key, value, expt = 0)
+      def set(key, value, expire_time = 0)
         value = value.to_s.b
-        request("set #{key} 0 #{expt} #{value.bytesize}\r\n#{value}\r\n") { |con| reply(con, "set #{key}", %w(STORED NOT_STORED)) }
+        request("set #{key} 0 #{expire_time} #{value.bytesize}\r\n#{value}\r\n") { |con| reply(con, "set #{key}", %w(STORED NOT_STORED)) }
       end
 
       # Returns the value, or nil if there is none.

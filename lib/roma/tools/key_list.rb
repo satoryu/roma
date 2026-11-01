@@ -15,8 +15,8 @@ module Roma
       # Writes the keys under +storage_path+, one in each line. Expired and
       # deleted ones are left out. Raises Error if the files can't be opened.
       def list(storage_path)
-        StorageFiles.each_hash(storage_path) do |hname, dir|
-          @err.puts "### #{hname} #{dir}"
+        StorageFiles.each_hash(storage_path) do |hash_name, dir|
+          @err.puts "### #{hash_name} #{dir}"
           storage = open_storage(dir)
           begin
             write_keys(storage)
@@ -41,7 +41,7 @@ module Roma
           storage.each_hdb_dump(i) do |data|
             count += 1
             @err.print "#{count}/#{total}\r" if count % step == 0
-            # vn, last, clock, expt, the key length, the key, ...
+            # vnode, last, clock, expire_time, the key length, the key, ...
             @out.puts data[20, data.unpack1('@16N')]
             sleep @wait
           end

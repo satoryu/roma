@@ -62,13 +62,13 @@ module Roma
       end
 
       # change to actual time for a memcached's expire time value
-      def chg_time_expt(expt)
-        if expt == 0
-          expt = 0x7fffffff
-        elsif expt < 2592000
-          expt += Time.now.to_i
+      def chg_time_expt(expire_time)
+        if expire_time == 0
+          expire_time = 0x7fffffff
+        elsif expire_time < 2592000
+          expire_time += Time.now.to_i
         end
-        expt
+        expire_time
       end
 
     end # module UtilCommandReceiver

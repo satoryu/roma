@@ -9,7 +9,7 @@ module MemStorageHelper
     @closed = []
   end
 
-  # A storage in +dir+, with +data+ as {key => [value, clock, expt]}.
+  # A storage in +dir+, with +data+ as {key => [value, clock, expire_time]}.
   def mem_storage(dir, data = {}, division_count: 2, vnodes: [0, 1 << 31])
     FileUtils.mkdir_p(dir)
     storage = Roma::Storage::HashStorage.new
@@ -17,12 +17,12 @@ module MemStorageHelper
     storage.vn_list = vnodes
     storage.each_vn_dump_sleep = 0
     storage.opendb
-    data.each do |key, (value, clk, expt)|
-      vn = vnodes[key.sum % vnodes.size]
-      storage.set(vn, key, 0, expt || 0x7fffffff, value)
-      storage.instance_variable_get(:@hdb)[storage.hdiv[vn]].tap do |hdb|
+    data.each do |key, (value, clock, expire_time)|
+      vnode = vnodes[key.sum % vnodes.size]
+      storage.set(vnode, key, 0, expire_time || 0x7fffffff, value)
+      storage.instance_variable_get(:@hdb)[storage.hdiv[vnode]].tap do |hdb|
         vn_, last, _clk, ex, val = hdb[key].unpack('NNNNa*')
-        hdb[key] = [vn_, last, clk || 0, ex, val].pack('NNNNa*')
+        hdb[key] = [vn_, last, clock || 0, ex, val].pack('NNNNa*')
       end
     end
     closed = @closed

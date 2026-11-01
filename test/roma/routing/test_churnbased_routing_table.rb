@@ -58,8 +58,8 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
     assert_equal B1, left
     assert_equal 'start_auto_recover_process', recovered
     assert_equal [A1], @rt.nodes
-    assert_equal [[A1]] * 4, VN.map { |vn| @rt.search_nodes(vn) }
-    assert_equal [1] * 4, VN.map { |vn| @rt.search_nodes_with_clk(vn)[0] }
+    assert_equal [[A1]] * 4, VN.map { |vnode| @rt.search_nodes(vnode) }
+    assert_equal [1] * 4, VN.map { |vnode| @rt.search_nodes_with_clk(vnode)[0] }
     assert_match(/ leave #{B1}\z/, @rt.event.last)
   end
 

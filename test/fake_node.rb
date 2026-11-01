@@ -78,7 +78,7 @@ class FakeNode
     v = nil
     loop do
       context_bin = sok.read(20)
-      vn, last, clk, expt, klen = context_bin.unpack('NNNNN')
+      vnode, last, clock, expire_time, klen = context_bin.unpack('NNNNN')
 
       break if klen == 0 # end of dump ?
       k = sok.read(klen)
@@ -87,7 +87,7 @@ class FakeNode
       if vlen != 0
         v = sok.read(vlen)
       end
-      ret[k] = [vn, last, clk, expt, v].pack('NNNNa*')
+      ret[k] = [vnode, last, clock, expire_time, v].pack('NNNNa*')
     end
     ret
   end

@@ -32,14 +32,14 @@ class MultiHashTest < Test::Unit::TestCase
     ret = con.gets
     assert_equal('roma test', ret.chomp)
 
-    assert_equal('STORED', @rc.set('roma', 'hname=roma'))
-    assert_equal('hname=roma', @rc.get('roma'))
+    assert_equal('STORED', @rc.set('roma', 'hash_name=roma'))
+    assert_equal('hash_name=roma', @rc.get('roma'))
     @rc.default_hash_name = 'test'
     assert_nil(@rc.get('roma'))
-    assert_equal('STORED', @rc.set('roma', 'hname=test'))
-    assert_equal('hname=test', @rc.get('roma'))
+    assert_equal('STORED', @rc.set('roma', 'hash_name=test'))
+    assert_equal('hash_name=test', @rc.get('roma'))
     @rc.default_hash_name = 'roma'
-    assert_equal('hname=roma', @rc.get('roma'))
+    assert_equal('hash_name=roma', @rc.get('roma'))
     assert_equal('DELETED', @rc.delete('roma'))
 
     @rc.default_hash_name = 'not_exist_hash'
@@ -78,11 +78,11 @@ class MultiHashTest < Test::Unit::TestCase
     assert_equal 'CREATED', ret['localhost_11211']
     assert_equal 'CREATED', ret['localhost_11212']
 
-    assert_equal('STORED', @rc.set('roma', 'hname=roma'))
-    assert_equal('hname=roma', @rc.get('roma'))
+    assert_equal('STORED', @rc.set('roma', 'hash_name=roma'))
+    assert_equal('hash_name=roma', @rc.get('roma'))
     @rc.default_hash_name = 'test'
-    assert_equal('STORED', @rc.set('roma', 'hname=test'))
-    assert_equal('hname=test', @rc.get('roma'))
+    assert_equal('STORED', @rc.set('roma', 'hash_name=test'))
+    assert_equal('hash_name=test', @rc.get('roma'))
 
     # stop roma
     stop_roma

@@ -38,7 +38,7 @@ module Roma
       def num_of_vn(ap)
         pn = short = lost = 0
         sn = Array.new(@routing_data.redundancy - 1, 0)
-        @routing_data.routes.each_pair do |vn, nids|
+        @routing_data.routes.each_pair do |vnode, nids|
           if nids == nil || nids.length == 0
             lost += 1
             next
@@ -74,8 +74,8 @@ module Roma
 
       def init_merkle_tree
         @merkle_tree = MerkleTree.new(@routing_data.digest_bits,@routing_data.divide_bits)
-        @routing_data.routes.each_pair{ |vn, nids|
-          @merkle_tree.set(vn,nids)
+        @routing_data.routes.each_pair{ |vnode, nids|
+          @merkle_tree.set(vnode,nids)
         }
       end
 
@@ -93,9 +93,9 @@ module Roma
       end
 
       # get array of node ID which have vnode
-      # +vn+: vnode id
-      def search_nodes(vn)
-        @routing_data.routes[vn].clone
+      # +vnode+: vnode id
+      def search_nodes(vnode)
+        @routing_data.routes[vnode].clone
       rescue
         nil
       end
@@ -105,12 +105,12 @@ module Roma
       def leave(nid)
         @routing_data.nodes.delete(nid)
         # delet nid from list
-        @routing_data.routes.each_pair{ |vn, nids|
+        @routing_data.routes.each_pair{ |vnode, nids|
           nids.delete_if{ |nid2| nid2 == nid}
           if nids.length == 0
-            @log.error("Vnode data is lost.(Vnode=#{vn})")
+            @log.error("Vnode data is lost.(Vnode=#{vnode})")
           end
-          @merkle_tree.set(vn,nids)
+          @merkle_tree.set(vnode,nids)
         }
         @failure_counts.delete(nid)
       end
