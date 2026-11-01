@@ -20,6 +20,7 @@ More information is [here](http://roma-kvs.org/ "ROMA").
 ## Documentation
 
 * Refer to [ROMA documentations](http://roma-kvs.org/ "ROMA")
+* [Routing](docs/routing.md): what the routing files define, how nodes route keys, and how to set it up
 
 ## Requirements
 * Ruby >= 3.4
@@ -43,7 +44,7 @@ The routing file is stored the routing information of each processes.
 $ roma mkroute localhost_10001 localhost_10002 --replication-in-host
 ```
 
-If succeeded, two new files which named localhost_10001.route and localhost_10002.route created in the current directory.  
+If succeeded, two new files which named localhost_10001.route and localhost_10002.route created in the current directory. See [Routing](docs/routing.md) for what they define.  
 Refer to [Commands](http://roma-kvs.org/commands.html "Commands") for more detail information about Shell Commands.  
 
 ### Start up ROMA
