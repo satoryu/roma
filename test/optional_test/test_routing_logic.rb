@@ -31,7 +31,7 @@ if ENV['OPTIONAL']
       client = get_client
 
       # Join nodes
-      assert_equal(DEFAULT_NODES.size, client.rttable.nodes.size)
+      assert_equal(DEFAULT_NODES.size, client.routing_table.nodes.size)
       new_nodes.each do |new_node|
         join_roma(new_node, replication_in_host: replication_in_host)
         wait_join(new_node)

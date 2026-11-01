@@ -12,9 +12,9 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def setup
     @conn = CommandTestHarness.new
-    @rttable = @conn.rttable
+    @routing_table = @conn.routing_table
     # The node VN is on.
-    @vn_nid = @rttable.search_nodes(VN).first
+    @vn_nid = @routing_table.search_nodes(VN).first
   end
 
   def teardown
@@ -35,26 +35,26 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_join
     assert_equal "ADDED\r\n", @conn.request('join localhost_11213')
-    assert_equal [NID, OTHER_NID, 'localhost_11213'], @rttable.nodes
-    assert_match(/ join localhost_11213\z/, @rttable.event.last)
+    assert_equal [NID, OTHER_NID, 'localhost_11213'], @routing_table.nodes
+    assert_match(/ join localhost_11213\z/, @routing_table.event.last)
 
     # Joining again changes nothing.
     assert_equal "ADDED\r\n", @conn.request('join localhost_11213')
-    assert_equal [NID, OTHER_NID, 'localhost_11213'], @rttable.nodes
-    assert_equal 1, @rttable.event.size
+    assert_equal [NID, OTHER_NID, 'localhost_11213'], @routing_table.nodes
+    assert_equal 1, @routing_table.event.size
   end
 
   def test_leave
-    @rttable.enabled_failover = true
+    @routing_table.enabled_failover = true
     assert_equal "DELETED\r\n", @conn.request("leave #{OTHER_NID}")
-    assert_equal [NID], @rttable.nodes
-    assert_match(/ leave #{OTHER_NID}\z/, @rttable.event.last)
+    assert_equal [NID], @routing_table.nodes
+    assert_match(/ leave #{OTHER_NID}\z/, @routing_table.event.last)
   end
 
   def test_leave_while_failover_is_disabled
     # It replies DELETED, but the node stays.
     assert_equal "DELETED\r\n", @conn.request("leave #{OTHER_NID}")
-    assert_equal [NID, OTHER_NID], @rttable.nodes
+    assert_equal [NID, OTHER_NID], @routing_table.nodes
   end
 
   def test_nodelist
@@ -70,7 +70,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_routingdump
     routing_data = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
-    assert_equal @rttable.routes, routing_data.routes
+    assert_equal @routing_table.routes, routing_data.routes
     assert_equal [NID, OTHER_NID], routing_data.nodes
   end
 
@@ -78,7 +78,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     dump = @conn.request('routingdump yaml')
     assert_true dump.end_with?("\r\nEND\r\n")
     routing_data = YAML.unsafe_load(dump.delete_suffix("\r\nEND\r\n"))
-    assert_equal @rttable.routes, routing_data.routes
+    assert_equal @routing_table.routes, routing_data.routes
   end
 
   def test_routingdump_yamlbytes
@@ -98,7 +98,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_routingdump_bin
     dump = parse_sized_dump(@conn.request('routingdump bin'))
-    assert_equal @rttable.dump_binary, dump
+    assert_equal @routing_table.dump_binary, dump
   end
 
   def test_routingdump_unknown_format
@@ -107,15 +107,15 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_routingdump_with_sub_nid
     # The client connects from 127.0.0.1, so it sees the node names replaced.
-    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    @routing_table.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     routing_data = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
     assert_equal ['vm_11211', 'vm_11212'], routing_data.nodes
     assert_equal [@vn_nid.sub('localhost', 'vm')], routing_data.routes[VN]
     # The routing table itself doesn't change.
-    assert_equal [NID, OTHER_NID], @rttable.nodes
+    assert_equal [NID, OTHER_NID], @routing_table.nodes
 
-    @rttable.node_id_substitutions.clear
-    @rttable.node_id_substitutions['10.0.0.0/8'] = { regexp: 'localhost', replace: 'vm' }
+    @routing_table.node_id_substitutions.clear
+    @routing_table.node_id_substitutions['10.0.0.0/8'] = { regexp: 'localhost', replace: 'vm' }
     routing_data = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
     assert_equal [NID, OTHER_NID], routing_data.nodes
   end
@@ -134,18 +134,18 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     assert_equal "-1 #{@vn_nid}\r\n", @conn.request("getroute #{VN}")
 
     assert_equal "STORED\r\n", @conn.request("setroute #{VN} 0 #{OTHER_NID} #{NID}")
-    assert_equal [OTHER_NID, NID], @rttable.search_nodes(VN)
+    assert_equal [OTHER_NID, NID], @routing_table.search_nodes(VN)
     # getroute replies the clock to give setroute next time.
     assert_equal "0 #{OTHER_NID} #{NID}\r\n", @conn.request("getroute #{VN}")
 
     # A clock older than the table's is refused.
     assert_equal "SERVER_ERROR It's old table.\r\n", @conn.request("setroute #{VN} 0 #{NID}")
-    assert_equal [OTHER_NID, NID], @rttable.search_nodes(VN)
+    assert_equal [OTHER_NID, NID], @routing_table.search_nodes(VN)
   end
 
   def test_setroute_adds_unknown_nodes
     assert_equal "STORED\r\n", @conn.request("setroute #{VN} 0 localhost_11213")
-    assert_equal [NID, OTHER_NID, 'localhost_11213'], @rttable.nodes
+    assert_equal [NID, OTHER_NID, 'localhost_11213'], @routing_table.nodes
   end
 
   def test_setroute_errors
@@ -153,7 +153,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     assert_equal "CLIENT_ERROR : irregular node name was input.[\"ｎｏｄｅ\"]\r\n",
                  @conn.request("setroute #{VN} 0 #{NID} ｎｏｄｅ")
     assert_equal "SERVER_ERROR 1 is not found.\r\n", @conn.request("setroute 1 0 #{NID}")
-    assert_equal [@vn_nid], @rttable.search_nodes(VN)
+    assert_equal [@vn_nid], @routing_table.search_nodes(VN)
   end
 
   def test_getroute_errors
@@ -163,7 +163,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_mklhash
     root = @conn.request('mklhash 0')
-    assert_equal "#{@rttable.merkle_tree.get('0')}\r\n", root
+    assert_equal "#{@routing_table.merkle_tree.get('0')}\r\n", root
     assert_match(/\A\h{40}\r\n\z/, root)
 
     @conn.request("setroute #{VN} 0 #{NID} #{OTHER_NID}")
@@ -174,9 +174,9 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     assert_equal "END\r\n", @conn.request('history_of_lost')
 
     # Every vnode of OTHER_NID is lost when it leaves.
-    @rttable.enabled_failover = true
+    @routing_table.enabled_failover = true
     @conn.request("leave #{OTHER_NID}")
-    lost = @rttable.routes.select { |_vn, nids| nids.empty? }.keys
+    lost = @routing_table.routes.select { |_vn, nids| nids.empty? }.keys
     assert_equal 4, lost.size
     assert_equal lost.map { |vn| "#{vn}\r\n" }.join + "END\r\n", @conn.request('history_of_lost')
     assert_equal lost.map { |vn| "#{vn}\r\n" }.join + "END\r\n", @conn.request('history_of_lost 20000101000000')
@@ -192,21 +192,21 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
   def test_set_auto_recover
     assert_equal replies('STORED'), @conn.request('set_auto_recover true 180')
     assert_equal ["rset_auto_recover true 180\r\n"], @conn.broadcasts
-    assert_true @rttable.auto_recover
-    assert_equal 180, @rttable.auto_recover_time
+    assert_true @routing_table.auto_recover
+    assert_equal 180, @routing_table.auto_recover_time
 
-    @rttable.auto_recover_status = 'executing'
+    @routing_table.auto_recover_status = 'executing'
     assert_equal replies('STORED'), @conn.request('set_auto_recover false')
-    assert_false @rttable.auto_recover
-    assert_equal 'waiting', @rttable.auto_recover_status
+    assert_false @routing_table.auto_recover
+    assert_equal 'waiting', @routing_table.auto_recover_status
     # The time stays when it is left out.
-    assert_equal 180, @rttable.auto_recover_time
+    assert_equal 180, @routing_table.auto_recover_time
   end
 
   def test_rset_auto_recover
     assert_equal "STORED\r\n", @conn.request('rset_auto_recover true 180')
-    assert_true @rttable.auto_recover
-    assert_equal 180, @rttable.auto_recover_time
+    assert_true @routing_table.auto_recover
+    assert_equal 180, @routing_table.auto_recover_time
     assert_equal [], @conn.broadcasts
   end
 
@@ -215,81 +215,81 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     assert_equal "CLIENT_ERROR length must be greater than zero\r\n", @conn.request("#{command} true 0")
     assert_equal "CLIENT_ERROR number of arguments(0 for 1)\r\n", @conn.request("#{command} true 180 1")
     assert_equal [], @conn.broadcasts
-    assert_false @rttable.auto_recover
-    assert_equal 1800, @rttable.auto_recover_time
+    assert_false @routing_table.auto_recover
+    assert_equal 1800, @routing_table.auto_recover_time
   end
 
   def test_set_auto_recover_invalid_value
     assert_equal "CLIENT_ERROR arguments must be true or false\r\n", @conn.request('set_auto_recover yes')
     assert_equal "CLIENT_ERROR arguments must be true or false\r\n", @conn.request('set_auto_recover')
     assert_equal [], @conn.broadcasts
-    assert_false @rttable.auto_recover
+    assert_false @routing_table.auto_recover
   end
 
   def test_rset_auto_recover_invalid_value
     assert_equal "CLIENT_ERROR arguments must be true or false\r\n", @conn.request('rset_auto_recover yes')
-    assert_false @rttable.auto_recover
+    assert_false @routing_table.auto_recover
   end
 
   def test_set_lost_action
-    @rttable.lost_action = :auto_assign
+    @routing_table.lost_action = :auto_assign
     assert_equal replies('STORED'), @conn.request('set_lost_action shutdown')
     assert_equal ["rset_lost_action shutdown\r\n"], @conn.broadcasts
-    assert_equal :shutdown, @rttable.lost_action
+    assert_equal :shutdown, @routing_table.lost_action
   end
 
   def test_rset_lost_action
-    @rttable.lost_action = :shutdown
+    @routing_table.lost_action = :shutdown
     assert_equal "STORED\r\n", @conn.request('rset_lost_action auto_assign')
-    assert_equal :auto_assign, @rttable.lost_action
+    assert_equal :auto_assign, @routing_table.lost_action
   end
 
   data('set' => 'set_lost_action', 'rset' => 'rset_lost_action')
   def test_lost_action_errors(command)
-    @rttable.lost_action = :auto_assign
+    @routing_table.lost_action = :auto_assign
     assert_equal "CLIENT_ERROR changing lost_action must be auto_assign or shutdown\r\n",
                  @conn.request("#{command} no_action")
     assert_equal "CLIENT_ERROR changing lost_action must be auto_assign or shutdown\r\n",
                  @conn.request(command)
 
     # Can't change it from no_action, the default.
-    @rttable.lost_action = :no_action
+    @routing_table.lost_action = :no_action
     assert_equal "CLIENT_ERROR can use this command only current lost action is auto_assign or shutdwn mode\r\n",
                  @conn.request("#{command} shutdown")
-    assert_equal :no_action, @rttable.lost_action
+    assert_equal :no_action, @routing_table.lost_action
     assert_equal [], @conn.broadcasts
   end
 
   def test_set_threshold_for_failover
     assert_equal replies('STORED'), @conn.request('set_threshold_for_failover 3')
     assert_equal ["rset_threshold_for_failover 3\r\n"], @conn.broadcasts
-    assert_equal 3, @rttable.failure_count_threshold
+    assert_equal 3, @routing_table.failure_count_threshold
 
     assert_equal "usage:set_threshold_for_failover <n>\r\n", @conn.request('set_threshold_for_failover 0')
     assert_equal "usage:set_threshold_for_failover <n>\r\n", @conn.request('set_threshold_for_failover')
-    assert_equal 3, @rttable.failure_count_threshold
+    assert_equal 3, @routing_table.failure_count_threshold
   end
 
   def test_rset_threshold_for_failover
     assert_equal "STORED\r\n", @conn.request('rset_threshold_for_failover 3')
-    assert_equal 3, @rttable.failure_count_threshold
+    assert_equal 3, @routing_table.failure_count_threshold
 
     assert_equal "usage:rset_threshold_for_failover <n>\r\n", @conn.request('rset_threshold_for_failover x')
-    assert_equal 3, @rttable.failure_count_threshold
+    assert_equal 3, @routing_table.failure_count_threshold
   end
 
   def test_set_gap_for_failover
     assert_equal replies('STORED'), @conn.request('set_gap_for_failover 0.5')
     assert_equal ["rset_gap_for_failover 0.5\r\n"], @conn.broadcasts
-    assert_equal 0.5, @rttable.failure_count_gap
+    assert_equal 0.5, @routing_table.failure_count_gap
 
     assert_equal "usage:set_gap_for_failover <n>\r\n", @conn.request('set_gap_for_failover')
-    assert_equal 0.5, @rttable.failure_count_gap
+    assert_equal 0.5, @routing_table.failure_count_gap
   end
 
   def test_rset_gap_for_failover
     assert_equal "STORED\r\n", @conn.request('rset_gap_for_failover 0.5')
-    assert_equal 0.5, @rttable.failure_count_gap
+    assert_equal 0.5, @routing_table.failure_count_gap
     assert_equal "usage:rset_gap_for_failover <n>\r\n", @conn.request('rset_gap_for_failover')
   end
 
@@ -297,7 +297,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     @conn.relay_reply = 'ADDED'
     assert_equal replies('ADDED'), @conn.request('add_rttable_sub_nid 127.0.0.0/24 localhost vm')
     assert_equal ["radd_rttable_sub_nid 127.0.0.0/24 localhost vm\r\n"], @conn.broadcasts
-    assert_equal({ '127.0.0.0/24' => { regexp: 'localhost', replace: 'vm' } }, @rttable.node_id_substitutions)
+    assert_equal({ '127.0.0.0/24' => { regexp: 'localhost', replace: 'vm' } }, @routing_table.node_id_substitutions)
 
     assert_equal "usage:add_rttable_sub_nid <netmask> <regexp> <replace>\r\n",
                  @conn.request('add_rttable_sub_nid 10.0.0.0/8 localhost')
@@ -306,17 +306,17 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_radd_rttable_sub_nid
     assert_equal "ADDED\r\n", @conn.request('radd_rttable_sub_nid 127.0.0.0/24 localhost vm')
-    assert_equal({ '127.0.0.0/24' => { regexp: 'localhost', replace: 'vm' } }, @rttable.node_id_substitutions)
+    assert_equal({ '127.0.0.0/24' => { regexp: 'localhost', replace: 'vm' } }, @routing_table.node_id_substitutions)
     assert_equal "usage:add_rttable_sub_nid <netmask> <regexp> <replace>\r\n",
                  @conn.request('radd_rttable_sub_nid 10.0.0.0/8')
   end
 
   def test_delete_rttable_sub_nid
-    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    @routing_table.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     @conn.relay_reply = 'DELETED'
     assert_equal replies('DELETED'), @conn.request('delete_rttable_sub_nid 127.0.0.0/24')
     assert_equal ["rdelete_rttable_sub_nid 127.0.0.0/24\r\n"], @conn.broadcasts
-    assert_equal({}, @rttable.node_id_substitutions)
+    assert_equal({}, @routing_table.node_id_substitutions)
 
     @conn.relay_reply = 'NOT_FOUND'
     assert_equal replies('NOT_FOUND'), @conn.request('delete_rttable_sub_nid 127.0.0.0/24')
@@ -324,32 +324,32 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
   end
 
   def test_rdelete_rttable_sub_nid
-    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    @routing_table.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     assert_equal "DELETED\r\n", @conn.request('rdelete_rttable_sub_nid 127.0.0.0/24')
     assert_equal "NOT_FOUND\r\n", @conn.request('rdelete_rttable_sub_nid 127.0.0.0/24')
     assert_equal "usage:delete_rttable_sub_nid <netmask>\r\n", @conn.request('rdelete_rttable_sub_nid')
   end
 
   def test_clear_rttable_sub_nid
-    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    @routing_table.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     @conn.relay_reply = 'CLEARED'
     assert_equal replies('CLEARED'), @conn.request('clear_rttable_sub_nid')
     assert_equal ["rclear_rttable_sub_nid\r\n"], @conn.broadcasts
-    assert_equal({}, @rttable.node_id_substitutions)
+    assert_equal({}, @routing_table.node_id_substitutions)
   end
 
   def test_rclear_rttable_sub_nid
-    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    @routing_table.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     assert_equal "CLEARED\r\n", @conn.request('rclear_rttable_sub_nid')
-    assert_equal({}, @rttable.node_id_substitutions)
+    assert_equal({}, @routing_table.node_id_substitutions)
   end
 
   def test_get_key_info
-    d = Digest::SHA1.hexdigest('key1').hex % @rttable.hash_space_size
-    vn = @rttable.get_vnode_id(d)
+    d = Digest::SHA1.hexdigest('key1').hex % @routing_table.hash_space_size
+    vn = @routing_table.get_vnode_id(d)
     expected = "d = #{d} 0x#{d.to_s(16)}\r\n" \
                "vn = #{vn} 0x#{vn.to_s(16)}\r\n" \
-               "nodes = #{@rttable.search_nodes(vn).inspect}\r\n" \
+               "nodes = #{@routing_table.search_nodes(vn).inspect}\r\n" \
                "END\r\n"
     assert_equal expected, @conn.request('get_key_info key1')
 

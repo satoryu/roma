@@ -23,7 +23,7 @@ module AsyncProcessTestHelper
   end
 
   def digest(key)
-    Digest::SHA1.hexdigest(key).hex % @h.rttable.hash_space_size
+    Digest::SHA1.hexdigest(key).hex % @h.routing_table.hash_space_size
   end
 end
 
@@ -187,20 +187,20 @@ class AsyncProcessEventTest < Test::Unit::TestCase
   end
 
   def test_start_auto_recover_process
-    @h.rttable.lost_action = :auto_assign
-    @h.rttable.auto_recover_time = 0.1
+    @h.routing_table.lost_action = :auto_assign
+    @h.routing_table.auto_recover_time = 0.1
     @h.call(:asyncev_start_auto_recover_process, nil)
     assert_equal :acquired_recover_process, @h.calls.pop
-    wait_until('auto recover to finish') { @h.rttable.auto_recover_status == 'waiting' }
+    wait_until('auto recover to finish') { @h.routing_table.auto_recover_status == 'waiting' }
     assert_false @h.stats.run_recover
   end
 
   def test_start_auto_recover_process_with_no_action
-    @h.rttable.auto_recover_time = 0.1
+    @h.routing_table.auto_recover_time = 0.1
     @h.call(:asyncev_start_auto_recover_process, nil)
     Kernel.sleep 0.3
     assert_true @h.calls.empty?
-    assert_equal 'preparing', @h.rttable.auto_recover_status
+    assert_equal 'preparing', @h.routing_table.auto_recover_status
   end
 
   data('recover running' => [:run_recover, false], 'balance running' => [:run_balance, true])
@@ -208,7 +208,7 @@ class AsyncProcessEventTest < Test::Unit::TestCase
     flag, ret = data
     @h.stats.send("#{flag}=", true)
     assert_equal ret, @h.call(:asyncev_start_auto_recover_process, nil)
-    assert_equal 'waiting', @h.rttable.auto_recover_status
+    assert_equal 'waiting', @h.routing_table.auto_recover_status
   end
 
   data('redundant' => [:asyncev_redundant, "rset key\eroma 1 2 0 5\r\nvalue\r\n"],
@@ -271,9 +271,9 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
     def req_push_a_vnode(vn, src_nid, is_primary)
       @requests << [vn, src_nid, is_primary]
       return @push_reply unless @push_reply == true
-      nids = @rttable.search_nodes(vn) - [@stats.ap_str]
-      is_primary || @always_primary ? nids.unshift(@stats.ap_str) : nids.push(@stats.ap_str)
-      @rttable.set_route(vn, @rttable.search_nodes_with_clk(vn)[0], nids)
+      nids = @routing_table.search_nodes(vn) - [@stats.my_node_id]
+      is_primary || @always_primary ? nids.unshift(@stats.my_node_id) : nids.push(@stats.my_node_id)
+      @routing_table.set_route(vn, @routing_table.search_nodes_with_clk(vn)[0], nids)
       true
     end
   end
@@ -283,9 +283,9 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
     @h.always_primary = true
     @h.call(:join_process)
     # Takes vnodes until it is primary of its share: 8 vnodes / 3 nodes.
-    assert_equal :even, @h.rttable.vnode_balance(NID)
+    assert_equal :even, @h.routing_table.vnode_balance(NID)
     assert_equal 2, @h.requests.size
-    @h.requests.each { |vn, src, _| assert_include @h.rttable.search_nodes(vn), NID unless src == NID }
+    @h.requests.each { |vn, src, _| assert_include @h.routing_table.search_nodes(vn), NID unless src == NID }
   end
 
   # It asks for at most as many vnodes as there are.
@@ -295,7 +295,7 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
       super(vn, src_nid, false)
     end
     @h.call(:join_process)
-    assert_equal :less, @h.rttable.vnode_balance(NID)
+    assert_equal :less, @h.routing_table.vnode_balance(NID)
     assert_equal 8, @h.requests.size
   end
 
@@ -309,7 +309,7 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
     @h.instance_variable_set(:@do_join_process, false)
     thread.join
     assert_include @h.slept, 5
-    assert_equal :less, @h.rttable.vnode_balance(NID)
+    assert_equal :less, @h.routing_table.vnode_balance(NID)
   end
 
   def test_join_process_without_vnodes_to_take
@@ -325,7 +325,7 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
     @h.always_primary = true
     @h.call(:balance_process)
     # Takes vnodes until it is primary of its share: 8 vnodes / 3 nodes.
-    assert_equal :even, @h.rttable.vnode_balance(NID)
+    assert_equal :even, @h.routing_table.vnode_balance(NID)
     assert_equal 2, @h.requests.size
   end
 
@@ -334,7 +334,7 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
     @h = Harness.new(nodes: [NID, 'hosta_1'], vnode_nodes: ['hosta_1'])
     @h.stats.enabled_repetition_host_in_routing = true
     @h.call(:acquired_recover_process)
-    @h.rttable.each_vnode { |vn, nids| assert_equal 2, nids.size, "vnode #{vn}" }
+    @h.routing_table.each_vnode { |vn, nids| assert_equal 2, nids.size, "vnode #{vn}" }
     assert_equal 8, @h.requests.size
     assert_include @h.slept, 1
   end
@@ -384,14 +384,14 @@ class AsyncProcessPushTest < Test::Unit::TestCase
     assert_true @h.call(:sync_a_vnode, @vn, @node.nid, false)
     assert_equal ['key1'], @node.dat[@vn].keys
     # Redundancy is 2, so the new node replaces the last one.
-    assert_equal [NID, @node.nid], @h.rttable.search_nodes(@vn)
-    clk = @h.rttable.search_nodes_with_clk(@vn)[0]
+    assert_equal [NID, @node.nid], @h.routing_table.search_nodes(@vn)
+    clk = @h.routing_table.search_nodes_with_clk(@vn)[0]
     assert_equal ["setroute #{@vn} #{clk - 1} #{NID} #{@node.nid}\r\n"], @h.broadcasts
   end
 
   def test_sync_a_vnode_as_primary
     assert_true @h.call(:sync_a_vnode, @vn, @node.nid, true)
-    assert_equal [@node.nid, NID], @h.rttable.search_nodes(@vn)
+    assert_equal [@node.nid, NID], @h.routing_table.search_nodes(@vn)
   end
 
   def test_sync_a_vnode_already_in_the_vnode
@@ -400,7 +400,7 @@ class AsyncProcessPushTest < Test::Unit::TestCase
     vn = @h2.store('key1', 'value1')
     assert_true @h2.call(:sync_a_vnode, vn, @node.nid, false)
     assert_equal ['key1'], @node.dat[vn].keys
-    assert_equal [NID, @node.nid], @h2.rttable.search_nodes(vn)
+    assert_equal [NID, @node.nid], @h2.routing_table.search_nodes(vn)
     assert_equal [], @h2.broadcasts
   ensure
     @h2&.close
@@ -409,15 +409,15 @@ class AsyncProcessPushTest < Test::Unit::TestCase
   def test_sync_a_vnode_failed
     @node.replies['spushv'] = "SERVER_ERROR busy\r\n"
     assert_false @h.call(:sync_a_vnode, @vn, @node.nid, false)
-    assert_equal [NID, OTHER_NID], @h.rttable.search_nodes(@vn)
+    assert_equal [NID, OTHER_NID], @h.routing_table.search_nodes(@vn)
     # The transaction was rolled back.
-    assert_true @h.rttable.transaction(@vn, [NID])
+    assert_true @h.routing_table.transaction(@vn, [NID])
   end
 
   def test_sync_a_vnode_for_release
     assert_true @h.call(:sync_a_vnode_for_release, @vn, @node.nid, [@node.nid, OTHER_NID])
     assert_equal ['key1'], @node.dat[@vn].keys
-    assert_equal [@node.nid, OTHER_NID], @h.rttable.search_nodes(@vn)
+    assert_equal [@node.nid, OTHER_NID], @h.routing_table.search_nodes(@vn)
     assert_match(/\Asetroute #{@vn} \d+ #{@node.nid} #{OTHER_NID}\r\n\z/, @h.broadcasts.first)
   end
 
@@ -426,7 +426,7 @@ class AsyncProcessPushTest < Test::Unit::TestCase
     reply, ret = data
     @node.replies['spushv'] = reply
     assert_equal ret, @h.call(:sync_a_vnode_for_release, @vn, @node.nid, [@node.nid, OTHER_NID])
-    assert_equal [NID, OTHER_NID], @h.rttable.search_nodes(@vn)
+    assert_equal [NID, OTHER_NID], @h.routing_table.search_nodes(@vn)
   end
 
   def test_sync_a_vnode_for_release_to_a_node_in_the_vnode
@@ -448,23 +448,23 @@ class AsyncProcessPushTest < Test::Unit::TestCase
 
   def test_req_push_a_vnode_time_out
     @h.stats.reqpushv_timeout_count = 3
-    other = @h.rttable.routes.keys.find { |vn| vn != @vn }
-    @h.rttable.set_route(other, 0, [OTHER_NID])
+    other = @h.routing_table.routes.keys.find { |vn| vn != @vn }
+    @h.routing_table.set_route(other, 0, [OTHER_NID])
     assert_equal :timeout, @h.call(:req_push_a_vnode, other, @node.nid, false)
     assert_equal [0.1] * 3, @h.slept
   end
 
   def test_req_push_a_vnode_to_a_node_that_is_down
     assert_false @h.call(:req_push_a_vnode, @vn, 'localhost_1', false)
-    assert_equal 1, @h.rttable.failure_counts['localhost_1']
+    assert_equal 1, @h.routing_table.failure_counts['localhost_1']
   end
 
   def test_replicate_existing_data_process
-    replica = Struct.new(:routes).new(@h.rttable.routes.keys.to_h { |vn| [vn, [@node.nid]] })
+    replica = Struct.new(:routes).new(@h.routing_table.routes.keys.to_h { |vn| [vn, [@node.nid]] })
     saved = defined?($roma) ? $roma : nil
-    $roma = Struct.new(:cr_writer).new(Struct.new(:run_existing_data_replication).new(true))
+    $roma = Struct.new(:cluster_replication_writer).new(Struct.new(:run_existing_data_replication).new(true))
     @h.call(:replicate_existing_data_process, [replica])
-    assert_equal @h.rttable.routes.keys.sort, @node.dat.keys.sort
+    assert_equal @h.routing_table.routes.keys.sort, @node.dat.keys.sort
     assert_equal ['key1'], @node.dat[@vn].keys
   ensure
     $roma = saved
@@ -490,7 +490,7 @@ class AsyncProcessReleaseTest < Test::Unit::TestCase
     def sync_a_vnode_for_release(vn, to_nid, new_nids)
       @moves << [vn, to_nid]
       return @move_reply unless @move_reply == true
-      @rttable.set_route(vn, @rttable.search_nodes_with_clk(vn)[0], new_nids)
+      @routing_table.set_route(vn, @routing_table.search_nodes_with_clk(vn)[0], new_nids)
       true
     end
   end
@@ -499,7 +499,7 @@ class AsyncProcessReleaseTest < Test::Unit::TestCase
     @h = Harness.new(nodes: [NID, 'hosta_1', 'hostb_1'], vnode_nodes: [NID, 'hosta_1'])
     @h.stats.enabled_repetition_host_in_routing = true
     @h.call(:release_process)
-    assert_false @h.rttable.has_node?(NID)
+    assert_false @h.routing_table.has_node?(NID)
     assert_equal 8, @h.moves.size
     @h.moves.each { |_vn, to_nid| assert_equal 'hostb_1', to_nid }
   end
@@ -542,7 +542,7 @@ class AsyncProcessEditNodesTest < Test::Unit::TestCase
   end
 
   def test_edit_nodes_without_redundancy
-    @h.rttable.instance_variable_set(:@redundancy, 1)
+    @h.routing_table.instance_variable_set(:@redundancy, 1)
     assert_equal ['hostc_1'], @h.call(:edit_nodes, %w(hosta_1), 'hostc_1', false)
   end
 end
@@ -589,13 +589,13 @@ class AsyncProcessStorageTest < Test::Unit::TestCase
        'gathering logs' => [Time.now - 600, true, 2])
   def test_storage_clean_up_process_clears_gathered_logs(data)
     gathered, gathering, expected = data
-    @h.rttable.logs = [gathered, 'log line']
+    @h.routing_table.logs = [gathered, 'log line']
     @h.stats.gui_run_gather_logs = gathering
     @h.call(:storage_clean_up_process)
     if expected == []
-      assert_equal [], @h.rttable.logs
+      assert_equal [], @h.routing_table.logs
     else
-      assert_equal expected, @h.rttable.logs.size
+      assert_equal expected, @h.routing_table.logs.size
     end
   end
 
@@ -687,20 +687,20 @@ class AsyncProcessLogTest < Test::Unit::TestCase
   def test_get_routing_event
     # The storage files of the node are in a directory with the same name,
     # in the same directory by default.
-    @files << "#{Roma.config.routing.path}/#{@h.stats.ap_str}"
+    @files << "#{Roma.config.routing.path}/#{@h.stats.my_node_id}"
     FileUtils.mkdir_p(@files.last)
-    write("#{Roma.config.routing.path}/#{@h.stats.ap_str}.route.1",
+    write("#{Roma.config.routing.path}/#{@h.stats.my_node_id}.route.1",
           "2026-01-02T03:00:00.1 join hosta_1\n" \
           "2026-01-02T03:00:01.1 setroute 0 1 hosta_1\n" \
           "2026-01-02T03:00:02.1 leave hosta_1\n")
     @h.call(:get_routing_event)
     assert_equal ['2026-01-02T03:00:00.1 join hosta_1', '2026-01-02T03:00:02.1 leave hosta_1'],
-                 @h.rttable.event
+                 @h.routing_table.event
 
-    @h.rttable.event.clear
-    @h.rttable.event_limit_line = 1
+    @h.routing_table.event.clear
+    @h.routing_table.event_limit_line = 1
     @h.call(:get_routing_event)
-    assert_equal ['2026-01-02T03:00:02.1 leave hosta_1'], @h.rttable.event
+    assert_equal ['2026-01-02T03:00:02.1 leave hosta_1'], @h.routing_table.event
   end
 
   # One line a second for 300 seconds after BASE, in Logger's format.
@@ -708,13 +708,13 @@ class AsyncProcessLogTest < Test::Unit::TestCase
     lines = (0...300).map do |i|
       "I, [#{(BASE + i).strftime('%Y-%m-%dT%H:%M:%S')}.000000 ##{i}]  INFO -- : message #{i}\n"
     end
-    write("#{Roma.config.log.path}/#{@h.stats.ap_str}.log", lines.join)
+    write("#{Roma.config.log.path}/#{@h.stats.my_node_id}.log", lines.join)
     lines.map(&:chomp)
   end
 
   def gathered_logs
-    assert_kind_of Time, @h.rttable.logs.first
-    @h.rttable.logs[1..]
+    assert_kind_of Time, @h.routing_table.logs.first
+    @h.routing_table.logs[1..]
   end
 
   def test_get_logs
@@ -742,12 +742,12 @@ class AsyncProcessLogTest < Test::Unit::TestCase
   def test_get_logs_out_of_range(range)
     write_log
     @h.call(:get_logs, range)
-    assert_equal [], @h.rttable.logs
+    assert_equal [], @h.routing_table.logs
   end
 
   def test_get_logs_without_a_log
     @h.call(:get_logs, ['2026-01-02T03:01:00', 'current'])
-    assert_equal [], @h.rttable.logs
+    assert_equal [], @h.routing_table.logs
   end
 
   def test_start_get_logs

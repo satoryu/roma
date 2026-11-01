@@ -13,11 +13,11 @@ module Roma
         if @stats.run_join == false &&
             @stats.run_recover == false &&
             @stats.run_balance == false &&
-            @rttable.vnode_balance(@stats.ap_str)==:less
+            @routing_table.vnode_balance(@stats.my_node_id)==:less
           Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_balance_process'))
-          res[@stats.ap_str] = 'STARTED'
+          res[@stats.my_node_id] = 'STARTED'
         else
-          res[@stats.ap_str] = 'SERVER_ERROR Not unbalance or othre process is already running.'
+          res[@stats.my_node_id] = 'SERVER_ERROR Not unbalance or othre process is already running.'
         end
         send_data("#{res}\r\n")
       end
@@ -26,7 +26,7 @@ module Roma
         if @stats.run_join == false &&
             @stats.run_recover == false &&
             @stats.run_balance == false &&
-            @rttable.vnode_balance(@stats.ap_str)==:less
+            @routing_table.vnode_balance(@stats.my_node_id)==:less
           Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_balance_process'))
           send_data("STARTED\r\n")
         else
@@ -49,14 +49,14 @@ module Roma
 
       # recover
       def ev_recover(s)
-        if @rttable.can_i_recover?
+        if @routing_table.can_i_recover?
           cmd = "rrecover"
           res = broadcast_cmd("#{cmd}\r\n")
           unless @stats.run_recover
             Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_recover_process'))
-            res[@nid] = "STARTED"
+            res[@my_node_id] = "STARTED"
           else
-            res[@nid] = "SERVER_ERROR Recover process is already running."
+            res[@my_node_id] = "SERVER_ERROR Recover process is already running."
           end
           send_data("#{res}\r\n")
         else
@@ -66,7 +66,7 @@ module Roma
 
       # rrecover
       def ev_rrecover(s)
-        if @rttable.can_i_recover?
+        if @routing_table.can_i_recover?
           unless @stats.run_recover
             Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_recover_process'))
             send_data("STARTED\r\n")

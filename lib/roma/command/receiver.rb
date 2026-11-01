@@ -19,11 +19,11 @@ module Roma
       include MultiHashCommandReceiver
       include SystemCommandReceiver
 
-      def initialize(storages, rttable)
-        super(storages, rttable)
+      def initialize(storages, routing_table)
+        super(storages, routing_table)
         @stats = Roma::Stats.instance
-        @nid = @stats.ap_str
-        @defhash = 'roma'
+        @my_node_id = @stats.my_node_id
+        @default_hash_name = 'roma'
       end
 
       def self.mk_starting_evlist

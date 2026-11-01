@@ -243,7 +243,7 @@ class PluginStorageWriteBehindTest < Test::Unit::TestCase
   # With cluster replication, every change is also queued for the replica
   # cluster.
   def test_cluster_replication
-    @conn.instance_variable_get(:@romad).cr_writer.run_replication = true
+    @conn.instance_variable_get(:@romad).cluster_replication_writer.run_replication = true
     @conn.request('set key1 0 0 1', '1')
     @conn.request('incr key1 1')
     clk = @conn.request('gets key1')[/VALUE key1 0 1 (\d+)/, 1]
@@ -258,7 +258,7 @@ class PluginStorageWriteBehindTest < Test::Unit::TestCase
   end
 
   def test_cluster_replication_of_another_hash
-    @conn.instance_variable_get(:@romad).cr_writer.run_replication = true
+    @conn.instance_variable_get(:@romad).cluster_replication_writer.run_replication = true
     @conn.request("set key1\eother 0 0 1", '1')
     @conn.request("incr key1\eother 1")
     # gets replies the key without the hash name.

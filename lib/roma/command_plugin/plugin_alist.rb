@@ -18,7 +18,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_at(s)
         hname, k, d, vn, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s)  if nodes[0] != @nid
+        return forward1(nodes[0], s)  if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         @stats.read_count += 1
@@ -42,7 +42,7 @@ module Roma
       # (CLEARED|NOT_CLEARED|SERVER_ERROR <error message>)\r\n
       def ev_alist_clear(s)
         hname, k, d, vn, nodes = calc_hash(s[1])
-        return forward2(nodes[0], s) if nodes[0] != @nid
+        return forward2(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
@@ -75,7 +75,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
         
         ddata = @storages[hname].get(vn, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
@@ -111,7 +111,7 @@ module Roma
       # (DELETED|NOT_DELETED|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_delete_at(s)
         hname, k, d, vn, nodes = calc_hash(s[1])
-        return forward2(nodes[0], s) if nodes[0] != @nid
+        return forward2(nodes[0], s) if nodes[0] != @my_node_id
         
         ddata = @storages[hname].get(vn, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
@@ -145,7 +145,7 @@ module Roma
       # (true|false|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_empty?(s)
         hname, k, d, vn, nodes = calc_hash(s[1])
-        return forward2(nodes[0], s) if nodes[0] != @nid
+        return forward2(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         @stats.read_count += 1
@@ -171,7 +171,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_first(s)
         hname, k, d, vn, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @nid
+        return forward1(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         @stats.read_count += 1
@@ -202,7 +202,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_gets(s)
         hname, k, _d, vn, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @nid
+        return forward1(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, 0)
         @stats.read_count += 1
@@ -250,7 +250,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_gets_with_time(s)
         hname, k, _d, vn, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @nid
+        return forward1(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, 0)
         @stats.read_count += 1
@@ -297,7 +297,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         @stats.read_count += 1
@@ -321,7 +321,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         @stats.read_count += 1
@@ -349,7 +349,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[3].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         if ddata
@@ -389,7 +389,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[3].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         if ddata
@@ -432,7 +432,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         if ddata
@@ -478,7 +478,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[3].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         if ddata
@@ -530,7 +530,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[3].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
@@ -579,7 +579,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[4].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
@@ -633,7 +633,7 @@ module Roma
         hname, k, _d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
-        return forward1(nodes[0], s, data) if nodes[0] != @nid
+        return forward1(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, 0)
         @stats.read_count += 1
@@ -683,7 +683,7 @@ module Roma
         hname, k, _d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
-        return forward1(nodes[0], s, data) if nodes[0] != @nid
+        return forward1(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, 0)
         @stats.read_count += 1
@@ -724,7 +724,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_to_json(s)
         hname, k, _d, vn, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @nid
+        return forward1(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, 0)
         @stats.read_count += 1
@@ -763,7 +763,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_last(s)
         hname, k, d, vn, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @nid
+        return forward1(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         @stats.read_count += 1
@@ -787,7 +787,7 @@ module Roma
       # (<length>|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_length(s)
         hname, k, d, vn, nodes = calc_hash(s[1])
-        return forward2(nodes[0], s) if nodes[0] != @nid
+        return forward2(nodes[0], s) if nodes[0] != @my_node_id
         ddata = @storages[hname].get(vn, k, d)
         @stats.read_count += 1
 
@@ -810,7 +810,7 @@ module Roma
       # |NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_pop(s)
         hname, k, d, vn, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @nid
+        return forward1(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         if ddata
@@ -847,7 +847,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
-        if nodes[0] != @nid
+        if nodes[0] != @my_node_id
           return forward2(nodes[0], s, data)
         end
 
@@ -887,7 +887,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[3].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         if ddata
@@ -932,7 +932,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         if ddata
@@ -976,7 +976,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[3].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         if ddata
@@ -1032,7 +1032,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[3].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
@@ -1081,7 +1081,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[4].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
@@ -1129,7 +1129,7 @@ module Roma
         hname, k, d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[3].to_i)
         read_bytes(2)
-        return forward2(nodes[0], s, data) if nodes[0] != @nid
+        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
@@ -1169,7 +1169,7 @@ module Roma
       # |NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_shift(s)
         hname, k, d, vn, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @nid
+        return forward1(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, d)
         if ddata
@@ -1209,7 +1209,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_to_s(s)
         hname, k, _d, vn, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @nid
+        return forward1(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hname].get(vn, k, 0)
         @stats.read_count += 1
@@ -1378,10 +1378,10 @@ module Roma
 
       def calc_hash(key)
         k,hname = key.split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(k).hex % @rttable.hash_space_size
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(k).hex % @routing_table.hash_space_size
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
         [hname, k, d, vn, nodes]        
       end
 
@@ -1406,17 +1406,17 @@ module Roma
 
         buf = con.gets
         if buf == nil
-          @rttable.proc_failed(nid)
+          @routing_table.proc_failed(nid)
           @log.error("forward get failed:nid=#{nid} rs=#{rs} #{$@}")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         elsif buf.start_with?("ERROR")
-          @rttable.proc_succeed(nid)
+          @routing_table.proc_succeed(nid)
           con.close_connection
           @log.error("forward get failed:nid=#{nid} rs=#{rs} #{$@}")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         elsif buf.start_with?("VALUE") == false
           return_connection(nid, con)
-          @rttable.proc_succeed(nid)
+          @routing_table.proc_succeed(nid)
           return send_data(buf)
         end
         
@@ -1426,7 +1426,7 @@ module Roma
           s = buf.split(/ /)
           if s[0] != 'VALUE'
             return_connection(nid, con)
-            @rttable.proc_succeed(nid)
+            @routing_table.proc_succeed(nid)
             return send_data(buf)
           end
           res << con.read_bytes(s[3].to_i + 2)          
@@ -1435,11 +1435,11 @@ module Roma
         res << "END\r\n"
 
         return_connection(nid, con)
-        @rttable.proc_succeed(nid)
+        @routing_table.proc_succeed(nid)
 
         send_data(res)
       rescue => e
-        @rttable.proc_failed(nid) if e.message != "no connection"
+        @routing_table.proc_failed(nid) if e.message != "no connection"
         @log.error("forward get failed:nid=#{nid} rs=#{rs} #{e} #{$@}")
         send_data("SERVER_ERROR Message forward failed.\r\n")
       end

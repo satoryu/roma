@@ -72,7 +72,7 @@ module Roma
 
       def openfile(hname)
         t = Time.now
-        path = "#{@path}/#{@stats.ap_str}/#{hname}/#{t.strftime('%Y%m%d')}"
+        path = "#{@path}/#{@stats.my_node_id}/#{hname}/#{t.strftime('%Y%m%d')}"
         mkdir(path)
         # set a next rotation time
         @rottime = Time.local(t.year,t.month,t.day,0,0,0) + 24 * 60 * 60
@@ -90,7 +90,7 @@ module Roma
       end
 
       def wb_get_path(hname)
-        File.expand_path("#{@path}/#{@stats.ap_str}/#{hname}")
+        File.expand_path("#{@path}/#{@stats.my_node_id}/#{hname}")
       end
 
       def get_current_file_path(hname)

@@ -24,7 +24,7 @@ module Roma
       end
       @wb_thread.exit
       @wb_writer.close_all
-      @cr_writer.close_all
+      @cluster_replication_writer.close_all
     end
 
     def wb_rotate(hname)
@@ -40,14 +40,14 @@ module Roma
     end
 
     def wb_get_stat
-      @wb_writer.get_stat.merge(@cr_writer.get_stat)
+      @wb_writer.get_stat.merge(@cluster_replication_writer.get_stat)
     end
 
     def wb_process_loop
       loop {
         while dat = @@wb_queue.pop
           # dat ====> [hname, cmd, key, value]
-          @cr_writer.transmit(dat[1], dat[2], dat[3]) unless dat[0]
+          @cluster_replication_writer.transmit(dat[1], dat[2], dat[3]) unless dat[0]
           @wb_writer.write(dat[0], dat[1], dat[2], dat[3])
         end
       }

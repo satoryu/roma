@@ -24,12 +24,12 @@ module Roma
         return ev_gets(s) if s.length > 2
 
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes(vn)
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes(vn)
 
-        unless nodes.include?(@nid)
+        unless nodes.include?(@my_node_id)
           @log.warn("forward get #{s[1]}")
           res = forward_get(nodes[0], s[1], d)
           if res
@@ -53,12 +53,12 @@ module Roma
       # fget <key>
       def ev_fget(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes(vn)
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes(vn)
 
-        unless nodes.include?(@nid)
+        unless nodes.include?(@my_node_id)
           @log.error("fget failed key=#{s[1]} vn=#{vn}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
@@ -79,9 +79,9 @@ module Roma
         kvn = {} # {key1=>vn1, key2=>vn2, ... }
         s[1..-1].each{|kh|
           key, = kh.split("\e") # split a hash-name
-          d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-          kvn[key] = vn = @rttable.get_vnode_id(d)
-          nodes = @rttable.search_nodes(vn)
+          d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+          kvn[key] = vn = @routing_table.get_vnode_id(d)
+          nodes = @routing_table.search_nodes(vn)
           unless nodes.empty? # check the node existence
             nk[nodes[0]]=[] unless nk.key?(nodes[0])
             nk[nodes[0]] << kh
@@ -89,17 +89,17 @@ module Roma
         }
 
         res = {} # result data {key1=>val1,key2=>val2,...}
-        if nk.key?(@nid)
-          nk[@nid].each{|kh|
+        if nk.key?(@my_node_id)
+          nk[@my_node_id].each{|kh|
             key,hname = kh.split("\e")
-            hname ||= @defhash
+            hname ||= @default_hash_name
             if @storages.key?(hname)
               _vn, _t, clk, expt, val = @storages[hname].get_raw(kvn[key], key, 0)
               @stats.read_count += 1
               res[key] = [clk, val] if val && Time.now.to_i <= expt
             end
           }
-          nk.delete(@nid)
+          nk.delete(@my_node_id)
         end
 
         nk.each_pair{|nid,keys|
@@ -122,12 +122,12 @@ module Roma
         end
 
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
 
-        if nodes[0] != @nid
+        if nodes[0] != @my_node_id
           cmd = "fdelete #{key}\e#{hname}"
           s[2..-1].each{|c| cmd << " #{c}"}
           cmd << "\r\n"
@@ -168,7 +168,7 @@ module Roma
         }
         return send_data("NOT_FOUND\r\n") unless res[4]
 
-        if $roma.cr_writer.run_replication
+        if $roma.cluster_replication_writer.run_replication
           fnc = 'delete'
           Roma::WriteBehindProcess::push(nil, "#{fnc} #{s[1]}\r\n", s[1], nil)
         end
@@ -179,11 +179,11 @@ module Roma
       # fdelete <key> [<time>] [noreply]\r\n
       def ev_fdelete(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
-        if nodes.include?(@nid) == false
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
+        if nodes.include?(@my_node_id) == false
           @log.error("fdelete failed delete key=#{s[1]} vn=#{vn}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
@@ -207,7 +207,7 @@ module Roma
           Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:delete], key, res[4])
         end
 
-        nodes.delete(@nid)
+        nodes.delete(@my_node_id)
         nodes.each{ |nid|
           res2 = send_cmd(nid,"rdelete #{key}\e#{hname} #{res[2]}\r\n")
           unless res2
@@ -217,7 +217,7 @@ module Roma
         }
         return send_data("NOT_FOUND\r\n") unless res[4]
 
-        if $roma.cr_writer.run_replication
+        if $roma.cluster_replication_writer.run_replication
           fnc = 'delete'
           Roma::WriteBehindProcess::push(nil, "#{fnc} #{s[1]}\r\n", s[1], nil)
         end
@@ -228,9 +228,9 @@ module Roma
       # rdelete <key> <clock>
       def ev_rdelete(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-        vn = @rttable.get_vnode_id(d)
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        vn = @routing_table.get_vnode_id(d)
         unless @storages.key?(hname)
           send_data("SERVER_ERROR #{hname} does not exists.\r\n")
           return
@@ -272,13 +272,13 @@ module Roma
       # <data block>\r\n
       def ev_cas(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
         v = read_bytes(s[4].to_i)
         read_bytes(2)
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
-        if nodes[0] != @nid
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
+        if nodes[0] != @my_node_id
           @log.warn("forward cas key=#{key} vn=#{vn} to #{nodes[0]}")
           res = send_cmd(nodes[0],"fcas #{key}\e#{hname} #{d} #{s[3]} #{v.length} #{s[5]}\r\n#{v}\r\n")
           if res == nil || res.start_with?("ERROR")
@@ -292,19 +292,19 @@ module Roma
 
       def ev_fcas(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
+        hname ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
-        if nodes.include?(@nid) == false
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
+        if nodes.include?(@my_node_id) == false
           @log.error("fcas failed key = #{s[1]} vn = #{vn}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
-        nodes.delete(@nid)
+        nodes.delete(@my_node_id)
         store_cas(hname, vn, key, d, s[5].to_i, s[3].to_i, v, nodes)
       end
 
@@ -319,11 +319,11 @@ module Roma
       # set_expt <key> <expt>
       def ev_set_expt(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
-        if nodes[0] != @nid
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
+        if nodes[0] != @my_node_id
           @log.warn("forward set_expt key=#{key} vn=#{vn} to #{nodes[0]}")
           res = send_cmd(nodes[0],"fset_expt #{s[1]} #{s[2]}\r\n")
           if res
@@ -353,7 +353,7 @@ module Roma
             Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:set_expt], key, expt.to_s)
           end
           redundant(nodes[1..-1], hname, key, d, ret[2], ret[3], ret[4])
-          if $roma.cr_writer.run_replication
+          if $roma.cluster_replication_writer.run_replication
             fnc = 'set_expt'
             Roma::WriteBehindProcess::push(nil, "#{fnc} #{s[1]} #{expt}\r\n", s[1], expt)
           end
@@ -366,11 +366,11 @@ module Roma
       # fset_expt <key> <expt>
       def ev_fset_expt(s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
-        if nodes.include?(@nid) == false
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
+        if nodes.include?(@my_node_id) == false
           @log.error("fset_expt failed key = #{s[1]} vn = #{vn}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
@@ -394,7 +394,7 @@ module Roma
             Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:set_expt], key, expt.to_s)
           end
           redundant(nodes[1..-1], hname, key, d, ret[2], ret[3], ret[4])
-          if $roma.cr_writer.run_replication
+          if $roma.cluster_replication_writer.run_replication
             fnc = 'set_expt'
             Roma::WriteBehindProcess::push(nil, "#{fnc} #{s[1]} #{expt}\r\n", s[1], expt)
           end
@@ -423,17 +423,17 @@ module Roma
         end
 
         key, hname = s[1].split("\e")
-        hname ||= @defhash
+        hname ||= @default_hash_name
         unless @storages.key?(hname)
           send_data("SERVER_ERROR #{hname} does not exists.\r\n")
           return
         end
 
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
-        vn = @rttable.get_vnode_id(d)
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        vn = @routing_table.get_vnode_id(d)
 
-        nodes = @rttable.search_nodes(vn)
-        unless nodes.include?(@nid)
+        nodes = @routing_table.search_nodes(vn)
+        unless nodes.include?(@my_node_id)
           @log.warn("forward get_expt #{s[1]} #{s[2]}")
           res = forward_get_expt(nodes[0], vn, s[1], s[2])
           if res
@@ -464,7 +464,7 @@ module Roma
         end
         res = broadcast_cmd("rset_size_of_zredundant #{s[1]}\r\n")
         @stats.compression_threshold = s[1].to_i
-        res[@stats.ap_str] = "STORED"
+        res[@stats.my_node_id] = "STORED"
         send_data("#{res}\r\n")
       end
 
@@ -484,13 +484,13 @@ module Roma
         con.send("fget #{k}\r\n")
         res = con.gets
         if res == nil
-          @rttable.proc_failed(nid)
+          @routing_table.proc_failed(nid)
           @log.error("forward get failed:nid=#{nid} key=#{k}")
           return nil
         elsif res == "END\r\n"
           # value does not found
         elsif res.start_with?("ERROR")
-          @rttable.proc_succeed(nid)
+          @routing_table.proc_succeed(nid)
           con.close_connection
           return nil
         else
@@ -499,10 +499,10 @@ module Roma
           res << con.gets
         end
         return_connection(nid, con)
-        @rttable.proc_succeed(nid)
+        @routing_table.proc_succeed(nid)
         res
       rescue => e
-        @rttable.proc_failed(nid) if e.message != "no connection"
+        @routing_table.proc_failed(nid) if e.message != "no connection"
         @log.error("#{e.inspect}/#{$@}")
         @log.error("forward get failed:nid=#{nid} key=#{k}")
         nil
@@ -518,10 +518,10 @@ module Roma
           con.read_bytes(2)
         end
         return_connection(nid, con)
-        @rttable.proc_succeed(nid)
+        @routing_table.proc_succeed(nid)
         res
       rescue
-        @rttable.proc_failed(nid)
+        @routing_table.proc_failed(nid)
         @log.error("forward gets failed:nid=#{nid} key=#{keys}")
         {}
       end
@@ -536,10 +536,10 @@ module Roma
         end
         res << line
         return_connection(nid, con)
-        @rttable.proc_succeed(nid)
+        @routing_table.proc_succeed(nid)
         res
       rescue
-        @rttable.proc_failed(nid)
+        @routing_table.proc_failed(nid)
         @log.error("forward get_expt failed:nid=#{nid} key=#{key}")
         nil
       end
@@ -564,8 +564,8 @@ module Roma
             Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[fnc], k, ret[4])
           end
           redundant(nodes, hname, k, d, ret[2], expt, ret[4])
-          if $roma.cr_writer.run_replication
-            k = "#{k}\e#{hname}" if hname != @defhash
+          if $roma.cluster_replication_writer.run_replication
+            k = "#{k}\e#{hname}" if hname != @default_hash_name
             Roma::WriteBehindProcess::push(nil, "#{fnc} #{k} 1 #{expt} #{v.length} \r\n#{v}\r\n", k, v)
           end
           send_data("STORED\r\n")
@@ -602,8 +602,8 @@ module Roma
           if @stats.wb_command_map.key?(:cas)
             Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[:cas], k, ret[4])
           end
-          if $roma.cr_writer.run_replication
-            rk = hname != @defhash ? "#{k}\e#{hname}" : k
+          if $roma.cluster_replication_writer.run_replication
+            rk = hname != @default_hash_name ? "#{k}\e#{hname}" : k
             fnc = 'set' # To restrain a defference between main and replica cluster due to clk 
             Roma::WriteBehindProcess::push(nil, "#{fnc} #{rk} 0 #{expt} #{v.length} \r\n#{v}\r\n", rk, v)
           end
@@ -651,13 +651,13 @@ module Roma
         end
 
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
         v = read_bytes(bytes)
         read_bytes(2)
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
-        if nodes[0] != @nid
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
+        if nodes[0] != @my_node_id
           @log.warn("forward #{fnc} key=#{key} vn=#{vn} to #{nodes[0]}")
           res = send_cmd(nodes[0],"f#{fnc} #{s[1]} #{d} #{s[3]} #{s[4]}\r\n#{v}\r\n")
           if res == nil || res.start_with?("ERROR")
@@ -671,19 +671,19 @@ module Roma
 
       def fset(fnc,s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
+        hname ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
-        if nodes.include?(@nid) == false
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
+        if nodes.include?(@my_node_id) == false
           @log.error("f#{fnc} failed key = #{s[1]} vn = #{vn}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
-        nodes.delete(@nid)
+        nodes.delete(@my_node_id)
         store(fnc, hname, vn, key, d, s[3].to_i, v, nodes)
       end
 
@@ -705,8 +705,8 @@ module Roma
           if @stats.wb_command_map.key?(fnc)
             Roma::WriteBehindProcess::push(hname, @stats.wb_command_map[fnc], k, res[4])
           end
-          if $roma.cr_writer.run_replication
-            rk = hname != @defhash ? "#{k}\e#{hname}" : k
+          if $roma.cluster_replication_writer.run_replication
+            rk = hname != @default_hash_name ? "#{k}\e#{hname}" : k
             Roma::WriteBehindProcess::push(nil, "#{fnc} #{rk} #{v}\r\n", rk, v)
           end
           redundant(nodes, hname, k, d, res[2], res[3], res[4])
@@ -718,12 +718,12 @@ module Roma
 
       def incr_decr(fnc,s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
+        hname ||= @default_hash_name
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
         v = s[2].to_i
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
-        if nodes[0] != @nid
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
+        if nodes[0] != @my_node_id
           @log.debug("forward #{fnc} key=#{s[1]} vn=#{vn} to #{nodes[0]}")
           res = send_cmd(nodes[0],"f#{fnc} #{s[1]} #{d} #{s[2]}\r\n")
           if res == nil || res.start_with?("ERROR")
@@ -737,18 +737,18 @@ module Roma
 
       def fincr_fdecr(fnc,s)
         key,hname = s[1].split("\e")
-        hname ||= @defhash
+        hname ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         v = s[3].to_i
-        vn = @rttable.get_vnode_id(d)
-        nodes = @rttable.search_nodes_for_write(vn)
-        if nodes.include?(@nid) == false
+        vn = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vn)
+        if nodes.include?(@my_node_id) == false
           @log.debug("f#{fnc} failed key = #{s[1]} vn = #{vn}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
         
-        nodes.delete(@nid)
+        nodes.delete(@my_node_id)
         store_incr_decr(fnc, hname, vn, key, d, v, nodes)
       end
 

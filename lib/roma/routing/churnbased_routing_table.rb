@@ -124,9 +124,9 @@ module Roma
         @routing_data.nodes.length >= @routing_data.redundancy
       end
 
-      def can_i_release?(ap_str, rep_host)
+      def can_i_release?(my_node_id, rep_host)
         buf = self.nodes
-        buf.delete(ap_str)
+        buf.delete(my_node_id)
         hosts = []
 
         unless rep_host
@@ -378,9 +378,9 @@ module Roma
         :even
       end
 
-      def has_node?(ap_str)
+      def has_node?(my_node_id)
         self.each_vnode do |vn, nids|
-          return true if nids.include?(ap_str)
+          return true if nids.include?(my_node_id)
         end
         false
       end

@@ -10,23 +10,23 @@ module Roma
         con.send(cmd)
         res = con.gets
         if res == nil
-          @rttable.proc_failed(nid)
+          @routing_table.proc_failed(nid)
           return nil
         elsif res.start_with?("ERROR") == false
-          @rttable.proc_succeed(nid)
+          @routing_table.proc_succeed(nid)
           return_connection(nid, con)
         end
         res.chomp
       rescue => e
-        @rttable.proc_failed(nid)
+        @routing_table.proc_failed(nid)
         @log.error("#{e}\n#{$@}")
         nil
       end
 
       def broadcast_cmd(cmd)
         res={}
-        @rttable.nodes.each{|nid|
-          res[nid] = send_cmd(nid,cmd) if nid != @stats.ap_str
+        @routing_table.nodes.each{|nid|
+          res[nid] = send_cmd(nid,cmd) if nid != @stats.my_node_id
         }
         res
       end
@@ -38,21 +38,21 @@ module Roma
         Roma::Messaging::ConPool.instance.return_connection(nid, con)
         if res
           res.chomp!
-          @rttable.proc_succeed(nid)
+          @routing_table.proc_succeed(nid)
         else
-          @rttable.proc_failed(nid)
+          @routing_table.proc_failed(nid)
         end
         res
       rescue => e
-        @rttable.proc_failed(nid)
+        @routing_table.proc_failed(nid)
         @log.error("#{e}\n#{$@}")
         nil
       end
 
       def async_broadcast_cmd(cmd,without_nids=nil)
-        without_nids=[@stats.ap_str] unless without_nids
+        without_nids=[@stats.my_node_id] unless without_nids
         res = {}
-        @rttable.nodes.each{ |nid|
+        @routing_table.nodes.each{ |nid|
           res[nid] = async_send_cmd(nid,cmd) unless without_nids.include?(nid)
         }
         res

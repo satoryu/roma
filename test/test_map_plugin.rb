@@ -84,7 +84,7 @@ class MapPluginForceForwardTest < Test::Unit::TestCase
 
   def setup
     super
-    @rc.rttable.force_forward = true
+    @rc.routing_table.force_forward = true
   end  
 end
 

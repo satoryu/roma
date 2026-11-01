@@ -124,18 +124,18 @@ module Roma
 
       def req_push_a_vnode(vn, src_nid, is_primary)
         con = Roma::Messaging::ConPool.instance.get_connection(src_nid)
-        con.write("reqpushv #{vn} #{@nid} #{is_primary}\r\n")
+        con.write("reqpushv #{vn} #{@my_node_id} #{is_primary}\r\n")
         con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n'
         Roma::Messaging::ConPool.instance.return_connection(src_nid,con)
         # waiting for pushv
         count = 0
-        while @rttable.search_nodes(vn).include?(@nid)==false && count < 300
+        while @routing_table.search_nodes(vn).include?(@my_node_id)==false && count < 300
           sleep 0.1
           count += 1
         end
       rescue =>e
         @log.error("#{e}\n#{$@}")
-        @rttable.proc_failed(src_nid)
+        @routing_table.proc_failed(src_nid)
         false
       end
 

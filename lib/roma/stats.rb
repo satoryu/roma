@@ -125,7 +125,7 @@ module Roma
       @log_level = :debug
     end
 
-    def ap_str
+    def my_node_id
       "#{@address}_#{port}"
     end
 

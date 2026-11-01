@@ -13,13 +13,13 @@ module Roma
       # defhash <name>
       def_command_with_relay :defhash do |s|
         if s.length != 2
-          "#{@defhash}"
+          "#{@default_hash_name}"
         else
           unless @storages.key?(s[1])
             raise(Roma::Command::Definition::ClientError,
                   "#{s[1]} does not find.")
           end
-          @defhash = s[1]
+          @default_hash_name = s[1]
           "STORED"
         end        
       end
@@ -35,7 +35,7 @@ module Roma
                 "#{s[1]} already mounted.")
         end
         # check a directory existence
-        unless File.directory? "#{Roma.config.storage.path}/#{@stats.ap_str}/#{s[1]}"
+        unless File.directory? "#{Roma.config.storage.path}/#{@stats.my_node_id}/#{s[1]}"
           raise(Roma::Command::Definition::ServerError,
                 "#{s[1]} does not find.")
         end
@@ -83,8 +83,8 @@ module Roma
           return "SERVER_ERROR #{hname} already exists."
         end
         st = Roma.config.storage.engine_class.new
-        st.storage_path = "#{Roma.config.storage.path}/#{@stats.ap_str}/#{hname}"
-        st.vn_list = @rttable.vnodes
+        st.storage_path = "#{Roma.config.storage.path}/#{@stats.my_node_id}/#{hname}"
+        st.vn_list = @routing_table.vnodes
         st.divnum = Roma.config.storage.division_count
         st.option = Roma.config.storage.option
         @storages[hname] = st
@@ -100,7 +100,7 @@ module Roma
       def deletehash(hname)
         ret = umounthash(hname)
         return ret if ret != 'UNMOUNTED'
-        FileUtils.rm_rf "#{Roma.config.storage.path}/#{@stats.ap_str}/#{hname}"
+        FileUtils.rm_rf "#{Roma.config.storage.path}/#{@stats.my_node_id}/#{hname}"
         @log.info("deletehash #{hname}")
         return "DELETED"
       rescue =>e
@@ -109,7 +109,7 @@ module Roma
       private :deletehash
       
       def umounthash(hname)
-        if @defhash == hname
+        if @default_hash_name == hname
           return "SERVER_ERROR default hash can't unmount."
         end
         unless @storages.key?(hname)
