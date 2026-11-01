@@ -906,7 +906,8 @@ module Roma
       @log.info("#{__method__}:start.")
 
       routing_path = Config::RTTABLE_PATH
-      f_list = Dir.glob("#{routing_path}/#{@stats.ap_str}*")
+      # The storage files may be in a directory named like the routing logs.
+      f_list = Dir.glob("#{routing_path}/#{@stats.ap_str}*").select { |f| File.file?(f) }
 
       f_list.each do|fname|
         IO.foreach(fname)do|line|
