@@ -108,6 +108,7 @@ module Roma
           Event::Handler::connections.clear
 
           EventMachine::run do
+            trap_stop_signals unless daemon?
             EventMachine.start_server('0.0.0.0', @stats.port,
                                       Roma::Command::Receiver,
                                       @storages, @rttable)
@@ -155,12 +156,26 @@ module Roma
           retry
         end
       end
+      # Another signal stops romad at once, if stopping takes long.
+      %i(INT TERM HUP).each { |sig| Signal.trap(sig, 'DEFAULT') } unless daemon?
       stop_async_process
       stop_wb_process
       stop
     end
 
     def daemon?; @stats.daemon; end
+
+    # Stops the event loop by INT, TERM and HUP. Raised as an error, the
+    # signal could come while a request is handled, where the error is
+    # rescued and logged, and romad wouldn't stop.
+    def trap_stop_signals
+      %i(INT TERM HUP).each do |sig|
+        Signal.trap(sig) do
+          @eventloop = false
+          EventMachine::stop_event_loop
+        end
+      end
+    end
 
     def stop_clean_up
       @stats.last_clean_up = Time.now
