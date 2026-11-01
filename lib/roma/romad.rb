@@ -108,7 +108,7 @@ module Roma
           Event::Handler::connections.clear
 
           EventMachine::run do
-            trap_stop_signals unless daemon?
+            trap_stop_signals
             EventMachine.start_server('0.0.0.0', @stats.port,
                                       Roma::Command::Receiver,
                                       @storages, @rttable)
@@ -157,7 +157,7 @@ module Roma
         end
       end
       # Another signal stops romad at once, if stopping takes long.
-      %i(INT TERM HUP).each { |sig| Signal.trap(sig, 'DEFAULT') } unless daemon?
+      %i(INT TERM HUP).each { |sig| Signal.trap(sig, 'DEFAULT') }
       stop_async_process
       stop_wb_process
       stop

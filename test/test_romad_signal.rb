@@ -1,8 +1,9 @@
 require 'test_helper'
+require 'open3'
 require 'roma_test_utils'
 
-# A romad that isn't a daemon stops by INT and TERM, and closes its
-# storages. Under load, the signal comes while romad handles a request,
+# romad stops by INT and TERM, and closes its storages, whether it is a
+# daemon or not. Under load, the signal comes while romad handles a request,
 # where an error is rescued and logged, so it must not stop romad as an
 # error.
 class RomadSignalTest < Test::Unit::TestCase
@@ -13,38 +14,57 @@ class RomadSignalTest < Test::Unit::TestCase
   def setup
     FileUtils.rm_rf(DEFAULT_NODES.map { |node| "#{Roma::Config::STORAGE_PATH}/#{node}" })
     system("#{ruby_path} #{roma_path} mkroute #{DEFAULT_NODES.join(' ')} -d 3 --replication_in_host >> #{SHELL_LOG} 2>&1")
-    @pids = DEFAULT_NODES.map { |node| spawn_romad(node) }
-    wait_until_up(DEFAULT_NODES)
+    @pids = []
   end
 
   def teardown
     @pids.each do |pid|
       Process.kill(:INT, pid)
       Process.kill(:KILL, pid) unless wait_exit(pid)
-    rescue Errno::ESRCH, Errno::ECHILD
+    rescue Errno::ESRCH
     end
     wait_until_down(DEFAULT_NODES)
   end
 
-  def spawn_romad(node)
-    host, port = node.split('_')
-    command = [ruby_path]
-    command.push('-r', "#{test_dir}/start_coverage") if ENV['COVERAGE']
-    command.push(romad_path, host, '-p', port, '--config', "#{test_dir}/#{DEFAULT_CONFIG}",
-                 '--replication_in_host')
-    Process.spawn(*command, %i(out err) => [SHELL_LOG, 'a'])
+  # Starts the nodes. The first one is a daemon if +daemon+.
+  def boot(daemon:)
+    @pids << (daemon ? start_daemon(DEFAULT_NODES[0]) : spawn_romad(DEFAULT_NODES[0]))
+    @pids << spawn_romad(DEFAULT_NODES[1])
+    wait_until_up(DEFAULT_NODES)
   end
 
-  # Returns the status of the process +pid+ once it exits, or nil if it
-  # doesn't within STOP_TIMEOUT_SEC.
+  def romad_args(node)
+    host, port = node.split('_')
+    [ruby_path, romad_path, host, '-p', port, '--config', "#{test_dir}/#{DEFAULT_CONFIG}",
+     '--replication_in_host']
+  end
+
+  def spawn_romad(node)
+    command = romad_args(node)
+    command.insert(1, '-r', "#{test_dir}/start_coverage") if ENV['COVERAGE']
+    pid = Process.spawn(*command, %i(out err) => [SHELL_LOG, 'a'])
+    Process.detach(pid)
+    pid
+  end
+
+  # Returns the pid of the daemon, which romad writes to the standard error.
+  def start_daemon(node)
+    _, err, status = Open3.capture3(*romad_args(node), '-d')
+    assert_true status.success?, err
+    err[/^\d+$/].to_i
+  end
+
+  # Waits until the process +pid+ exits, and returns false if it doesn't in
+  # STOP_TIMEOUT_SEC.
   def wait_exit(pid)
     deadline = Time.now + STOP_TIMEOUT_SEC
     while Time.now < deadline
-      _, status = Process.wait2(pid, Process::WNOHANG)
-      return status if status
+      Process.kill(0, pid)
       sleep 0.05
     end
-    nil
+    false
+  rescue Errno::ESRCH
+    true
   end
 
   # Sends requests to +node+ from some connections until the block returns.
@@ -70,13 +90,23 @@ class RomadSignalTest < Test::Unit::TestCase
     loaders.each(&:join)
   end
 
-  data('INT' => :INT, 'TERM' => :TERM)
-  def test_stop_by_signal_under_load(signal)
-    status = under_load(DEFAULT_NODES[0]) do
+  def stopped_logs(node)
+    File.read("#{Roma::Config::LOG_PATH}/#{node}.log").scan("Romad has stopped: #{node}").size
+  end
+
+  data('INT' => [:INT, false], 'TERM' => [:TERM, false],
+       'INT, daemon' => [:INT, true], 'TERM, daemon' => [:TERM, true])
+  def test_stop_by_signal_under_load(data)
+    signal, daemon = data
+    boot(daemon: daemon)
+    node = DEFAULT_NODES[0]
+    stopped = stopped_logs(node)
+    exited = under_load(node) do
       Process.kill(signal, @pids[0])
       wait_exit(@pids[0])
     end
-    assert_not_nil status, "romad didn't stop by #{signal} in #{STOP_TIMEOUT_SEC} seconds"
-    assert_true status.success?
+    assert_true exited, "romad didn't stop by #{signal} in #{STOP_TIMEOUT_SEC} seconds"
+    # The storages are closed.
+    assert_equal stopped + 1, stopped_logs(node)
   end
 end
