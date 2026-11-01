@@ -58,7 +58,8 @@ class StreamWriterTest < Test::Unit::TestCase
 end #  end of StreamWriterTest class
 
 # Checks that data reaches the replica cluster. The replies and argument
-# checks of switch_replication are covered by test_sys_command_romad.rb.
+# checks of switch_replication are covered by
+# test/roma/command/test_system_command_receiver_romad.rb.
 class ClusterReplicationTest < Test::Unit::TestCase
   self.test_order = :defined
   include StreamWriterTests

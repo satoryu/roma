@@ -55,3 +55,9 @@ class FakeKVS
     s.close
   end
 end
+
+module FakeKVSHelper
+  def fake_kvs
+    FakeKVS.new.tap { |kvs| @nodes << kvs }
+  end
+end

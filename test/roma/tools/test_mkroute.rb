@@ -1,0 +1,59 @@
+require 'test_helper'
+require 'stringio'
+require 'tool_test_helper'
+require 'roma/routing/routing_data'
+require 'roma/tools/mkroute'
+
+class MkrouteTest < Test::Unit::TestCase
+  include ToolTestHelper
+
+  def mkroute(nodes, **opts)
+    out = StringIO.new
+    Roma::Tools::Mkroute.new(out: out, dir: @dir).create(nodes, **opts)
+    out.string
+  end
+
+  def load_route(nid)
+    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{nid}.route"))
+  end
+
+  def test_create
+    out = mkroute(%w(host1:11211 host2_11211), divide_bits: 3)
+    assert_equal "nodes => [\"host1_11211\", \"host2_11211\"]\nRouting table has created.\n", out
+    %w(host1_11211 host2_11211).each do |nid|
+      rd = load_route(nid)
+      assert_equal %w(host1_11211 host2_11211), rd.nodes
+      assert_equal [32, 3, 2], [rd.dgst_bits, rd.div_bits, rd.rn]
+      assert_equal 8, rd.v_idx.size
+    end
+  end
+
+  def test_options
+    mkroute(%w(host1_1 host2_1 host3_1), hash_bits: 16, divide_bits: 4, redundancy: 3)
+    rd = load_route('host1_1')
+    assert_equal [16, 4, 3], [rd.dgst_bits, rd.div_bits, rd.rn]
+  end
+
+  def test_replication_in_host
+    mkroute(%w(host1_1 host1_2), divide_bits: 3, replication_in_host: true)
+    load_route('host1_1').v_idx.each_value { |nids| assert_equal 2, nids.size }
+  end
+
+  # Without replication_in_host, a host doesn't hold the same data twice.
+  def test_without_replication_in_host
+    mkroute(%w(host1_1 host1_2 host2_1), divide_bits: 3)
+    load_route('host1_1').v_idx.each_value do |nids|
+      assert_equal nids.size, nids.map { |nid| nid.split('_').first }.uniq.size
+    end
+  end
+
+  data('hash bits less than divide bits' => [{ hash_bits: 8, divide_bits: 9 }, 'The hash bits should be divide bits or more.'],
+       'divide bits over 32' => [{ hash_bits: 40, divide_bits: 33 }, 'The upper bound of divide bits is 32.'],
+       'fewer nodes than redundancy' => [{ redundancy: 3 }, 'The node-id number should be redundant number or more.'])
+  def test_invalid_arguments(data)
+    opts, message = data
+    error = assert_raise(Roma::Tools::Error) { mkroute(%w(host1_1 host2_1), **opts) }
+    assert_equal message, error.message
+    assert_equal [], Dir.children(@dir)
+  end
+end
