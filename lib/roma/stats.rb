@@ -16,7 +16,7 @@ module Roma
     attr_accessor :name
     attr_accessor :verbose
     attr_accessor :enabled_repetition_host_in_routing
-    alias :rep_host :enabled_repetition_host_in_routing
+    alias :replication_in_host :enabled_repetition_host_in_routing
     attr_accessor :disabled_cmd_protect
 
     # proc mode
@@ -70,7 +70,7 @@ module Roma
     attr_accessor :spushv_read_timeout
     attr_accessor :reqpushv_timeout_count
 
-    attr_accessor :routing_trans_timeout
+    attr_accessor :routing_transaction_timeout
 
     # for GUI tool
     attr_accessor :gui_run_snapshot
@@ -119,7 +119,7 @@ module Roma
       @spushv_vlength_warn = 1024 * 1024 # 1MB
       @spushv_read_timeout = 100
       @reqpushv_timeout_count = 300 # 0.1 * 300 sec
-      @routing_trans_timeout = 3600 * 3 # 3hr
+      @routing_transaction_timeout = 3600 * 3 # 3hr
       @log_shift_size = 1048576
       @log_shift_age = 0
       @log_level = :debug
@@ -137,7 +137,7 @@ module Roma
       ret['stats.daemon'] = @daemon
       ret['stats.name'] = @name
       ret['stats.verbose'] = @verbose
-      ret['stats.enabled_repetition_host_in_routing'] = rep_host
+      ret['stats.enabled_repetition_host_in_routing'] = replication_in_host
       ret['stats.run_recover'] = @run_recover
       ret['stats.run_sync_routing'] = @run_sync_routing
       ret['stats.run_iterate_storage'] = @run_iterate_storage
@@ -170,7 +170,7 @@ module Roma
       ret['stats.spushv_vlength_warn'] = @spushv_vlength_warn
       ret['stats.spushv_read_timeout'] = @spushv_read_timeout
       ret['stats.reqpushv_timeout_count'] = @reqpushv_timeout_count
-      ret['stats.routing_trans_timeout'] = @routing_trans_timeout
+      ret['stats.routing_transaction_timeout'] = @routing_transaction_timeout
       ret['stats.log_shift_size'] = @log_shift_size
       ret['stats.log_shift_age'] = @log_shift_age
       ret['stats.log_level'] = @log_level

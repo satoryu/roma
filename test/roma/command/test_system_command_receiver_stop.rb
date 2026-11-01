@@ -6,8 +6,8 @@ require 'command_test_harness'
 # loop: balse, shutdown, shutdown_self and restart, with their relayed
 # versions, and quit.
 class SystemCommandReceiverStopTest < Test::Unit::TestCase
-  NID = CommandTestHarness::NID
-  OTHER_NID = CommandTestHarness::OTHER_NID
+  NODE_ID = CommandTestHarness::NODE_ID
+  OTHER_NODE_ID = CommandTestHarness::OTHER_NODE_ID
 
   def setup
     @conn = CommandTestHarness.new
@@ -19,7 +19,7 @@ class SystemCommandReceiverStopTest < Test::Unit::TestCase
   end
 
   def replies(reply)
-    "#{{ OTHER_NID => reply, NID => reply }}\r\n"
+    "#{{ OTHER_NODE_ID => reply, NODE_ID => reply }}\r\n"
   end
 
   def assert_stopped

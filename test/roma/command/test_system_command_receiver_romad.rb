@@ -5,8 +5,8 @@ require 'command_test_harness'
 # Unit tests for the system commands that work on this node's romad: the
 # write-behind files, cluster replication, storages and node information.
 class SystemCommandReceiverRomadTest < Test::Unit::TestCase
-  NID = CommandTestHarness::NID
-  OTHER_NID = CommandTestHarness::OTHER_NID
+  NODE_ID = CommandTestHarness::NODE_ID
+  OTHER_NODE_ID = CommandTestHarness::OTHER_NODE_ID
 
   def setup
     @conn = CommandTestHarness.new
@@ -18,7 +18,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   end
 
   def replies(reply, other: 'STORED')
-    "#{{ OTHER_NID => other, NID => reply }}\r\n"
+    "#{{ OTHER_NODE_ID => other, NODE_ID => reply }}\r\n"
   end
 
   def test_version
@@ -63,10 +63,10 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
 
   def test_writebehind_get_path
     @conn.relay_reply = 'wb/localhost_11212/roma'
-    assert_equal replies("wb/#{NID}/roma", other: 'wb/localhost_11212/roma'),
+    assert_equal replies("wb/#{NODE_ID}/roma", other: 'wb/localhost_11212/roma'),
                  @conn.request('writebehind_get_path roma')
     assert_equal ["rwritebehind_get_path roma\r\n"], @conn.broadcasts
-    assert_equal "wb/#{NID}/roma\r\n", @conn.request('rwritebehind_get_path roma')
+    assert_equal "wb/#{NODE_ID}/roma\r\n", @conn.request('rwritebehind_get_path roma')
   end
 
   def test_writebehind_get_current_file

@@ -10,13 +10,13 @@ module Roma
       attr_accessor :last_access
 
       def post_init
-        @rbuf = ''
+        @read_buffer = ''
         @connected = true
         @last_access = Time.now
       end
       
       def receive_data(data)
-        @rbuf << data
+        @read_buffer << data
         @fiber.resume
       rescue =>e
         Roma::Logging::RLogger.instance.error("#{__FILE__}:#{__LINE__}:#{e.inspect} #{$@}")
@@ -35,9 +35,9 @@ module Roma
       end
 
       def pop(size)
-        if @rbuf.size >= size
-          r = @rbuf[0..size-1]
-          @rbuf = @rbuf[size..-1]
+        if @read_buffer.size >= size
+          r = @read_buffer[0..size-1]
+          @read_buffer = @read_buffer[size..-1]
           r
         else
           nil
@@ -50,7 +50,7 @@ module Roma
           if d
             return d
           else
-            remain = size - @rbuf.size
+            remain = size - @read_buffer.size
             Fiber.yield(remain)
           end
         end
@@ -59,10 +59,10 @@ module Roma
 
       def gets
         while(@connected) do
-          if idx = @rbuf.index("\n")
+          if idx = @read_buffer.index("\n")
             return pop(idx+1)
           else
-            Fiber.yield(@rbuf.size)
+            Fiber.yield(@read_buffer.size)
           end
         end
         nil

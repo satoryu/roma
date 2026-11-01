@@ -8,8 +8,8 @@ require 'command_test_harness'
 # replies with the result of each node. rset_<name> only changes the setting
 # on the node that receives it.
 class SystemCommandReceiverTest < Test::Unit::TestCase
-  NID = CommandTestHarness::NID
-  OTHER_NID = CommandTestHarness::OTHER_NID
+  NODE_ID = CommandTestHarness::NODE_ID
+  OTHER_NODE_ID = CommandTestHarness::OTHER_NODE_ID
 
   def setup
     @conn = CommandTestHarness.new
@@ -21,14 +21,14 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
 
   # The reply of set_<name> when every node replied +reply+.
   def relayed(reply)
-    "#{{ OTHER_NID => 'STORED', NID => reply }}\r\n"
+    "#{{ OTHER_NODE_ID => 'STORED', NODE_ID => reply }}\r\n"
   end
 
   # Settings kept in Roma::Stats:
   #   name => [attribute, value, value stored, invalid value]
   STATS_SETTINGS = {
     'hilatency_warn_time' => [:hilatency_warn_time, '2.5', 2.5, '0'],
-    'routing_trans_timeout' => [:routing_trans_timeout, '60', 60.0, '0'],
+    'routing_trans_timeout' => [:routing_transaction_timeout, '60', 60.0, '0'],
     'spushv_read_timeout' => [:spushv_read_timeout, '10', 10, '0'],
     'reqpushv_timeout_count' => [:reqpushv_timeout_count, '5', 5, '-1'],
     'spushv_klength_warn' => [:spushv_klength_warn, '2048', 2048, '0'],
@@ -124,18 +124,18 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
 
   def test_switch_failover
     @conn.relay_reply = 'ENABLED'
-    assert_equal "#{{ OTHER_NID => 'ENABLED', NID => 'ENABLED' }}\r\n", @conn.request('switch_failover on')
+    assert_equal "#{{ OTHER_NODE_ID => 'ENABLED', NODE_ID => 'ENABLED' }}\r\n", @conn.request('switch_failover on')
     assert_true @conn.routing_table.enabled_failover
     assert_equal ["rswitch_failover on\r\n"], @conn.broadcasts
 
     @conn.relay_reply = 'DISABLED'
-    assert_equal "#{{ OTHER_NID => 'DISABLED', NID => 'DISABLED' }}\r\n", @conn.request('switch_failover off')
+    assert_equal "#{{ OTHER_NODE_ID => 'DISABLED', NODE_ID => 'DISABLED' }}\r\n", @conn.request('switch_failover off')
     assert_false @conn.routing_table.enabled_failover
   end
 
   def test_switch_failover_with_invalid_value
     @conn.relay_reply = 'NOTSWITCHED'
-    assert_equal "#{{ OTHER_NID => 'NOTSWITCHED', NID => 'NOTSWITCHED' }}\r\n",
+    assert_equal "#{{ OTHER_NODE_ID => 'NOTSWITCHED', NODE_ID => 'NOTSWITCHED' }}\r\n",
                  @conn.request('switch_failover maybe')
     assert_false @conn.routing_table.enabled_failover
     assert_equal "CLIENT_ERROR number of arguments\r\n", @conn.request('switch_failover')
@@ -162,7 +162,7 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
   def test_wb_command_map
     reply = @conn.request('wb_command_map {:set=>1,:delete=>2}')
     map = { set: 1, delete: 2 }
-    assert_equal "#{{ OTHER_NID => 'STORED', NID => map.inspect }}\r\n", reply
+    assert_equal "#{{ OTHER_NODE_ID => 'STORED', NODE_ID => map.inspect }}\r\n", reply
     assert_equal ["rwb_command_map {:set=>1,:delete=>2}\r\n"], @conn.broadcasts
     assert_equal map, @conn.stats.wb_command_map
   end
@@ -181,8 +181,8 @@ end
 
 # Commands that change the latency measurement.
 class SystemCommandReceiverLatencyTest < Test::Unit::TestCase
-  NID = CommandTestHarness::NID
-  OTHER_NID = CommandTestHarness::OTHER_NID
+  NODE_ID = CommandTestHarness::NODE_ID
+  OTHER_NODE_ID = CommandTestHarness::OTHER_NODE_ID
 
   def setup
     @conn = CommandTestHarness.new
@@ -193,7 +193,7 @@ class SystemCommandReceiverLatencyTest < Test::Unit::TestCase
   end
 
   def replies(reply)
-    "#{{ OTHER_NID => 'STORED', NID => reply }}\r\n"
+    "#{{ OTHER_NODE_ID => 'STORED', NODE_ID => reply }}\r\n"
   end
 
   def test_set_latency_avg_calc_rule_on
@@ -305,8 +305,8 @@ end
 # Commands that change settings shared by the whole process, such as the
 # connection pools. Each test puts the setting back.
 class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
-  NID = CommandTestHarness::NID
-  OTHER_NID = CommandTestHarness::OTHER_NID
+  NODE_ID = CommandTestHarness::NODE_ID
+  OTHER_NODE_ID = CommandTestHarness::OTHER_NODE_ID
 
   def setup
     @conn = CommandTestHarness.new
@@ -314,7 +314,7 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
       con_pool: [Roma::Messaging::ConPool.instance.maxlength, Roma::Messaging::ConPool.instance.expire_time],
       em_con_pool: [Roma::Event::EMConPool.instance.maxlength, Roma::Event::EMConPool.instance.expire_time],
       connection_expire_time: Roma::Event::Handler.connection_expire_time,
-      ccl: Roma::Event::Handler.get_ccl,
+      continuous_limit: Roma::Event::Handler.get_continuous_limit,
     }
   end
 
@@ -323,12 +323,12 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
     Roma::Messaging::ConPool.instance.maxlength, Roma::Messaging::ConPool.instance.expire_time = @saved[:con_pool]
     Roma::Event::EMConPool.instance.maxlength, Roma::Event::EMConPool.instance.expire_time = @saved[:em_con_pool]
     Roma::Event::Handler.connection_expire_time = @saved[:connection_expire_time]
-    Roma::Event::Handler.set_ccl(@saved[:ccl])
+    Roma::Event::Handler.set_continuous_limit(@saved[:continuous_limit])
     Roma::DNSCache.instance.disable_dns_cache
   end
 
   def replies(reply)
-    "#{{ OTHER_NID => 'STORED', NID => reply }}\r\n"
+    "#{{ OTHER_NODE_ID => 'STORED', NODE_ID => reply }}\r\n"
   end
 
   #   name => [value, how to read the setting]
@@ -374,17 +374,17 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
   def test_set_continuous_limit
     assert_equal replies('STORED'), @conn.request('set_continuous_limit 100:20:200')
     assert_equal ["rset_continuous_limit 100:20:200\r\n"], @conn.broadcasts
-    assert_equal '100:20:200', Roma::Event::Handler.get_ccl
+    assert_equal '100:20:200', Roma::Event::Handler.get_continuous_limit
     assert_equal "STORED\r\n", @conn.request('rset_continuous_limit 10:5:20')
-    assert_equal '10:5:20', Roma::Event::Handler.get_ccl
+    assert_equal '10:5:20', Roma::Event::Handler.get_continuous_limit
   end
 
   data('format' => '100:20', 'rate over 100' => '1:101:2', 'start over full' => '300:20:200')
   def test_set_continuous_limit_with_invalid_value(value)
-    before = Roma::Event::Handler.get_ccl
+    before = Roma::Event::Handler.get_continuous_limit
     assert_equal replies('NOT_STORED'), @conn.request("set_continuous_limit #{value}")
     assert_equal "NOT_STORED\r\n", @conn.request("rset_continuous_limit #{value}")
-    assert_equal before, Roma::Event::Handler.get_ccl
+    assert_equal before, Roma::Event::Handler.get_continuous_limit
   end
 
   data('on' => ['on', true], 'true' => ['true', true], 'off' => ['off', false], 'false' => ['false', false])
@@ -392,7 +392,7 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
     value, enabled = data
     reply = enabled ? 'ENABLED' : 'DISABLED'
     @conn.relay_reply = reply
-    assert_equal "#{{ OTHER_NID => reply, NID => reply }}\r\n", @conn.request("switch_dns_caching #{value}")
+    assert_equal "#{{ OTHER_NODE_ID => reply, NODE_ID => reply }}\r\n", @conn.request("switch_dns_caching #{value}")
     assert_equal ["rswitch_dns_caching #{value}\r\n"], @conn.broadcasts
     assert_equal enabled, Roma::DNSCache.instance.get_stat['dns_caching']
     assert_equal "#{reply}\r\n", @conn.request("rswitch_dns_caching #{value}")

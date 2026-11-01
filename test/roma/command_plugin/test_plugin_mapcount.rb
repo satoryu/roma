@@ -75,7 +75,7 @@ class PluginMapcountTest < Test::Unit::TestCase
   def test_countup_counts_and_replicates
     json('mapcount_countup', 'subkey1')
     assert_equal 1, @conn.stats.write_count
-    assert_equal [PluginTestHarness::REPLICA_NID], @conn.redundant_calls.first[:nodes]
+    assert_equal [PluginTestHarness::REPLICA_NODE_ID], @conn.redundant_calls.first[:nodes]
   end
 
   def test_countup_ms

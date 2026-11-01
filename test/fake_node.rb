@@ -3,7 +3,7 @@ require 'socket'
 # A fake node that receives vnodes pushed by romad (pushv and spushv)
 # and keeps them by vnode id.
 class FakeNode
-  attr_reader :nid, :dat
+  attr_reader :node_id, :dat
   # Every command line received, without "\r\n".
   attr_reader :commands
   # Replies to use instead of the usual ones: 'reqpushv' (PUSHED), 'spushv'
@@ -17,7 +17,7 @@ class FakeNode
     @commands = []
     @replies = {}
     @server = TCPServer.new(0)
-    @nid = "localhost_#{@server.addr[1]}"
+    @node_id = "localhost_#{@server.addr[1]}"
     @thread = Thread.new { accept_loop }
   end
 
@@ -93,13 +93,13 @@ class FakeNode
   end
 
   def receive_dump(sok, len)
-    dmp = String.new
-    while (dmp.length != len.to_i)
-      dmp = dmp + sok.read(len.to_i - dmp.length)
+    dump = String.new
+    while (dump.length != len.to_i)
+      dump = dump + sok.read(len.to_i - dump.length)
     end
     sok.read(2)
     if sok.gets == "END\r\n"
-      return Marshal.load(dmp)
+      return Marshal.load(dump)
     else
       return nil
     end

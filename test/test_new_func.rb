@@ -73,7 +73,7 @@ class NewFuncTest < Test::Unit::TestCase
 
   def test_stat_trans_timeout
     @sock.write("stat trans\r\n")
-    assert_equal("stats.routing_trans_timeout 10800", @sock.gets.chomp)
+    assert_equal("stats.routing_transaction_timeout 10800", @sock.gets.chomp)
     assert_equal("END", @sock.gets.chomp)
   end
 

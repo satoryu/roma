@@ -26,7 +26,7 @@ module Roma
         end
 
         rt = Roma::Routing::RoutingData.create(hash_bits, divide_bits, redundancy, nodes, replication_in_host)
-        nodes.each { |nid| rt.save(File.join(@dir, "#{nid}.route")) }
+        nodes.each { |node_id| rt.save(File.join(@dir, "#{node_id}.route")) }
         @out.puts "nodes => #{nodes}"
         @out.puts "Routing table has created."
       end

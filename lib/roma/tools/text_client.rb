@@ -61,17 +61,17 @@ module Roma
           yield con
         end
       rescue SystemCallError, SocketError, IOError, Timeout::Error, Error => e
-        nid = @node_ids[(@next - 1) % @node_ids.size]
+        node_id = @node_ids[(@next - 1) % @node_ids.size]
         close
         raise e if e.is_a?(Error)
-        raise Error, "#{nid}: #{e.message}"
+        raise Error, "#{node_id}: #{e.message}"
       end
 
       def connection
         return @con if @con
-        nid = @node_ids[@next % @node_ids.size]
+        node_id = @node_ids[@next % @node_ids.size]
         @next += 1
-        host, port = nid.split(/[:_]/)
+        host, port = node_id.split(/[:_]/)
         @con = TCPSocket.new(host, port)
       end
 

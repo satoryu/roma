@@ -17,8 +17,8 @@ module RoutingTableTestHelper
   def make_routing_data(routes, redundancy: 2, nodes: nil)
     routing_data = Roma::Routing::RoutingData.new(32, DIVIDE_BITS, redundancy)
     routing_data.nodes = nodes || routes.flatten.uniq
-    routes.each_with_index do |nids, i|
-      routing_data.routes[VN[i]] = nids
+    routes.each_with_index do |node_ids, i|
+      routing_data.routes[VN[i]] = node_ids
       routing_data.clocks[VN[i]] = 0
     end
     routing_data

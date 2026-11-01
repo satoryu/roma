@@ -33,20 +33,20 @@ module Roma
         rt = Roma::Routing::RoutingTable.new(routing_data) if routing_data
 
         if s.length == 1
-          dmp = rt.dump
-          send_data("#{dmp.length}\r\n#{dmp}\r\nEND\r\n")
+          dump = rt.dump
+          send_data("#{dump.length}\r\n#{dump}\r\nEND\r\n")
         elsif s[1] == 'yaml'
-          dmp = rt.dump_yaml
-          send_data("#{dmp}\r\nEND\r\n")
+          dump = rt.dump_yaml
+          send_data("#{dump}\r\nEND\r\n")
         elsif s[1] == 'json'
-          dmp = rt.dump_json
-          send_data("#{dmp}\r\nEND\r\n")
+          dump = rt.dump_json
+          send_data("#{dump}\r\nEND\r\n")
         elsif s[1] == 'yamlbytes'
-          dmp = rt.dump_yaml
-          send_data("#{dmp.length + 7}\r\nEND\r\n")
+          dump = rt.dump_yaml
+          send_data("#{dump.length + 7}\r\nEND\r\n")
         elsif s[1] == 'bin'
-          dmp = rt.dump_binary
-          send_data("#{dmp.length}\r\n#{dmp}\r\nEND\r\n")
+          dump = rt.dump_binary
+          send_data("#{dump.length}\r\n#{dump}\r\nEND\r\n")
         else
           send_data("CLIENT_ERROR\r\n")
         end
@@ -70,16 +70,16 @@ module Roma
         if s.length < 4
           send_data("CLIENT_ERROR\r\n")
         else
-          nids=[]
-          s[3..-1].each{ |nid| nids << nid }
+          node_ids=[]
+          s[3..-1].each{ |node_id| node_ids << node_id }
           # check irregular node name
-          nids.each{ |nid|
-            if !nid.ascii_only? || nid.empty?
-              send_data("CLIENT_ERROR : irregular node name was input.[\"#{nid}\"]\r\n")
+          node_ids.each{ |node_id|
+            if !node_id.ascii_only? || node_id.empty?
+              send_data("CLIENT_ERROR : irregular node name was input.[\"#{node_id}\"]\r\n")
               return
             end
           }
-          res=@routing_table.set_route(s[1].to_i, s[2].to_i, nids)
+          res=@routing_table.set_route(s[1].to_i, s[2].to_i, node_ids)
           if res.is_a?(Integer)
             send_data("STORED\r\n")
           else
@@ -94,13 +94,13 @@ module Roma
           send_data("CLIENT_ERROR\r\n")
           return
         end
-        clock,nids = @routing_table.search_nodes_with_clk(s[1].to_i)
+        clock,node_ids = @routing_table.search_nodes_with_clk(s[1].to_i)
         if clock == nil
           send_data("END\r\n")
           return
         end
         res = "#{clock-1}"
-        nids.each{ |nid| res << " #{nid}" }
+        node_ids.each{ |node_id| res << " #{node_id}" }
         send_data("#{res}\r\n")
       end
 

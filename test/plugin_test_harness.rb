@@ -20,14 +20,14 @@ require 'roma_test_client'
 # key, and one that forwards commands to it.
 #
 #   klass = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage)
-#   owner = klass.new(nid: PluginTestHarness::REPLICA_NID, nodes: [REPLICA_NID, NID])
-#   conn = klass.new(nodes: [REPLICA_NID, NID]).forward_to(owner)
+#   owner = klass.new(node_id: PluginTestHarness::REPLICA_NODE_ID, nodes: [REPLICA_NODE_ID, NODE_ID])
+#   conn = klass.new(nodes: [REPLICA_NODE_ID, NODE_ID]).forward_to(owner)
 #   conn.request('get key1') # forwarded to owner
 class PluginTestHarness
   include Roma::Command::UtilCommandReceiver
 
-  NID = 'localhost_11211'
-  REPLICA_NID = 'localhost_11212'
+  NODE_ID = 'localhost_11211'
+  REPLICA_NODE_ID = 'localhost_11212'
   HASH_NAME = 'roma'
 
   Stats = Struct.new(:wb_command_map, :read_count, :write_count, :delete_count,
@@ -58,8 +58,8 @@ class PluginTestHarness
     end
     alias search_nodes_for_write search_nodes
 
-    def proc_failed(nid)
-      @failed << nid
+    def proc_failed(node_id)
+      @failed << node_id
     end
 
     def proc_succeed(_nid); end
@@ -73,10 +73,10 @@ class PluginTestHarness
     end
 
     # Without an owner to forward to, only replicas are sent commands.
-    def send_cmd(nid, cmd)
+    def send_cmd(node_id, cmd)
       return super if @owner
-      raise "unexpected command to #{nid}: #{cmd}" unless cmd.start_with?('rdelete ')
-      @sent_commands << [nid, cmd]
+      raise "unexpected command to #{node_id}: #{cmd}" unless cmd.start_with?('rdelete ')
+      @sent_commands << [node_id, cmd]
       'DELETED'
     end
   end
@@ -90,12 +90,12 @@ class PluginTestHarness
 
   attr_reader :stats, :storage, :storages, :redundant_calls, :sent_commands
 
-  def initialize(nid: NID, nodes: [NID, REPLICA_NID])
+  def initialize(node_id: NODE_ID, nodes: [NODE_ID, REPLICA_NODE_ID])
     @romad = Romad.new(ClusterReplicationWriter.new(false))
-    @my_node_id = nid
+    @my_node_id = node_id
     @default_hash_name = HASH_NAME
     @routing_table = RoutingTable.new(nodes)
-    @stats = Stats.new({}, 0, 0, 0, 0, nid)
+    @stats = Stats.new({}, 0, 0, 0, 0, node_id)
     @log = Logger.new(nil)
     @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = [0]
@@ -113,7 +113,7 @@ class PluginTestHarness
 
   # Like #request, but +rest+ is the raw input after the command line.
   def dispatch(line, rest)
-    @rbuf = rest.dup
+    @read_buffer = rest.dup
     @wbuf = String.new
     s = line.split(/ /)
     # Set $roma only while the command runs, so it doesn't leak into other tests.
@@ -132,7 +132,7 @@ class PluginTestHarness
   end
 
   def read_bytes(size)
-    @rbuf.slice!(0, size)
+    @read_buffer.slice!(0, size)
   end
 
   # Sends the commands this node forwards to +owner+, another harness.
@@ -203,7 +203,7 @@ class PluginTestHarness
       @default_hash_name = HASH_NAME
       @used_keys = []
       @connection = Connection.new(harness)
-      @routing_table = RomaTestClient::RoutingTable.new(Roma::Routing::RoutingData.create(32, 3, 2, [NID, REPLICA_NID]))
+      @routing_table = RomaTestClient::RoutingTable.new(Roma::Routing::RoutingData.create(32, 3, 2, [NODE_ID, REPLICA_NODE_ID]))
     end
 
     private

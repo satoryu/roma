@@ -16,8 +16,8 @@ module Roma
       # same list.
       def check(node_ids)
         lists = Hash.new { |h, k| h[k] = [] }
-        errors = node_ids.count do |nid|
-          lists[@client.request(nid, 'nodelist').split] << nid
+        errors = node_ids.count do |node_id|
+          lists[@client.request(node_id, 'nodelist').split] << node_id
           false
         rescue Error => e
           @out.puts "error: #{e.message}"

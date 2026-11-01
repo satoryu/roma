@@ -3,8 +3,8 @@ require 'command_test_harness'
 # Helpers of the unit tests of the command receivers and the plugins,
 # which run the commands on a CommandTestHarness.
 module ReceiverCommandTestHelper
-  NID = CommandTestHarness::NID
-  OTHER_NID = CommandTestHarness::OTHER_NID
+  NODE_ID = CommandTestHarness::NODE_ID
+  OTHER_NODE_ID = CommandTestHarness::OTHER_NODE_ID
 
   def setup
     @conn = CommandTestHarness.new
@@ -17,7 +17,7 @@ module ReceiverCommandTestHelper
 
   # The other nodes' replies come first.
   def replies(reply, other: 'STORED')
-    "#{{ OTHER_NID => other, NID => reply }}\r\n"
+    "#{{ OTHER_NODE_ID => other, NODE_ID => reply }}\r\n"
   end
 
   def queued_events

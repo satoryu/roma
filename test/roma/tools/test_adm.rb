@@ -9,7 +9,7 @@ class AdmTest < Test::Unit::TestCase
 
   def run_adm(cmd, input: '', **opts)
     @out = StringIO.new
-    Roma::Tools::Adm.new(input: StringIO.new(input), out: @out).run(@node.nid, cmd, **opts)
+    Roma::Tools::Adm.new(input: StringIO.new(input), out: @out).run(@node.node_id, cmd, **opts)
   end
 
   def setup

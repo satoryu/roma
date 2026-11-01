@@ -11,7 +11,7 @@ module Roma
       attr :fname
       attr :log_fd
       attr :log_name
-      attr :trans # transaction
+      attr :transactions # transaction
       attr :leave_proc
       attr :lost_proc
       attr :recover_proc
@@ -28,7 +28,7 @@ module Roma
       def initialize(routing_data,fname)
         super(routing_data)
         @routing_data.nodes.sort!
-        @trans={}
+        @transactions={}
         @fname=fname
         @leave_proc=nil
         @lost_proc=nil
@@ -61,8 +61,8 @@ module Roma
         ret
       end
 
-      def set_version(nid,ver)
-        @version_of_nodes[nid] = ver
+      def set_version(node_id,ver)
+        @version_of_nodes[node_id] = ver
         @min_version = find_min_version
       end
 
@@ -98,9 +98,9 @@ module Roma
         @log_fd=File.open(@log_name,"a")
       end
 
-      def write_log_setroute(vnode, clock, nids)
+      def write_log_setroute(vnode, clock, node_ids)
         log="setroute #{vnode} #{clock}"
-        nids.each{ |nid| log << " #{nid}" }
+        node_ids.each{ |node_id| log << " #{node_id}" }
         write_log(log)
       end
 
@@ -111,8 +111,8 @@ module Roma
           open_log
         end
         t = Time.now
-        tstr = "#{t.strftime('%Y-%m-%dT%H:%M:%S')}.#{t.usec}"
-        @log_fd.write("#{tstr} #{line}\n")
+        time_string = "#{t.strftime('%Y-%m-%dT%H:%M:%S')}.#{t.usec}"
+        @log_fd.write("#{time_string} #{line}\n")
         @log_fd.flush
       end
 
@@ -124,12 +124,12 @@ module Roma
         @routing_data.nodes.length >= @routing_data.redundancy
       end
 
-      def can_i_release?(my_node_id, rep_host)
+      def can_i_release?(my_node_id, replication_in_host)
         buf = self.nodes
         buf.delete(my_node_id)
         hosts = []
 
-        unless rep_host
+        unless replication_in_host
           buf.each{ |node|
             host = node.split(/[:_]/)[0]
             hosts << host unless hosts.include?(host)
@@ -158,9 +158,9 @@ module Roma
       # select a vnodes where short of redundancy.
       def select_a_short_vnodes(exclued_nodes)
         ret = []
-        @routing_data.routes.each_pair{|vnode, nids|
-          if nids.length < @routing_data.redundancy && list_include?(nids,exclued_nodes) == false
-            ret << [vnode,nids]
+        @routing_data.routes.each_pair{|vnode, node_ids|
+          if node_ids.length < @routing_data.redundancy && list_include?(node_ids,exclued_nodes) == false
+            ret << [vnode,node_ids]
           end
         }
         ret
@@ -170,10 +170,10 @@ module Roma
       def sample_vnode(without_nodes)
         short_idx = {}
         idx = {}
-        @routing_data.routes.each_pair{|vnode, nids|
-          unless list_include?(nids, without_nodes)
-            idx[vnode] = nids
-            short_idx[vnode] = nids if nids.length < @routing_data.redundancy
+        @routing_data.routes.each_pair{|vnode, node_ids|
+          unless list_include?(node_ids, without_nodes)
+            idx[vnode] = node_ids
+            short_idx[vnode] = node_ids if node_ids.length < @routing_data.redundancy
           end
         }
         idx = short_idx if short_idx.length > 0
@@ -181,40 +181,40 @@ module Roma
         ks = idx.keys
         return nil if ks.length == 0
         vnode = ks[rand(ks.length)]
-        nids = idx[vnode]
-        [vnode, nids]
+        node_ids = idx[vnode]
+        [vnode, node_ids]
       end
 
       def list_include?(list,nodes)
-        nodes.each{|nid|
-          return true if list.include?(nid)
+        nodes.each{|node_id|
+          return true if list.include?(node_id)
         }
         false
       end
       private :list_include?
 
-      def set_route(vnode, clock, nids)
+      def set_route(vnode, clock, node_ids)
         return "#{vnode} is not found." unless @routing_data.routes.key?(vnode)
         @lock.synchronize {
           return "It's old table." if @routing_data.clocks[vnode] > clock
-          nids.each{ |nid|
-            add_node(nid) unless @routing_data.nodes.include?(nid)
+          node_ids.each{ |node_id|
+            add_node(node_id) unless @routing_data.nodes.include?(node_id)
           }
-          @routing_data.routes[vnode] = nids.clone
+          @routing_data.routes[vnode] = node_ids.clone
           clock += 1
           @routing_data.clocks[vnode] = clock
-          @merkle_tree.set(vnode, nids)
-          write_log_setroute(vnode, clock, nids)
+          @merkle_tree.set(vnode, node_ids)
+          write_log_setroute(vnode, clock, node_ids)
           return clock
         }
       end
 
-      def add_node(nid)
-        unless @routing_data.nodes.include?(nid)
-          @routing_data.nodes << nid
+      def add_node(node_id)
+        unless @routing_data.nodes.include?(node_id)
+          @routing_data.nodes << node_id
           @routing_data.nodes.sort!
-          write_log("join #{nid}")
-          set_event(nid, 'join')
+          write_log("join #{node_id}")
+          set_event(node_id, 'join')
         end
       end
 
@@ -227,27 +227,27 @@ module Roma
         @enabled_failover
       end
 
-      def leave(nid)
+      def leave(node_id)
         unless @enabled_failover
           return
         end
-        return unless @routing_data.nodes.include?(nid)
+        return unless @routing_data.nodes.include?(node_id)
 
-        @leave_proc.call(nid) if @leave_proc
-        @routing_data.nodes.delete(nid)
-        @version_of_nodes.delete(nid)
+        @leave_proc.call(node_id) if @leave_proc
+        @routing_data.nodes.delete(node_id)
+        @version_of_nodes.delete(node_id)
         @min_version = find_min_version
 
-        @log.warn("#{nid} just failed.")
-        write_log("leave #{nid}")
-        set_event(nid, __method__)
+        @log.warn("#{node_id} just failed.")
+        write_log("leave #{node_id}")
+        set_event(node_id, __method__)
 
         lost_vnodes=[]
         short_vnodes=[]
         @lock.synchronize {
-          @routing_data.routes.each_pair{ |vnode, nids|
-            buf = nids.clone
-            if buf.delete(nid)
+          @routing_data.routes.each_pair{ |vnode, node_ids|
+            buf = node_ids.clone
+            if buf.delete(node_id)
               set_route_and_inc_clk_inside_sync(vnode, buf)
               if buf.length == 0
                 lost_vnodes << vnode
@@ -269,14 +269,14 @@ module Roma
           @log.error("Short vnodes exist.")
           @recover_proc.call('start_auto_recover_process') if @recover_proc
         end
-        @failure_counts.delete(nid)
+        @failure_counts.delete(node_id)
       end
 
-      def set_event(nid, process)
+      def set_event(node_id, process)
         t = Time.now
-        tstr = "#{t.strftime('%Y-%m-%dT%H:%M:%S')}.#{t.usec}"
+        time_string = "#{t.strftime('%Y-%m-%dT%H:%M:%S')}.#{t.usec}"
         @event.shift if @event.size >= @event_limit_line
-        @event << ("#{tstr} #{process} #{nid}")
+        @event << ("#{time_string} #{process} #{node_id}")
       end
       private :set_event
 
@@ -308,7 +308,7 @@ module Roma
       end
 
       def search_nodes_for_write(vnode)
-        return @trans[vnode][0].clone if @trans.key?(vnode)
+        return @transactions[vnode][0].clone if @transactions.key?(vnode)
         @routing_data.routes[vnode].clone
       rescue
         nil
@@ -323,18 +323,18 @@ module Roma
       end
 
       # +vnode+: vnode-id
-      # +nids+: node-id list
-      def transaction(vnode, nids)
-        return false if @trans.key?(vnode)
-        @trans[vnode]=[nids.clone, Time.now]
+      # +node_ids+: node-id list
+      def transaction(vnode, node_ids)
+        return false if @transactions.key?(vnode)
+        @transactions[vnode]=[node_ids.clone, Time.now]
         true
       end
 
       def commit(vnode)
-        return false unless @trans.key?(vnode)
+        return false unless @transactions.key?(vnode)
         @lock.synchronize {
-          @routing_data.routes[vnode]=@trans[vnode][0]
-          @trans.delete(vnode)
+          @routing_data.routes[vnode]=@transactions[vnode][0]
+          @transactions.delete(vnode)
           clock = @routing_data.clocks[vnode] + 1
           @routing_data.clocks[vnode] = clock
           @merkle_tree.set(vnode, @routing_data.routes[vnode])
@@ -344,12 +344,12 @@ module Roma
       end
 
       def rollback(vnode)
-        @trans.delete(vnode)
+        @transactions.delete(vnode)
       end
 
       # +sec+: elapsed-time
-      def delete_old_trans(sec=3600)
-        @trans.delete_if{|vnode,val| val[1] < Time.now-sec }
+      def delete_old_transactions(sec=3600)
+        @transactions.delete_if{|vnode,val| val[1] < Time.now-sec }
       end
 
       # Returns the status of vnode balance.
@@ -359,11 +359,11 @@ module Roma
         n = (2**divide_bits) / nodes.length
 
         pcount = scount = 0
-        @routing_data.routes.each_pair{ |vnode, nids|
-          next if nids == nil or nids.length == 0
-          if nids[0] == ap
+        @routing_data.routes.each_pair{ |vnode, node_ids|
+          next if node_ids == nil or node_ids.length == 0
+          if node_ids[0] == ap
             pcount += 1
-          elsif nids.include?(ap)
+          elsif node_ids.include?(ap)
             scount += 1
           end
         }
@@ -379,8 +379,8 @@ module Roma
       end
 
       def has_node?(my_node_id)
-        self.each_vnode do |vnode, nids|
-          return true if nids.include?(my_node_id)
+        self.each_vnode do |vnode, node_ids|
+          return true if node_ids.include?(my_node_id)
         end
         false
       end

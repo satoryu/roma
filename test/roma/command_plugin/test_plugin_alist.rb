@@ -7,8 +7,8 @@ require 'plugin_test_harness'
 # take: errors, writes the storage refuses, ranges and forwarding.
 class PluginAlistTest < Test::Unit::TestCase
   HARNESS = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage, Roma::CommandPlugin::PluginAlist)
-  NID = PluginTestHarness::NID
-  OWNER_NID = PluginTestHarness::REPLICA_NID
+  NODE_ID = PluginTestHarness::NODE_ID
+  OWNER_NODE_ID = PluginTestHarness::REPLICA_NODE_ID
 
   # Every command, with its value if it takes one.
   COMMANDS = {
@@ -138,13 +138,13 @@ end
 # Every key belongs to the owner, so this node forwards commands to it.
 class PluginAlistForwardTest < Test::Unit::TestCase
   HARNESS = PluginAlistTest::HARNESS
-  NID = PluginTestHarness::NID
-  OWNER_NID = PluginTestHarness::REPLICA_NID
-  OTHER_NID = 'localhost_11213'
+  NODE_ID = PluginTestHarness::NODE_ID
+  OWNER_NODE_ID = PluginTestHarness::REPLICA_NODE_ID
+  OTHER_NODE_ID = 'localhost_11213'
 
   def setup
-    @owner = HARNESS.new(nid: OWNER_NID, nodes: [OWNER_NID, OTHER_NID])
-    @conn = HARNESS.new(nodes: [OWNER_NID, OTHER_NID]).forward_to(@owner)
+    @owner = HARNESS.new(node_id: OWNER_NODE_ID, nodes: [OWNER_NODE_ID, OTHER_NODE_ID])
+    @conn = HARNESS.new(nodes: [OWNER_NODE_ID, OTHER_NODE_ID]).forward_to(@owner)
   end
 
   def test_forward
@@ -158,7 +158,7 @@ class PluginAlistForwardTest < Test::Unit::TestCase
   # The node it forwards to thinks another node has the key. It doesn't
   # forward the command again.
   def test_forwarded_to_the_wrong_node
-    wrong = HARNESS.new(nid: OWNER_NID, nodes: [OTHER_NID, NID]).forward_to(@owner)
+    wrong = HARNESS.new(node_id: OWNER_NODE_ID, nodes: [OTHER_NODE_ID, NODE_ID]).forward_to(@owner)
     @conn.forward_to(wrong)
     # A command with a multi-line reply, and one with a one-line reply.
     assert_equal "SERVER_ERROR Routing table is inconsistent.\r\n", @conn.request('alist_gets key1')

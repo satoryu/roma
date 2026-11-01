@@ -8,10 +8,10 @@ require 'plugin_test_harness'
 # take: forwarding to the node that has the key, the f* commands that a
 # node receives forwarded, other hashes, write-behind and replication.
 module PluginStorageTestHelper
-  NID = PluginTestHarness::NID
-  OWNER_NID = PluginTestHarness::REPLICA_NID
+  NODE_ID = PluginTestHarness::NODE_ID
+  OWNER_NODE_ID = PluginTestHarness::REPLICA_NODE_ID
   # The other node of the vnodes; not this one.
-  OTHER_NID = 'localhost_11213'
+  OTHER_NODE_ID = 'localhost_11213'
   HARNESS = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage)
 
   # Stands in for a node that can't be reached.
@@ -39,8 +39,8 @@ class PluginStorageForwardTest < Test::Unit::TestCase
   include PluginStorageTestHelper
 
   def setup
-    @owner = HARNESS.new(nid: OWNER_NID, nodes: [OWNER_NID, OTHER_NID])
-    @conn = HARNESS.new(nodes: [OWNER_NID, OTHER_NID]).forward_to(@owner)
+    @owner = HARNESS.new(node_id: OWNER_NODE_ID, nodes: [OWNER_NODE_ID, OTHER_NODE_ID])
+    @conn = HARNESS.new(nodes: [OWNER_NODE_ID, OTHER_NODE_ID]).forward_to(@owner)
   end
 
   def stored(key)
@@ -58,7 +58,7 @@ class PluginStorageForwardTest < Test::Unit::TestCase
     assert_equal "STORED\r\n", @conn.request("#{command} key1 0 0 5", 'value')
     assert_equal expected, stored('key1')
     # The owner sends it to the other node.
-    assert_equal [OTHER_NID], @owner.redundant_calls.last[:nodes]
+    assert_equal [OTHER_NODE_ID], @owner.redundant_calls.last[:nodes]
   end
 
   def test_get
@@ -141,7 +141,7 @@ class PluginStorageForwardedTest < Test::Unit::TestCase
 
   def setup
     # This node isn't in the vnode.
-    @conn = HARNESS.new(nodes: [OWNER_NID, OTHER_NID])
+    @conn = HARNESS.new(nodes: [OWNER_NODE_ID, OTHER_NODE_ID])
   end
 
   data('fget' => ['fget key1', nil], 'fdelete' => ['fdelete key1', nil],
@@ -153,7 +153,7 @@ class PluginStorageForwardedTest < Test::Unit::TestCase
   end
 
   def test_forwarded_commands
-    @conn = HARNESS.new(nodes: [NID, OWNER_NID])
+    @conn = HARNESS.new(nodes: [NODE_ID, OWNER_NODE_ID])
     assert_equal "STORED\r\n", @conn.request('fset key1 0 0 2', '10')
     assert_equal "VALUE key1 0 2\r\n10\r\nEND\r\n", @conn.request('fget key1')
     assert_equal "11\r\n", @conn.request('fincr key1 0 1')
@@ -196,8 +196,8 @@ class PluginStorageHashTest < Test::Unit::TestCase
 
   def test_set_size_of_zredundant
     broadcasts = []
-    @conn.define_singleton_method(:broadcast_cmd) { |cmd| broadcasts << cmd; { OWNER_NID => 'STORED' } }
-    assert_equal "#{{ OWNER_NID => 'STORED', NID => 'STORED' }}\r\n", @conn.request('set_size_of_zredundant 100')
+    @conn.define_singleton_method(:broadcast_cmd) { |cmd| broadcasts << cmd; { OWNER_NODE_ID => 'STORED' } }
+    assert_equal "#{{ OWNER_NODE_ID => 'STORED', NODE_ID => 'STORED' }}\r\n", @conn.request('set_size_of_zredundant 100')
     assert_equal ["rset_size_of_zredundant 100\r\n"], broadcasts
     assert_equal 100, @conn.stats.compression_threshold
     assert_equal "STORED\r\n", @conn.request('rset_size_of_zredundant 200')

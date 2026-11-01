@@ -38,8 +38,8 @@ class CLITest < Test::Unit::TestCase
     $stdout, $stderr = saved
   end
 
-  def load_route(nid)
-    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{nid}.route"))
+  def load_route(node_id)
+    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{node_id}.route"))
   end
 
   def test_commands
@@ -76,7 +76,7 @@ class CLITest < Test::Unit::TestCase
   data('hyphen' => '--replication-in-host', 'underscore' => '--replication_in_host')
   def test_mkroute_replication_in_host(option)
     roma('mkroute', '-d', '3', option, 'host1_1', 'host1_2')
-    load_route('host1_1').routes.each_value { |nids| assert_equal 2, nids.size }
+    load_route('host1_1').routes.each_value { |node_ids| assert_equal 2, node_ids.size }
   end
 
   data('after' => %w(mkroute host1_1 --help), 'before' => %w(--help mkroute), 'help' => %w(help mkroute))
@@ -122,7 +122,7 @@ class CLITest < Test::Unit::TestCase
   def routing_node(*others, redundancy: 1)
     node = FakeNode.new
     @fake_nodes << node
-    @routing_data = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.nid, *others], true)
+    @routing_data = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.node_id, *others], true)
     dump = Marshal.dump(@routing_data)
     node.replies['routingdump'] = "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
     node
@@ -130,7 +130,7 @@ class CLITest < Test::Unit::TestCase
 
   def test_chg_redundancy
     node = routing_node('localhost_1', redundancy: 2)
-    out, _err, status = roma('chg_redundancy', '1', node.nid)
+    out, _err, status = roma('chg_redundancy', '1', node.node_id)
     assert_nil status
     routing_data = YAML.unsafe_load(out)
     assert_equal 1, routing_data.redundancy
@@ -152,10 +152,10 @@ class CLITest < Test::Unit::TestCase
   def test_multi_commander
     other = FakeNode.new
     @fake_nodes << other
-    node = routing_node(other.nid)
-    out, _err, status = roma('multi_commander', node.nid, 'stats', 'run')
+    node = routing_node(other.node_id)
+    out, _err, status = roma('multi_commander', node.node_id, 'stats', 'run')
     assert_nil status
-    assert_equal @routing_data.nodes.map { |nid| "****** #{nid}\r\nSTORED\r\n" }.join, out
+    assert_equal @routing_data.nodes.map { |node_id| "****** #{node_id}\r\nSTORED\r\n" }.join, out
     assert_equal ['stats run'], other.commands
   end
 
@@ -174,7 +174,7 @@ class CLITest < Test::Unit::TestCase
     node = adm_node
     # FakeNode answers the line of the value.
     node.replies['set'] = proc { '' }
-    out, _err, status = roma('adm', 'set', 'key1', '0', '0', '5', '-p', node.nid.split('_')[1], '-v', 'value')
+    out, _err, status = roma('adm', 'set', 'key1', '0', '0', '5', '-p', node.node_id.split('_')[1], '-v', 'value')
     assert_nil status
     assert_equal "STORED\n", out
     assert_equal ['set key1 0 0 5', 'value'], node.commands
@@ -182,14 +182,14 @@ class CLITest < Test::Unit::TestCase
 
   def test_adm_host
     node = adm_node
-    out, _err, _status = roma('adm', 'whoami', '--host', '127.0.0.1', '--port', node.nid.split('_')[1])
+    out, _err, _status = roma('adm', 'whoami', '--host', '127.0.0.1', '--port', node.node_id.split('_')[1])
     assert_equal "ROMA\n", out
   end
 
   def test_adm_balse
     node = adm_node
     node.replies['balse'] = "BYE\r\n"
-    out, _err, status = roma('adm', 'balse', '-y', '-p', node.nid.split('_')[1])
+    out, _err, status = roma('adm', 'balse', '-y', '-p', node.node_id.split('_')[1])
     assert_nil status
     assert_equal "BYE\nSTORED\nSTORED\n", out
   end
@@ -257,16 +257,16 @@ class CLITest < Test::Unit::TestCase
 
   def test_check_nodes
     node = adm_node
-    node.replies['nodelist'] = "#{node.nid}\r\n"
-    out, _err, status = roma('check_nodes', node.nid)
+    node.replies['nodelist'] = "#{node.node_id}\r\n"
+    out, _err, status = roma('check_nodes', node.node_id)
     assert_nil status
-    assert_equal "#{node.nid} => #{node.nid} (1 nodes)\n", out
+    assert_equal "#{node.node_id} => #{node.node_id} (1 nodes)\n", out
   end
 
   def test_check_nodes_failed
     node = adm_node
-    node.replies['nodelist'] = "#{node.nid}\r\n"
-    out, err, status = roma('check_nodes', node.nid, 'localhost_1')
+    node.replies['nodelist'] = "#{node.node_id}\r\n"
+    out, err, status = roma('check_nodes', node.node_id, 'localhost_1')
     assert_equal 1, status
     assert_match(/\Aerror: localhost_1: /, out)
     assert_equal "The nodes don't answer the same nodes.\n", err
@@ -425,9 +425,9 @@ class CLITest < Test::Unit::TestCase
   # bin/roma runs the CLI and exits with its status.
   def test_command_to_nodes
     node = routing_node
-    out, err, status = run_roma('multi_commander', node.nid, 'whoami')
+    out, err, status = run_roma('multi_commander', node.node_id, 'whoami')
     assert_true status.success?, err
-    assert_equal "****** #{node.nid}\r\nROMA\r\n", out
+    assert_equal "****** #{node.node_id}\r\nROMA\r\n", out
   end
 
   def test_command

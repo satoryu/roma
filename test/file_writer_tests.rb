@@ -59,7 +59,7 @@ module FileWriterTests
     path = "wb_test/roma0_11211/roma/#{Time.now.strftime('%Y%m%d')}/"
 
     # rottime's usec have some value,from instance was created
-    rt = fw.instance_eval { @rottime }
+    rt = fw.instance_eval { @rotation_time }
     assert_not_equal(0, rt.hour + rt.min + rt.sec + rt.usec)
     # formatting execute in today's date
     assert_equal(Time.now.day, rt.day)
@@ -67,7 +67,7 @@ module FileWriterTests
     assert(!File.exist?("#{path}/0.wb"))
     fw.write('roma', 1, 'key', 'val')
     # Open when somenthing to write,and in same timing rottime is updated
-    rt = fw.instance_eval { @rottime }
+    rt = fw.instance_eval { @rotation_time }
     # In this time, under of date become "0"
     assert_equal(0, rt.hour + rt.min + rt.sec + rt.usec)
     # date become tomorrow
@@ -80,14 +80,14 @@ module FileWriterTests
     assert(!File.exist?("#{path}/1.wb"))
 
     # set rottime to now forcibly
-    fw.instance_eval { @rottime = Time.now }
+    fw.instance_eval { @rotation_time = Time.now }
     # confriming to change rottime
-    assert_not_equal(rt, fw.instance_eval { @rottime })
+    assert_not_equal(rt, fw.instance_eval { @rotation_time })
     # When something write, rotation is occured
     fw.write('roma', 1, 'key', 'val')
     assert(File.exist?("#{path}/1.wb"))
     # rottime turn back because of test shold not step over the day.
-    assert_equal(rt, fw.instance_eval { @rottime })
+    assert_equal(rt, fw.instance_eval { @rotation_time })
   end
 
   # rotation test from outside

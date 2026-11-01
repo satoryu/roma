@@ -226,9 +226,9 @@ module Roma
       end
 
       # switch_replication command is change status of cluster replication
-      # if you want to activate, assign 1 nid(addr_port) of replication cluster as argument.
-      # if you want to copy existing data, add the 'all' after nid as argument
-      # switch_replication <true|false> [nid] [copy target]
+      # if you want to activate, assign 1 node_id(addr_port) of replication cluster as argument.
+      # if you want to copy existing data, add the 'all' after node_id as argument
+      # switch_replication <true|false> [node_id] [copy target]
       def ev_switch_replication(s)
         unless s.length.between?(2, 4)
           return send_data("CLIENT_ERROR number of arguments\r\n")
@@ -268,7 +268,7 @@ module Roma
         send_data("#{e.class}: #{e}\r\n")
       end
 
-      # rswitch_replication <true|false> [nid] [copy target]
+      # rswitch_replication <true|false> [node_id] [copy target]
       def ev_rswitch_replication(s)
         unless s.length.between?(2, 4)
           return send_data("CLIENT_ERROR number of arguments\r\n")
@@ -735,7 +735,7 @@ module Roma
 
         res = broadcast_cmd("rset_continuous_limit #{s[1]}\r\n")
 
-        if Event::Handler.set_ccl(s[1])
+        if Event::Handler.set_continuous_limit(s[1])
           res[@stats.my_node_id] = "STORED"
         else
           res[@stats.my_node_id] = "NOT_STORED"
@@ -747,7 +747,7 @@ module Roma
         if s.length < 2
           return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n")
         end
-        if Event::Handler.set_ccl(s[1])
+        if Event::Handler.set_continuous_limit(s[1])
           send_data("STORED\r\n")
         else
           send_data("NOT_STORED\r\n")
@@ -959,7 +959,7 @@ module Roma
           return send_data("CLIENT_ERROR time value must be lager than 0\r\n")
         end
         res = broadcast_cmd("rset_routing_trans_timeout #{s[1]}\r\n")
-        @stats.routing_trans_timeout = s[1].to_f
+        @stats.routing_transaction_timeout = s[1].to_f
         res[@stats.my_node_id] = "STORED"
 
         send_data("#{res}\r\n")
@@ -973,7 +973,7 @@ module Roma
         if s[1].to_f <= 0
           return send_data("CLIENT_ERROR time value must be lager than 0\r\n")
         end
-        @stats.routing_trans_timeout = s[1].to_f
+        @stats.routing_transaction_timeout = s[1].to_f
 
         send_data("STORED\r\n")
       end

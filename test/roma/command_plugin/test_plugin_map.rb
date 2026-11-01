@@ -38,7 +38,7 @@ class PluginMapTest < Test::Unit::TestCase
     assert_equal 1, @conn.stats.write_count
     assert_equal 1, @conn.redundant_calls.length
     call = @conn.redundant_calls.first
-    assert_equal [PluginTestHarness::REPLICA_NID], call[:nodes]
+    assert_equal [PluginTestHarness::REPLICA_NODE_ID], call[:nodes]
     assert_equal 'key1', call[:key]
     assert_equal({ 'mapkey1' => 'value1' }, Marshal.load(call[:value]))
   end

@@ -4,8 +4,8 @@ require 'fake_node'
 
 # Unit tests for the background processes of romad (Roma::AsyncProcess).
 module AsyncProcessTestHelper
-  NID = AsyncProcessHarness::NID
-  OTHER_NID = AsyncProcessHarness::OTHER_NID
+  NODE_ID = AsyncProcessHarness::NODE_ID
+  OTHER_NODE_ID = AsyncProcessHarness::OTHER_NODE_ID
 
   def teardown
     @h&.close
@@ -134,7 +134,7 @@ class AsyncProcessEventTest < Test::Unit::TestCase
        'recover' => [:asyncev_start_recover_process, :acquired_recover_process, :run_recover])
   def test_start_process(data)
     event, process, flag = data
-    @h.stats.join_ap = OTHER_NID if flag == :run_join
+    @h.stats.join_ap = OTHER_NODE_ID if flag == :run_join
     @h.call(event, nil)
     assert_equal process, @h.calls.pop
     wait_until("#{flag} to be cleared") { !@h.stats.send(flag) }
@@ -175,14 +175,14 @@ class AsyncProcessEventTest < Test::Unit::TestCase
   end
 
   def test_reqpushv
-    @h.call(:asyncev_reqpushv, ['536870912', OTHER_NID, 'true'])
-    assert_equal [:sync_a_vnode, 536_870_912, OTHER_NID, true], @h.calls.pop
+    @h.call(:asyncev_reqpushv, ['536870912', OTHER_NODE_ID, 'true'])
+    assert_equal [:sync_a_vnode, 536_870_912, OTHER_NODE_ID, true], @h.calls.pop
     wait_until('the storage iteration to finish') { !@h.stats.run_iterate_storage }
   end
 
   def test_reqpushv_while_iterating_storage
     @h.stats.run_iterate_storage = true
-    @h.call(:asyncev_reqpushv, ['0', OTHER_NID, 'false'])
+    @h.call(:asyncev_reqpushv, ['0', OTHER_NODE_ID, 'false'])
     assert_true @h.calls.empty?
   end
 
@@ -215,8 +215,8 @@ class AsyncProcessEventTest < Test::Unit::TestCase
        'zredundant' => [:asyncev_zredundant, "rzset key\eroma 1 2 0 5\r\nvalue\r\n"])
   def test_redundant(data)
     event, cmd = data
-    assert_true @h.call(event, [OTHER_NID, 'roma', 'key', 1, 2, 0, 'value'])
-    assert_equal [[OTHER_NID, cmd]], @h.sent
+    assert_true @h.call(event, [OTHER_NODE_ID, 'roma', 'key', 1, 2, 0, 'value'])
+    assert_equal [[OTHER_NODE_ID, cmd]], @h.sent
   end
 
   data('redundant' => :asyncev_redundant, 'zredundant' => :asyncev_zredundant)
@@ -230,22 +230,22 @@ class AsyncProcessEventTest < Test::Unit::TestCase
   def test_redundant_failed(reply)
     @h.send_cmd_reply = reply
     # Retried.
-    assert_false @h.call(:asyncev_redundant, [OTHER_NID, 'roma', 'key', 1, 2, 0, 'value'])
+    assert_false @h.call(:asyncev_redundant, [OTHER_NODE_ID, 'roma', 'key', 1, 2, 0, 'value'])
   end
 
   def test_zredundant_failed
     @h.send_cmd_reply = nil
     # Retried.
-    assert_false @h.call(:asyncev_zredundant, [OTHER_NID, 'roma', 'key', 1, 2, 0, 'value'])
+    assert_false @h.call(:asyncev_zredundant, [OTHER_NODE_ID, 'roma', 'key', 1, 2, 0, 'value'])
   end
 
   def test_rdelete
-    assert_true @h.call(:asyncev_rdelete, [OTHER_NID, 'roma', 'key', 3])
-    assert_equal [[OTHER_NID, "rdelete key\eroma 3\r\n"]], @h.sent
+    assert_true @h.call(:asyncev_rdelete, [OTHER_NODE_ID, 'roma', 'key', 3])
+    assert_equal [[OTHER_NODE_ID, "rdelete key\eroma 3\r\n"]], @h.sent
 
     assert_true @h.call(:asyncev_rdelete, ['localhost_99999', 'roma', 'key', 3])
     @h.send_cmd_reply = nil
-    assert_false @h.call(:asyncev_rdelete, [OTHER_NID, 'roma', 'key', 3])
+    assert_false @h.call(:asyncev_rdelete, [OTHER_NODE_ID, 'roma', 'key', 3])
   end
 end
 
@@ -268,12 +268,12 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
 
     private
 
-    def req_push_a_vnode(vnode, src_nid, is_primary)
-      @requests << [vnode, src_nid, is_primary]
+    def req_push_a_vnode(vnode, src_node_id, is_primary)
+      @requests << [vnode, src_node_id, is_primary]
       return @push_reply unless @push_reply == true
-      nids = @routing_table.search_nodes(vnode) - [@stats.my_node_id]
-      is_primary || @always_primary ? nids.unshift(@stats.my_node_id) : nids.push(@stats.my_node_id)
-      @routing_table.set_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], nids)
+      node_ids = @routing_table.search_nodes(vnode) - [@stats.my_node_id]
+      is_primary || @always_primary ? node_ids.unshift(@stats.my_node_id) : node_ids.push(@stats.my_node_id)
+      @routing_table.set_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], node_ids)
       true
     end
   end
@@ -283,19 +283,19 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
     @h.always_primary = true
     @h.call(:join_process)
     # Takes vnodes until it is primary of its share: 8 vnodes / 3 nodes.
-    assert_equal :even, @h.routing_table.vnode_balance(NID)
+    assert_equal :even, @h.routing_table.vnode_balance(NODE_ID)
     assert_equal 2, @h.requests.size
-    @h.requests.each { |vnode, src, _| assert_include @h.routing_table.search_nodes(vnode), NID unless src == NID }
+    @h.requests.each { |vnode, src, _| assert_include @h.routing_table.search_nodes(vnode), NODE_ID unless src == NODE_ID }
   end
 
   # It asks for at most as many vnodes as there are.
   def test_join_process_never_primary
     @h = Harness.new(nodes: %w(hosta_1 hostb_1))
-    def @h.req_push_a_vnode(vnode, src_nid, _is_primary)
-      super(vnode, src_nid, false)
+    def @h.req_push_a_vnode(vnode, src_node_id, _is_primary)
+      super(vnode, src_node_id, false)
     end
     @h.call(:join_process)
-    assert_equal :less, @h.routing_table.vnode_balance(NID)
+    assert_equal :less, @h.routing_table.vnode_balance(NODE_ID)
     assert_equal 8, @h.requests.size
   end
 
@@ -309,38 +309,38 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
     @h.instance_variable_set(:@do_join_process, false)
     thread.join
     assert_include @h.slept, 5
-    assert_equal :less, @h.routing_table.vnode_balance(NID)
+    assert_equal :less, @h.routing_table.vnode_balance(NODE_ID)
   end
 
   def test_join_process_without_vnodes_to_take
     # This node is in every vnode.
-    @h = Harness.new(nodes: [NID, 'hosta_1'], vnode_nodes: ['hosta_1', NID])
+    @h = Harness.new(nodes: [NODE_ID, 'hosta_1'], vnode_nodes: ['hosta_1', NODE_ID])
     assert_false @h.call(:join_process)
     assert_equal [], @h.requests
   end
 
   def test_balance_process
-    @h = Harness.new(nodes: [NID, 'hosta_1', 'hostb_1'], vnode_nodes: %w(hosta_1 hostb_1))
+    @h = Harness.new(nodes: [NODE_ID, 'hosta_1', 'hostb_1'], vnode_nodes: %w(hosta_1 hostb_1))
     @h.stats.enabled_repetition_host_in_routing = true
     @h.always_primary = true
     @h.call(:balance_process)
     # Takes vnodes until it is primary of its share: 8 vnodes / 3 nodes.
-    assert_equal :even, @h.routing_table.vnode_balance(NID)
+    assert_equal :even, @h.routing_table.vnode_balance(NODE_ID)
     assert_equal 2, @h.requests.size
   end
 
   def test_acquired_recover_process
     # Every vnode has one node, though it should have two.
-    @h = Harness.new(nodes: [NID, 'hosta_1'], vnode_nodes: ['hosta_1'])
+    @h = Harness.new(nodes: [NODE_ID, 'hosta_1'], vnode_nodes: ['hosta_1'])
     @h.stats.enabled_repetition_host_in_routing = true
     @h.call(:acquired_recover_process)
-    @h.routing_table.each_vnode { |vnode, nids| assert_equal 2, nids.size, "vnode #{vnode}" }
+    @h.routing_table.each_vnode { |vnode, node_ids| assert_equal 2, node_ids.size, "vnode #{vnode}" }
     assert_equal 8, @h.requests.size
     assert_include @h.slept, 1
   end
 
   def test_acquired_recover_process_stops_at_an_error
-    @h = Harness.new(nodes: [NID, 'hosta_1'], vnode_nodes: ['hosta_1'])
+    @h = Harness.new(nodes: [NODE_ID, 'hosta_1'], vnode_nodes: ['hosta_1'])
     @h.stats.enabled_repetition_host_in_routing = true
     @h.push_reply = false
     @h.call(:acquired_recover_process)
@@ -354,12 +354,12 @@ class AsyncProcessPushTest < Test::Unit::TestCase
 
   def setup
     @node = FakeNode.new
-    @h = AsyncProcessHarness.new(nodes: [NID, OTHER_NID, @node.nid], vnode_nodes: [NID, OTHER_NID])
+    @h = AsyncProcessHarness.new(nodes: [NODE_ID, OTHER_NODE_ID, @node.node_id], vnode_nodes: [NODE_ID, OTHER_NODE_ID])
     @vnode = @h.store('key1', 'value1')
   end
 
   def test_push_a_vnode_stream
-    assert_equal 'STORED', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.nid)
+    assert_equal 'STORED', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.node_id)
     assert_equal ["spushv roma #{@vnode}"], @node.commands
     assert_equal ['key1'], @node.dat[@vnode].keys
     assert_equal 'value1', @node.dat[@vnode]['key1'].unpack('NNNNa*').last
@@ -367,12 +367,12 @@ class AsyncProcessPushTest < Test::Unit::TestCase
 
   def test_push_a_vnode_stream_refused
     @node.replies['spushv'] = "SERVER_ERROR busy\r\n"
-    assert_equal 'SERVER_ERROR busy', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.nid)
+    assert_equal 'SERVER_ERROR busy', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.node_id)
   end
 
   def test_push_a_vnode_stream_while_the_storage_is_busy
     @h.storage.set_db_stat(@h.storage.hdiv[@vnode], :safecopy_flushing)
-    assert_equal 'CANCELED', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.nid)
+    assert_equal 'CANCELED', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.node_id)
   end
 
   def test_push_a_vnode_stream_to_a_node_that_is_down
@@ -381,26 +381,26 @@ class AsyncProcessPushTest < Test::Unit::TestCase
   end
 
   def test_sync_a_vnode_adds_the_node
-    assert_true @h.call(:sync_a_vnode, @vnode, @node.nid, false)
+    assert_true @h.call(:sync_a_vnode, @vnode, @node.node_id, false)
     assert_equal ['key1'], @node.dat[@vnode].keys
     # Redundancy is 2, so the new node replaces the last one.
-    assert_equal [NID, @node.nid], @h.routing_table.search_nodes(@vnode)
+    assert_equal [NODE_ID, @node.node_id], @h.routing_table.search_nodes(@vnode)
     clock = @h.routing_table.search_nodes_with_clk(@vnode)[0]
-    assert_equal ["setroute #{@vnode} #{clock - 1} #{NID} #{@node.nid}\r\n"], @h.broadcasts
+    assert_equal ["setroute #{@vnode} #{clock - 1} #{NODE_ID} #{@node.node_id}\r\n"], @h.broadcasts
   end
 
   def test_sync_a_vnode_as_primary
-    assert_true @h.call(:sync_a_vnode, @vnode, @node.nid, true)
-    assert_equal [@node.nid, NID], @h.routing_table.search_nodes(@vnode)
+    assert_true @h.call(:sync_a_vnode, @vnode, @node.node_id, true)
+    assert_equal [@node.node_id, NODE_ID], @h.routing_table.search_nodes(@vnode)
   end
 
   def test_sync_a_vnode_already_in_the_vnode
     # The data is pushed again; the routing doesn't change.
-    @h2 = AsyncProcessHarness.new(nodes: [NID, @node.nid], vnode_nodes: [NID, @node.nid])
+    @h2 = AsyncProcessHarness.new(nodes: [NODE_ID, @node.node_id], vnode_nodes: [NODE_ID, @node.node_id])
     vnode = @h2.store('key1', 'value1')
-    assert_true @h2.call(:sync_a_vnode, vnode, @node.nid, false)
+    assert_true @h2.call(:sync_a_vnode, vnode, @node.node_id, false)
     assert_equal ['key1'], @node.dat[vnode].keys
-    assert_equal [NID, @node.nid], @h2.routing_table.search_nodes(vnode)
+    assert_equal [NODE_ID, @node.node_id], @h2.routing_table.search_nodes(vnode)
     assert_equal [], @h2.broadcasts
   ensure
     @h2&.close
@@ -408,49 +408,49 @@ class AsyncProcessPushTest < Test::Unit::TestCase
 
   def test_sync_a_vnode_failed
     @node.replies['spushv'] = "SERVER_ERROR busy\r\n"
-    assert_false @h.call(:sync_a_vnode, @vnode, @node.nid, false)
-    assert_equal [NID, OTHER_NID], @h.routing_table.search_nodes(@vnode)
+    assert_false @h.call(:sync_a_vnode, @vnode, @node.node_id, false)
+    assert_equal [NODE_ID, OTHER_NODE_ID], @h.routing_table.search_nodes(@vnode)
     # The transaction was rolled back.
-    assert_true @h.routing_table.transaction(@vnode, [NID])
+    assert_true @h.routing_table.transaction(@vnode, [NODE_ID])
   end
 
   def test_sync_a_vnode_for_release
-    assert_true @h.call(:sync_a_vnode_for_release, @vnode, @node.nid, [@node.nid, OTHER_NID])
+    assert_true @h.call(:sync_a_vnode_for_release, @vnode, @node.node_id, [@node.node_id, OTHER_NODE_ID])
     assert_equal ['key1'], @node.dat[@vnode].keys
-    assert_equal [@node.nid, OTHER_NID], @h.routing_table.search_nodes(@vnode)
-    assert_match(/\Asetroute #{@vnode} \d+ #{@node.nid} #{OTHER_NID}\r\n\z/, @h.broadcasts.first)
+    assert_equal [@node.node_id, OTHER_NODE_ID], @h.routing_table.search_nodes(@vnode)
+    assert_match(/\Asetroute #{@vnode} \d+ #{@node.node_id} #{OTHER_NODE_ID}\r\n\z/, @h.broadcasts.first)
   end
 
   data('server error' => ["SERVER_ERROR busy\r\n", :abort], 'other error' => ["NOT_READY\r\n", false])
   def test_sync_a_vnode_for_release_failed(data)
     reply, ret = data
     @node.replies['spushv'] = reply
-    assert_equal ret, @h.call(:sync_a_vnode_for_release, @vnode, @node.nid, [@node.nid, OTHER_NID])
-    assert_equal [NID, OTHER_NID], @h.routing_table.search_nodes(@vnode)
+    assert_equal ret, @h.call(:sync_a_vnode_for_release, @vnode, @node.node_id, [@node.node_id, OTHER_NODE_ID])
+    assert_equal [NODE_ID, OTHER_NODE_ID], @h.routing_table.search_nodes(@vnode)
   end
 
   def test_sync_a_vnode_for_release_to_a_node_in_the_vnode
-    assert_true @h.call(:sync_a_vnode_for_release, @vnode, OTHER_NID, [OTHER_NID])
+    assert_true @h.call(:sync_a_vnode_for_release, @vnode, OTHER_NODE_ID, [OTHER_NODE_ID])
     assert_equal [], @node.commands
   end
 
   def test_req_push_a_vnode
     # This node is in the vnode already, so it doesn't wait for the push.
-    assert_true @h.call(:req_push_a_vnode, @vnode, @node.nid, true)
-    assert_equal ["reqpushv #{@vnode} #{NID} true"], @node.commands
+    assert_true @h.call(:req_push_a_vnode, @vnode, @node.node_id, true)
+    assert_equal ["reqpushv #{@vnode} #{NODE_ID} true"], @node.commands
   end
 
   data('rejected' => "REJECTED\r\n", 'error' => "ERROR\r\n")
   def test_req_push_a_vnode_rejected(reply)
     @node.replies['reqpushv'] = reply
-    assert_equal :rejected, @h.call(:req_push_a_vnode, @vnode, @node.nid, false)
+    assert_equal :rejected, @h.call(:req_push_a_vnode, @vnode, @node.node_id, false)
   end
 
   def test_req_push_a_vnode_time_out
     @h.stats.reqpushv_timeout_count = 3
     other = @h.routing_table.routes.keys.find { |vnode| vnode != @vnode }
-    @h.routing_table.set_route(other, 0, [OTHER_NID])
-    assert_equal :timeout, @h.call(:req_push_a_vnode, other, @node.nid, false)
+    @h.routing_table.set_route(other, 0, [OTHER_NODE_ID])
+    assert_equal :timeout, @h.call(:req_push_a_vnode, other, @node.node_id, false)
     assert_equal [0.1] * 3, @h.slept
   end
 
@@ -460,7 +460,7 @@ class AsyncProcessPushTest < Test::Unit::TestCase
   end
 
   def test_replicate_existing_data_process
-    replica = Struct.new(:routes).new(@h.routing_table.routes.keys.to_h { |vnode| [vnode, [@node.nid]] })
+    replica = Struct.new(:routes).new(@h.routing_table.routes.keys.to_h { |vnode| [vnode, [@node.node_id]] })
     saved = defined?($roma) ? $roma : nil
     $roma = Struct.new(:cluster_replication_writer).new(Struct.new(:run_existing_data_replication).new(true))
     @h.call(:replicate_existing_data_process, [replica])
@@ -487,32 +487,32 @@ class AsyncProcessReleaseTest < Test::Unit::TestCase
 
     private
 
-    def sync_a_vnode_for_release(vnode, to_nid, new_nids)
-      @moves << [vnode, to_nid]
+    def sync_a_vnode_for_release(vnode, to_node_id, new_node_ids)
+      @moves << [vnode, to_node_id]
       return @move_reply unless @move_reply == true
-      @routing_table.set_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], new_nids)
+      @routing_table.set_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], new_node_ids)
       true
     end
   end
 
   def test_release_process
-    @h = Harness.new(nodes: [NID, 'hosta_1', 'hostb_1'], vnode_nodes: [NID, 'hosta_1'])
+    @h = Harness.new(nodes: [NODE_ID, 'hosta_1', 'hostb_1'], vnode_nodes: [NODE_ID, 'hosta_1'])
     @h.stats.enabled_repetition_host_in_routing = true
     @h.call(:release_process)
-    assert_false @h.routing_table.has_node?(NID)
+    assert_false @h.routing_table.has_node?(NODE_ID)
     assert_equal 8, @h.moves.size
-    @h.moves.each { |_vn, to_nid| assert_equal 'hostb_1', to_nid }
+    @h.moves.each { |_vn, to_node_id| assert_equal 'hostb_1', to_node_id }
   end
 
   def test_release_process_without_enough_nodes
-    @h = Harness.new(nodes: [NID, 'hosta_1'], vnode_nodes: [NID, 'hosta_1'])
+    @h = Harness.new(nodes: [NODE_ID, 'hosta_1'], vnode_nodes: [NODE_ID, 'hosta_1'])
     @h.stats.enabled_repetition_host_in_routing = true
     @h.call(:release_process)
     assert_equal [], @h.moves
   end
 
   def test_release_process_aborted
-    @h = Harness.new(nodes: [NID, 'hosta_1', 'hostb_1'], vnode_nodes: [NID, 'hosta_1'])
+    @h = Harness.new(nodes: [NODE_ID, 'hosta_1', 'hostb_1'], vnode_nodes: [NODE_ID, 'hosta_1'])
     @h.stats.enabled_repetition_host_in_routing = true
     @h.move_reply = :abort
     # It would keep trying the vnode if it didn't stop.
@@ -537,8 +537,8 @@ class AsyncProcessEditNodesTest < Test::Unit::TestCase
        'short vnode' => [%w(hosta_1), 'hostc_1', false, %w(hosta_1 hostc_1)],
        'already in the vnode' => [%w(hostc_1 hosta_1), 'hostc_1', true, %w(hostc_1 hosta_1)])
   def test_edit_nodes(data)
-    nodes, new_nid, is_primary, expected = data
-    assert_equal expected, @h.call(:edit_nodes, nodes.dup, new_nid, is_primary)
+    nodes, new_node_id, is_primary, expected = data
+    assert_equal expected, @h.call(:edit_nodes, nodes.dup, new_node_id, is_primary)
   end
 
   def test_edit_nodes_without_redundancy
@@ -551,7 +551,7 @@ class AsyncProcessStorageTest < Test::Unit::TestCase
   include AsyncProcessTestHelper
 
   def setup
-    @h = AsyncProcessHarness.new(vnode_nodes: [NID, OTHER_NID])
+    @h = AsyncProcessHarness.new(vnode_nodes: [NODE_ID, OTHER_NODE_ID])
     # Long enough since the last clean up.
     @h.stats.last_clean_up = Time.at(0)
   end
@@ -564,7 +564,7 @@ class AsyncProcessStorageTest < Test::Unit::TestCase
     alive_vn = @h.store('alive', 'v')
     assert_equal 'v', @h.storage.get(alive_vn, 'alive', digest('alive'))
     # The other node of the vnode is told to delete it too.
-    assert_equal [[OTHER_NID, "out expired\eroma #{vnode}\r\n"]], @h.sent
+    assert_equal [[OTHER_NODE_ID, "out expired\eroma #{vnode}\r\n"]], @h.sent
     assert_equal 1, @h.stats.out_count
   end
 

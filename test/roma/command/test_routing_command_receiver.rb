@@ -5,8 +5,8 @@ require 'command_test_harness'
 # The harness has a routing table of two nodes and 8 vnodes. Each vnode is on
 # one node, chosen at random, because both nodes are on the same host.
 class RoutingCommandReceiverTest < Test::Unit::TestCase
-  NID = CommandTestHarness::NID
-  OTHER_NID = CommandTestHarness::OTHER_NID
+  NODE_ID = CommandTestHarness::NODE_ID
+  OTHER_NODE_ID = CommandTestHarness::OTHER_NODE_ID
   # The first vnode.
   VN = 0
 
@@ -22,7 +22,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
   end
 
   def replies(reply, other: reply)
-    "#{{ OTHER_NID => other, NID => reply }}\r\n"
+    "#{{ OTHER_NODE_ID => other, NODE_ID => reply }}\r\n"
   end
 
   # Reads the replies to routingdump with a length line: the length, the
@@ -35,43 +35,43 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_join
     assert_equal "ADDED\r\n", @conn.request('join localhost_11213')
-    assert_equal [NID, OTHER_NID, 'localhost_11213'], @routing_table.nodes
+    assert_equal [NODE_ID, OTHER_NODE_ID, 'localhost_11213'], @routing_table.nodes
     assert_match(/ join localhost_11213\z/, @routing_table.event.last)
 
     # Joining again changes nothing.
     assert_equal "ADDED\r\n", @conn.request('join localhost_11213')
-    assert_equal [NID, OTHER_NID, 'localhost_11213'], @routing_table.nodes
+    assert_equal [NODE_ID, OTHER_NODE_ID, 'localhost_11213'], @routing_table.nodes
     assert_equal 1, @routing_table.event.size
   end
 
   def test_leave
     @routing_table.enabled_failover = true
-    assert_equal "DELETED\r\n", @conn.request("leave #{OTHER_NID}")
-    assert_equal [NID], @routing_table.nodes
-    assert_match(/ leave #{OTHER_NID}\z/, @routing_table.event.last)
+    assert_equal "DELETED\r\n", @conn.request("leave #{OTHER_NODE_ID}")
+    assert_equal [NODE_ID], @routing_table.nodes
+    assert_match(/ leave #{OTHER_NODE_ID}\z/, @routing_table.event.last)
   end
 
   def test_leave_while_failover_is_disabled
     # It replies DELETED, but the node stays.
-    assert_equal "DELETED\r\n", @conn.request("leave #{OTHER_NID}")
-    assert_equal [NID, OTHER_NID], @routing_table.nodes
+    assert_equal "DELETED\r\n", @conn.request("leave #{OTHER_NODE_ID}")
+    assert_equal [NODE_ID, OTHER_NODE_ID], @routing_table.nodes
   end
 
   def test_nodelist
-    assert_equal "#{NID} #{OTHER_NID}\r\n", @conn.request('nodelist')
+    assert_equal "#{NODE_ID} #{OTHER_NODE_ID}\r\n", @conn.request('nodelist')
   end
 
   def test_create_nodes_from_v_idx
     @conn.request('join localhost_11213')
     assert_equal "CREATED\r\n", @conn.request('create_nodes_from_v_idx')
     # localhost_11213 has no vnodes.
-    assert_equal "#{NID} #{OTHER_NID}\r\n", @conn.request('nodelist')
+    assert_equal "#{NODE_ID} #{OTHER_NODE_ID}\r\n", @conn.request('nodelist')
   end
 
   def test_routingdump
     routing_data = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
     assert_equal @routing_table.routes, routing_data.routes
-    assert_equal [NID, OTHER_NID], routing_data.nodes
+    assert_equal [NODE_ID, OTHER_NODE_ID], routing_data.nodes
   end
 
   def test_routingdump_yaml
@@ -92,7 +92,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     assert_true dump.end_with?("\r\nEND\r\n")
     params, nodes, routes = JSON.parse(dump.delete_suffix("\r\nEND\r\n"))
     assert_equal({ 'digest_bits' => 32, 'divide_bits' => 3, 'redundancy' => 2 }, params)
-    assert_equal [NID, OTHER_NID], nodes
+    assert_equal [NODE_ID, OTHER_NODE_ID], nodes
     assert_equal [@vn_nid], routes[VN.to_s]
   end
 
@@ -112,19 +112,19 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     assert_equal ['vm_11211', 'vm_11212'], routing_data.nodes
     assert_equal [@vn_nid.sub('localhost', 'vm')], routing_data.routes[VN]
     # The routing table itself doesn't change.
-    assert_equal [NID, OTHER_NID], @routing_table.nodes
+    assert_equal [NODE_ID, OTHER_NODE_ID], @routing_table.nodes
 
     @routing_table.node_id_substitutions.clear
     @routing_table.node_id_substitutions['10.0.0.0/8'] = { regexp: 'localhost', replace: 'vm' }
     routing_data = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
-    assert_equal [NID, OTHER_NID], routing_data.nodes
+    assert_equal [NODE_ID, OTHER_NODE_ID], routing_data.nodes
   end
 
   def test_enabled_repetition_in_routing
     assert_equal "false\r\n", @conn.request('enabled_repetition_in_routing?')
 
     # Both copies of a vnode on the same host.
-    @conn.request("setroute #{VN} 0 #{NID} #{OTHER_NID}")
+    @conn.request("setroute #{VN} 0 #{NODE_ID} #{OTHER_NODE_ID}")
     assert_equal "true\r\n", @conn.request('enabled_repetition_in_routing?')
 
     assert_equal "CLIENT_ERROR\r\n", @conn.request('enabled_repetition_in_routing? yes')
@@ -133,26 +133,26 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
   def test_setroute_and_getroute
     assert_equal "-1 #{@vn_nid}\r\n", @conn.request("getroute #{VN}")
 
-    assert_equal "STORED\r\n", @conn.request("setroute #{VN} 0 #{OTHER_NID} #{NID}")
-    assert_equal [OTHER_NID, NID], @routing_table.search_nodes(VN)
+    assert_equal "STORED\r\n", @conn.request("setroute #{VN} 0 #{OTHER_NODE_ID} #{NODE_ID}")
+    assert_equal [OTHER_NODE_ID, NODE_ID], @routing_table.search_nodes(VN)
     # getroute replies the clock to give setroute next time.
-    assert_equal "0 #{OTHER_NID} #{NID}\r\n", @conn.request("getroute #{VN}")
+    assert_equal "0 #{OTHER_NODE_ID} #{NODE_ID}\r\n", @conn.request("getroute #{VN}")
 
     # A clock older than the table's is refused.
-    assert_equal "SERVER_ERROR It's old table.\r\n", @conn.request("setroute #{VN} 0 #{NID}")
-    assert_equal [OTHER_NID, NID], @routing_table.search_nodes(VN)
+    assert_equal "SERVER_ERROR It's old table.\r\n", @conn.request("setroute #{VN} 0 #{NODE_ID}")
+    assert_equal [OTHER_NODE_ID, NODE_ID], @routing_table.search_nodes(VN)
   end
 
   def test_setroute_adds_unknown_nodes
     assert_equal "STORED\r\n", @conn.request("setroute #{VN} 0 localhost_11213")
-    assert_equal [NID, OTHER_NID, 'localhost_11213'], @routing_table.nodes
+    assert_equal [NODE_ID, OTHER_NODE_ID, 'localhost_11213'], @routing_table.nodes
   end
 
   def test_setroute_errors
     assert_equal "CLIENT_ERROR\r\n", @conn.request("setroute #{VN} 0")
     assert_equal "CLIENT_ERROR : irregular node name was input.[\"ｎｏｄｅ\"]\r\n",
-                 @conn.request("setroute #{VN} 0 #{NID} ｎｏｄｅ")
-    assert_equal "SERVER_ERROR 1 is not found.\r\n", @conn.request("setroute 1 0 #{NID}")
+                 @conn.request("setroute #{VN} 0 #{NODE_ID} ｎｏｄｅ")
+    assert_equal "SERVER_ERROR 1 is not found.\r\n", @conn.request("setroute 1 0 #{NODE_ID}")
     assert_equal [@vn_nid], @routing_table.search_nodes(VN)
   end
 
@@ -166,17 +166,17 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     assert_equal "#{@routing_table.merkle_tree.get('0')}\r\n", root
     assert_match(/\A\h{40}\r\n\z/, root)
 
-    @conn.request("setroute #{VN} 0 #{NID} #{OTHER_NID}")
+    @conn.request("setroute #{VN} 0 #{NODE_ID} #{OTHER_NODE_ID}")
     assert_not_equal root, @conn.request('mklhash 0')
   end
 
   def test_history_of_lost
     assert_equal "END\r\n", @conn.request('history_of_lost')
 
-    # Every vnode of OTHER_NID is lost when it leaves.
+    # Every vnode of OTHER_NODE_ID is lost when it leaves.
     @routing_table.enabled_failover = true
-    @conn.request("leave #{OTHER_NID}")
-    lost = @routing_table.routes.select { |_vn, nids| nids.empty? }.keys
+    @conn.request("leave #{OTHER_NODE_ID}")
+    lost = @routing_table.routes.select { |_vn, node_ids| node_ids.empty? }.keys
     assert_equal 4, lost.size
     assert_equal lost.map { |vnode| "#{vnode}\r\n" }.join + "END\r\n", @conn.request('history_of_lost')
     assert_equal lost.map { |vnode| "#{vnode}\r\n" }.join + "END\r\n", @conn.request('history_of_lost 20000101000000')

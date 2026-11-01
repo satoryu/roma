@@ -31,9 +31,9 @@ class CopyDataTest < Test::Unit::TestCase
         keys << i.to_s
       end
     end
-    nid = @rc.routing_table.search_nodes(0)
+    node_id = @rc.routing_table.search_nodes(0)
 
-    push_a_vnode_stream('roma', 0, nid[0], keys)
+    push_a_vnode_stream('roma', 0, node_id[0], keys)
 
     keys.each do |k|
       assert_equal("#{k}-stream", @rc.get(k, true))
@@ -41,8 +41,8 @@ class CopyDataTest < Test::Unit::TestCase
     end
   end
 
-  def push_a_vnode_stream(hash_name, vnode, nid, keys)
-    con = Roma::Messaging::ConPool.instance.get_connection(nid)
+  def push_a_vnode_stream(hash_name, vnode, node_id, keys)
+    con = Roma::Messaging::ConPool.instance.get_connection(node_id)
     con.write("spushv #{hash_name} #{vnode}\r\n")
 
     res = con.gets # READY\r\n or error string
@@ -59,7 +59,7 @@ class CopyDataTest < Test::Unit::TestCase
     con.write("\0" * 20) # end of steram
 
     res = con.gets # STORED\r\n or error string
-    Roma::Messaging::ConPool.instance.return_connection(nid, con)
+    Roma::Messaging::ConPool.instance.return_connection(node_id, con)
     res.chomp! if res
     res
   rescue => e
@@ -108,7 +108,7 @@ class CopyDataTest < Test::Unit::TestCase
     con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
     res = nil
     10.times do
-      con.write("reqpushv #{vnode} #{@node.nid} #{is_primary}\r\n")
+      con.write("reqpushv #{vnode} #{@node.node_id} #{is_primary}\r\n")
       res = con.gets
       break if res == "PUSHED\r\n"
       sleep 0.5

@@ -3,7 +3,7 @@ require 'socket'
 # A fake node that keeps the data of set, and answers get and delete, as
 # the memcached text protocol.
 class FakeKVS
-  attr_reader :nid, :data
+  attr_reader :node_id, :data
   # Every command line received, without "\r\n".
   attr_reader :commands
   # Replies to use instead, by the command name. :close closes the
@@ -15,7 +15,7 @@ class FakeKVS
     @commands = []
     @replies = {}
     @server = TCPServer.new(0)
-    @nid = "localhost_#{@server.addr[1]}"
+    @node_id = "localhost_#{@server.addr[1]}"
     @thread = Thread.new { loop { Thread.new(@server.accept) { |s| serve(s) } } }
   end
 

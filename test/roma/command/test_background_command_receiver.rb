@@ -6,7 +6,7 @@ class BackgroundCommandReceiverTest < Test::Unit::TestCase
 
   # Makes this node primary of fewer vnodes than its share.
   def unbalance
-    @conn.routing_table.each_vnode { |vnode, _| @conn.routing_table.set_route(vnode, @conn.routing_table.search_nodes_with_clk(vnode)[0], [OTHER_NID, NID]) }
+    @conn.routing_table.each_vnode { |vnode, _| @conn.routing_table.set_route(vnode, @conn.routing_table.search_nodes_with_clk(vnode)[0], [OTHER_NODE_ID, NODE_ID]) }
   end
 
   def test_balance
@@ -59,7 +59,7 @@ class BackgroundCommandReceiverTest < Test::Unit::TestCase
   # With fewer nodes than the redundancy, the vnodes can't be recovered.
   data('recover' => 'recover', 'rrecover' => 'rrecover')
   def test_recover_without_enough_nodes(command)
-    @conn.routing_table.instance_variable_get(:@routing_data).nodes.delete(OTHER_NID)
+    @conn.routing_table.instance_variable_get(:@routing_data).nodes.delete(OTHER_NODE_ID)
     assert_equal "SERVER_ERROR nodes num < redundant num\r\n", @conn.request(command)
   end
 end

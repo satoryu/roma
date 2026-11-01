@@ -15,26 +15,26 @@ module Roma
         @timeout = timeout
       end
 
-      # Gets the routing data of the node +nid+. Raises Error if it can't.
-      def routing_data(nid)
-        connect(nid) do |con|
+      # Gets the routing data of the node +node_id+. Raises Error if it can't.
+      def routing_data(node_id)
+        connect(node_id) do |con|
           Timeout.timeout(@timeout) do
             con.write("routingdump\r\n")
             len = con.gets.to_i
-            raise Error, "#{nid} has no routing data." if len <= 0
+            raise Error, "#{node_id} has no routing data." if len <= 0
             dump = con.read(len)
-            raise Error, "#{nid} closed the connection." unless dump && dump.bytesize == len
+            raise Error, "#{node_id} closed the connection." unless dump && dump.bytesize == len
             Marshal.load(dump)
           end
         end
       end
 
-      # Sends +cmd+ to the node +nid+, and returns the lines of the reply
+      # Sends +cmd+ to the node +node_id+, and returns the lines of the reply
       # without "\r\n". Commands end their replies in different ways, so the
       # reply ends when no line comes for +idle+ seconds. Raises Error if
       # nothing comes.
-      def command(nid, cmd, idle: 0.1)
-        connect(nid) do |con|
+      def command(node_id, cmd, idle: 0.1)
+        connect(node_id) do |con|
           con.write("#{cmd}\r\n")
           lines = []
           wait = @timeout
@@ -42,30 +42,30 @@ module Roma
             lines << line.chomp
             wait = idle
           end
-          raise Error, "#{nid} didn't reply to #{cmd}." if lines.empty?
+          raise Error, "#{node_id} didn't reply to #{cmd}." if lines.empty?
           lines
         end
       end
 
-      # Sends +cmd+ to the node +nid+, and returns the first line of the
+      # Sends +cmd+ to the node +node_id+, and returns the first line of the
       # reply without "\r\n". Raises Error if it doesn't come.
-      def request(nid, cmd)
-        connect(nid) do |con|
+      def request(node_id, cmd)
+        connect(node_id) do |con|
           con.write("#{cmd}\r\n")
           line = Timeout.timeout(@timeout) { con.gets }
-          raise Error, "#{nid} closed the connection." unless line
+          raise Error, "#{node_id} closed the connection." unless line
           line.chomp
         end
       end
 
-      # Connects to the node +nid+, and yields the connection, which is
+      # Connects to the node +node_id+, and yields the connection, which is
       # closed after the block. Errors of the connection are raised as Error.
-      def connect(nid)
-        host, port = nid.split(/[:_]/)
+      def connect(node_id)
+        host, port = node_id.split(/[:_]/)
         con = Timeout.timeout(@timeout) { TCPSocket.new(host, port) }
         yield con
       rescue SystemCallError, SocketError, IOError, Timeout::Error => e
-        raise Error, "#{nid}: #{e.message}"
+        raise Error, "#{node_id}: #{e.message}"
       ensure
         con.close if con
       end

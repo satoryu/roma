@@ -51,7 +51,7 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
     make_rt([[A1, B1], [B1, A1], [A1, B1], [B1, A1]])
     @rt.enabled_failover = true
     left = recovered = nil
-    @rt.set_leave_proc { |nid| left = nid }
+    @rt.set_leave_proc { |node_id| left = node_id }
     @rt.set_recover_proc { |cmd| recovered = cmd }
 
     @rt.leave(B1)
@@ -107,13 +107,13 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
     assert_false @rt.commit(VN[0])
   end
 
-  def test_delete_old_trans
+  def test_delete_old_transactions
     make_rt([[A1, B1], [B1, A1], [A1, B1], [B1, A1]])
     @rt.transaction(VN[0], [A1, A2])
-    @rt.delete_old_trans(60)
-    assert_true @rt.trans.key?(VN[0])
-    @rt.delete_old_trans(-1)
-    assert_false @rt.trans.key?(VN[0])
+    @rt.delete_old_transactions(60)
+    assert_true @rt.transactions.key?(VN[0])
+    @rt.delete_old_transactions(-1)
+    assert_false @rt.transactions.key?(VN[0])
   end
 
   def test_vnode_balance

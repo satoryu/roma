@@ -58,7 +58,7 @@ module Roma
         end # def_command_with_relay
 
         CommandParams = Struct.new(:key, :hash_name, :digest, :vnode, :nodes, :value)
-        StoredData = Struct.new(:vnode, :last, :clock, :flg, :expire_time, :value)
+        StoredData = Struct.new(:vnode, :last, :clock, :flags, :expire_time, :value)
         CommandContext = Struct.new(:argv, :params, :stored)
 
         def def_read_command_with_key(cmd, forward = :one_line, &block)
@@ -369,16 +369,16 @@ module Roma
       end # module ClassMethods
 
       #
-      def forward_and_one_line_receive(nid, rs, data = nil)
+      def forward_and_one_line_receive(node_id, rs, data = nil)
         if rs.last == "forward"
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
-        @log.warn("forward #{rs} to #{nid}");
+        @log.warn("forward #{rs} to #{node_id}");
 
         buf = rs.join(' ') + " forward\r\n"
         buf << data + "\r\n" if data
-        res = send_cmd(nid, buf)
+        res = send_cmd(node_id, buf)
         if res == nil || res.start_with?("ERROR")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         end
@@ -386,32 +386,32 @@ module Roma
       end
 
       # 
-      def forward_and_multi_line_receive(nid, rs, data=nil)
+      def forward_and_multi_line_receive(node_id, rs, data=nil)
         if rs.last == "forward"
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
-        @log.warn("forward #{rs} to #{nid}");
+        @log.warn("forward #{rs} to #{node_id}");
 
         buf = rs.join(' ') + " forward\r\n"
         buf << data + "\r\n" if data
 
-        con = get_connection(nid)
+        con = get_connection(node_id)
         con.send(buf)
 
         buf = con.gets
         if buf == nil
-          @routing_table.proc_failed(nid)
-          @log.error("forward get failed:nid=#{nid} rs=#{rs} #{$@}")
+          @routing_table.proc_failed(node_id)
+          @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{$@}")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         elsif buf.start_with?("ERROR")
-          @routing_table.proc_succeed(nid)
+          @routing_table.proc_succeed(node_id)
           con.close_connection
-          @log.error("forward get failed:nid=#{nid} rs=#{rs} #{$@}")
+          @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{$@}")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         elsif buf.start_with?("VALUE") == false
-          return_connection(nid, con)
-          @routing_table.proc_succeed(nid)
+          return_connection(node_id, con)
+          @routing_table.proc_succeed(node_id)
           return send_data(buf)
         end
 
@@ -420,8 +420,8 @@ module Roma
           res << buf
           s = buf.split(/ /)
           if s[0] != 'VALUE'
-            return_connection(nid, con)
-            @routing_table.proc_succeed(nid)
+            return_connection(node_id, con)
+            @routing_table.proc_succeed(node_id)
             return send_data(buf)
           end
           res << con.read_bytes(s[3].to_i + 2)
@@ -429,13 +429,13 @@ module Roma
 
         res << "END\r\n"
 
-        return_connection(nid, con)
-        @routing_table.proc_succeed(nid)
+        return_connection(node_id, con)
+        @routing_table.proc_succeed(node_id)
 
         send_data(res)
       rescue => e
-        @routing_table.proc_failed(nid) if e.message != "no connection"
-        @log.error("forward get failed:nid=#{nid} rs=#{rs} #{e} #{$@}")
+        @routing_table.proc_failed(node_id) if e.message != "no connection"
+        @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{e} #{$@}")
         send_data("SERVER_ERROR Message forward failed.\r\n")
       end
 

@@ -110,9 +110,9 @@ class RoutingDataTest < Test::Unit::TestCase
     nodeslen.times{|i|
       len, = bin.unpack('n')
       bin = bin[2..-1]
-      nid, = bin.unpack("a#{len}")
+      node_id, = bin.unpack("a#{len}")
       bin = bin[len..-1]
-      assert_equal(routing_data.nodes[i], nid)
+      assert_equal(routing_data.nodes[i], node_id)
     }
     (2**divide_bits).times{|i|
       vnode=i<<(digest_bits-divide_bits)
@@ -196,6 +196,6 @@ class RoutingDataTest < Test::Unit::TestCase
   # With replication in a host, both copies may be on one host.
   def test_create_with_replication_in_host
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, %w(roma0_3300 roma0_3301), true)
-    routing_data.routes.each_value { |nids| assert_equal %w(roma0_3300 roma0_3301), nids.sort }
+    routing_data.routes.each_value { |node_ids| assert_equal %w(roma0_3300 roma0_3301), node_ids.sort }
   end
 end

@@ -20,7 +20,7 @@ class MultiHashCommandReceiverTest < Test::Unit::TestCase
 
   # Relayed by def_command_with_relay, which puts this node's reply first.
   def replies(reply, other: 'STORED')
-    "#{{ @conn.stats.my_node_id => reply, OTHER_NID => other }}\r\n"
+    "#{{ @conn.stats.my_node_id => reply, OTHER_NODE_ID => other }}\r\n"
   end
 
   def test_defhash
