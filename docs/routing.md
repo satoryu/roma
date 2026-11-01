@@ -52,10 +52,10 @@ many more vnodes than nodes, each node gets about the same share of the data.
 
 Two numbers decide the vnodes:
 
-- **Digest bits** (`dgst_bits`, default 32): a key's hash is the SHA-1 digest
-  of the key modulo 2^dgst_bits.
-- **Divide bits** (`div_bits`, default 9): the upper div_bits bits of the hash
-  are the vnode. There are 2^div_bits vnodes, 512 by default.
+- **Digest bits** (`digest_bits`, default 32): a key's hash is the SHA-1 digest
+  of the key modulo 2^digest_bits.
+- **Divide bits** (`divide_bits`, default 9): the upper divide_bits bits of the hash
+  are the vnode. There are 2^divide_bits vnodes, 512 by default.
 
 The ID of a vnode is the first hash value in its range. With the defaults, the
 vnodes are 0, 8388608 (2^23), 16777216 (2^24), and so on.
@@ -63,7 +63,7 @@ vnodes are 0, 8388608 (2^23), 16777216 (2^24), and so on.
 ### Redundancy, primary and secondaries
 
 Each vnode is held by several nodes so that data survives a node failure. The
-number of nodes that hold each vnode is the **redundancy** (`rn`, default 2).
+number of nodes that hold each vnode is the **redundancy** (default 2).
 
 The nodes of a vnode are in order. The first is the **primary**: it takes the
 writes of the vnode and copies them to the others. The rest are the
@@ -126,13 +126,13 @@ vnodes (`-d 3`):
 
 ```yaml
 --- !ruby/object:Roma::Routing::RoutingData
-dgst_bits: 32
-div_bits: 3
-rn: 2
+digest_bits: 32
+divide_bits: 3
+redundancy: 2
 nodes:
 - localhost_11211
 - localhost_11212
-v_idx:
+routes:
   0:
   - localhost_11212
   - localhost_11211
@@ -140,13 +140,13 @@ v_idx:
   - localhost_11211
   - localhost_11212
   # ... 6 more vnodes
-v_clk:
+clocks:
   0: 0
   536870912: 0
   # ... 6 more vnodes
 ```
 
-`v_idx` maps each vnode to its nodes, primary first, and `v_clk` maps each
+`routes` maps each vnode to its nodes, primary first, and `clocks` maps each
 vnode to its clock.
 
 ### Routing logs
@@ -266,7 +266,7 @@ the newer clock wins, and the node with the older one takes it.
 ### When a node fails
 
 Every second, each node checks the other nodes. A node that fails to answer
-`routing.fail_cnt_threshold` times in a row (15 by default) is taken as
+`routing.failure_count_threshold` times in a row (15 by default) is taken as
 **failed**. The nodes then remove it from the routing table, which is logged
 as `leave <node-id>`, and tell each other.
 
@@ -411,8 +411,8 @@ $ roma adm -p 11211 "stats routing"
 routing.redundant 2
 routing.nodes.length 2
 routing.nodes ["localhost_11211", "localhost_11212"]
-routing.dgst_bits 32
-routing.div_bits 9
+routing.digest_bits 32
+routing.divide_bits 9
 routing.vnodes.length 512
 routing.primary 270
 routing.secondary1 242
@@ -522,19 +522,19 @@ These settings in the config file are about routing. See
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `config.routing.path` | `'.'` | Directory of the routing files and logs |
-| `config.routing.fail_cnt_threshold` | `15` | Failed checks in a row before a node is taken as failed |
-| `config.routing.fail_cnt_gap` | `0` | Seconds within which another failure does not count up |
+| `config.routing.failure_count_threshold` | `15` | Failed checks in a row before a node is taken as failed |
+| `config.routing.failure_count_gap` | `0` | Seconds within which another failure does not count up |
 | `config.routing.lost_action` | `:auto_assign` | What to do with lost vnodes: `:auto_assign`, `:shutdown` or `:no_action` |
 | `config.routing.auto_recover` | `false` | Recover short vnodes by itself |
-| `config.routing.sub_nid` | `{}` | Host names to replace in the routing table that clients get, by client network |
+| `config.routing.node_id_substitutions` | `{}` | Host names to replace in the routing table that clients get, by client network |
 | `config.routing.event_limit_line` | `1000` | Joins and leaves to keep in `routing.event` |
 
-`sub_nid` is for clients that reach the nodes by other addresses than the nodes
+`node_id_substitutions` is for clients that reach the nodes by other addresses than the nodes
 use among themselves. For example, this makes clients in 192.168.1.0/24 get
 `192.168.1.11` where the routing table has `roma1`:
 
 ```ruby
-config.routing.sub_nid = { '192.168.1.0/24' => { regexp: 'roma1', replace: '192.168.1.11' } }
+config.routing.node_id_substitutions = { '192.168.1.0/24' => { regexp: 'roma1', replace: '192.168.1.11' } }
 ```
 
 `roma adm -p 11211 add_rttable_sub_nid 192.168.1.0/24 roma1 192.168.1.11` adds

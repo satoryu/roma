@@ -80,15 +80,15 @@ module Roma
       # A subclass of Roma::Routing::RoutingTable, or nil for ChurnbasedRoutingTable.
       setting :table_class, nil, type: [Class, NilClass]
       # Replaces the host names in the routing table that a client gets:
-      # { '192.168.1.0/24' => { 'host1' => '192.168.1.11' } }
-      setting :sub_nid, {}, type: Hash
+      # { '192.168.1.0/24' => { regexp: 'host1', replace: '192.168.1.11' } }
+      setting :node_id_substitutions, {}, type: Hash
       # What to do when the data of a vnode is lost.
       setting :lost_action, :auto_assign, one_of: %i(no_action auto_assign shutdown)
       setting :auto_recover, false, one_of: BOOLEAN
       # The failures to a node, before it is taken as down.
-      setting :fail_cnt_threshold, 15, type: Integer
+      setting :failure_count_threshold, 15, type: Integer
       # Seconds in which another failure doesn't count up.
-      setting :fail_cnt_gap, 0, type: Numeric
+      setting :failure_count_gap, 0, type: Numeric
       setting :event_limit_line, 1000, type: Integer
     end
 

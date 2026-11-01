@@ -13,19 +13,19 @@ class RomaTestClient
   RETRY_COUNT = 3
 
   class RoutingTable
-    attr_reader :rd, :hbits, :search_mask
+    attr_reader :routing_data, :hash_space_size, :search_mask
     # Send requests to a secondary node to make the server forward them.
     attr_accessor :force_forward
 
-    def initialize(rd)
-      @rd = rd
-      @hbits = 2**rd.dgst_bits
-      @search_mask = rd.search_mask
+    def initialize(routing_data)
+      @routing_data = routing_data
+      @hash_space_size = 2**routing_data.digest_bits
+      @search_mask = routing_data.search_mask
       @force_forward = false
     end
 
     def nodes
-      @rd.nodes.clone
+      @routing_data.nodes.clone
     end
 
     def get_vnode_id(d)
@@ -33,12 +33,12 @@ class RomaTestClient
     end
 
     def search_nodes(vn)
-      @rd.v_idx[vn].clone
+      @routing_data.routes[vn].clone
     end
 
     def search_node(key)
-      d = Digest::SHA1.hexdigest(key).hex % @hbits
-      nodes = @rd.v_idx[get_vnode_id(d)]
+      d = Digest::SHA1.hexdigest(key).hex % @hash_space_size
+      nodes = @routing_data.routes[get_vnode_id(d)]
       [@force_forward ? nodes[1] : nodes[0], d]
     end
   end
@@ -72,9 +72,9 @@ class RomaTestClient
 
   def update_rttable(nodes = @rttable.nodes)
     nodes.each do |node|
-      rd = fetch_routing_data(node)
-      if rd
-        @rttable = RoutingTable.new(rd)
+      routing_data = fetch_routing_data(node)
+      if routing_data
+        @rttable = RoutingTable.new(routing_data)
         return
       end
     end
@@ -446,10 +446,10 @@ class RomaTestClient
       con.write("routingdump\r\n")
       len = con.gets.to_i
       return nil if len <= 0
-      rd = Marshal.load(read_bytes(con, len))
+      routing_data = Marshal.load(read_bytes(con, len))
       read_bytes(con, 2) # "\r\n"
       con.gets # "END\r\n"
-      rd
+      routing_data
     end
   rescue SystemCallError, IOError, Timeout::Error
     close_connection(nid)

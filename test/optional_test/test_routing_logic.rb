@@ -26,7 +26,7 @@ if ENV['OPTIONAL']
     end
 
     def join_test(replication_in_host, new_nodes)
-      start_roma(div_bits: 6, replication_in_host: replication_in_host)
+      start_roma(divide_bits: 6, replication_in_host: replication_in_host)
       sleep 12 # Wait cluster starting, otherwise join will never finish
       client = get_client
 
@@ -79,7 +79,7 @@ if ENV['OPTIONAL']
       same_host_node = "#{DEFAULT_HOST}_#{NEW_PORTS[0]}"
       other_host_node = "#{DEFAULT_IP}_#{NEW_PORTS[1]}"
 
-      start_roma(div_bits: 6, replication_in_host: replication_in_host)
+      start_roma(divide_bits: 6, replication_in_host: replication_in_host)
       sleep 12 # Wait cluster starting, otherwise join will never finish
       client = get_client
 

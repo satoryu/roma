@@ -9,36 +9,36 @@ module Roma
 
     class RoutingTable
 
-      attr :rd
+      attr :routing_data
       attr :search_mask
-      attr :fail_cnt
-      attr :mtree
-      attr_reader :hbits
-      attr_reader :rn
-      attr_reader :div_bits
-      attr_accessor :fail_cnt_threshold
-      attr_accessor :fail_cnt_gap
-      attr_accessor :sub_nid
+      attr :failure_counts
+      attr :merkle_tree
+      attr_reader :hash_space_size
+      attr_reader :redundancy
+      attr_reader :divide_bits
+      attr_accessor :failure_count_threshold
+      attr_accessor :failure_count_gap
+      attr_accessor :node_id_substitutions
 
-      def initialize(rd)
+      def initialize(routing_data)
         @log = Roma::Logging::RLogger.instance
-        @rd = rd
-        @rn = @rd.rn
-        @div_bits=@rd.div_bits
-        @hbits = 2**@rd.dgst_bits
-        @search_mask = @rd.search_mask
-        @fail_cnt = Hash.new(0)
-        @fail_cnt_threshold = 5
-        @fail_cnt_gap = 0
+        @routing_data = routing_data
+        @redundancy = @routing_data.redundancy
+        @divide_bits=@routing_data.divide_bits
+        @hash_space_size = 2**@routing_data.digest_bits
+        @search_mask = @routing_data.search_mask
+        @failure_counts = Hash.new(0)
+        @failure_count_threshold = 5
+        @failure_count_gap = 0
         @fail_time = Time.now
-        @sub_nid = {}
-        init_mtree
+        @node_id_substitutions = {}
+        init_merkle_tree
       end
 
       def num_of_vn(ap)
         pn = short = lost = 0
-        sn = Array.new(@rd.rn - 1, 0)
-        @rd.v_idx.each_pair do |vn, nids|
+        sn = Array.new(@routing_data.redundancy - 1, 0)
+        @routing_data.routes.each_pair do |vn, nids|
           if nids == nil || nids.length == 0
             lost += 1
             next
@@ -48,7 +48,7 @@ module Roma
             i = nids.index(ap) - 1
             sn[i] += 1
           end
-          short += 1 if nids.length < @rd.rn
+          short += 1 if nids.length < @routing_data.redundancy
         end
         [pn, sn, short, lost]
       end
@@ -56,35 +56,35 @@ module Roma
       def get_stat(ap)
         pn, sn, short, lost = num_of_vn(ap)
         ret = {}
-        ret['routing.redundant'] = @rn
+        ret['routing.redundant'] = @redundancy
         ret['routing.nodes.length'] = nodes.length
         ret['routing.nodes'] = nodes.inspect
-        ret['routing.dgst_bits'] = @rd.dgst_bits
-        ret['routing.div_bits'] = @div_bits
+        ret['routing.digest_bits'] = @routing_data.digest_bits
+        ret['routing.divide_bits'] = @divide_bits
         ret['routing.vnodes.length'] = vnodes.length
         ret['routing.primary'] = pn
-        (@rn-1).times{|i| ret["routing.secondary#{i+1}"] = sn[i]}
+        (@redundancy-1).times{|i| ret["routing.secondary#{i+1}"] = sn[i]}
         ret['routing.short_vnodes'] = short
         ret['routing.lost_vnodes'] = lost
-        ret['routing.fail_cnt_threshold'] = @fail_cnt_threshold
-        ret['routing.fail_cnt_gap'] = @fail_cnt_gap
-        ret['routing.sub_nid'] = @sub_nid.inspect
+        ret['routing.failure_count_threshold'] = @failure_count_threshold
+        ret['routing.failure_count_gap'] = @failure_count_gap
+        ret['routing.node_id_substitutions'] = @node_id_substitutions.inspect
         ret
       end
 
-      def init_mtree
-        @mtree = MerkleTree.new(@rd.dgst_bits,@rd.div_bits)
-        @rd.v_idx.each_pair{ |vn, nids|
-          @mtree.set(vn,nids)
+      def init_merkle_tree
+        @merkle_tree = MerkleTree.new(@routing_data.digest_bits,@routing_data.divide_bits)
+        @routing_data.routes.each_pair{ |vn, nids|
+          @merkle_tree.set(vn,nids)
         }
       end
 
       def nodes
-        @rd.nodes.clone
+        @routing_data.nodes.clone
       end
 
       def vnodes
-        @rd.v_idx.keys
+        @routing_data.routes.keys
       end
 
       # get vnode id from hash value
@@ -95,7 +95,7 @@ module Roma
       # get array of node ID which have vnode
       # +vn+: vnode id
       def search_nodes(vn)
-        @rd.v_idx[vn].clone
+        @routing_data.routes[vn].clone
       rescue
         nil
       end
@@ -103,38 +103,38 @@ module Roma
       # delete dropping node from list
       # +nid+: dropping node
       def leave(nid)
-        @rd.nodes.delete(nid)
+        @routing_data.nodes.delete(nid)
         # delet nid from list
-        @rd.v_idx.each_pair{ |vn, nids|
+        @routing_data.routes.each_pair{ |vn, nids|
           nids.delete_if{ |nid2| nid2 == nid}
           if nids.length == 0
             @log.error("Vnode data is lost.(Vnode=#{vn})")
           end
-          @mtree.set(vn,nids)
+          @merkle_tree.set(vn,nids)
         }
-        @fail_cnt.delete(nid)
+        @failure_counts.delete(nid)
       end
 
       def dump
-        Marshal.dump(@rd)
+        Marshal.dump(@routing_data)
       end
 
       def dump_yaml
-        YAML.dump(@rd)
+        YAML.dump(@routing_data)
       end
 
       def dump_json
         JSON.generate(
-                      [{:dgst_bits=>@rd.dgst_bits,:div_bits=>@rd.div_bits,:rn=>@rd.rn},
-                       @rd.nodes,@rd.v_idx])
+                      [{:digest_bits=>@routing_data.digest_bits,:divide_bits=>@routing_data.divide_bits,:redundancy=>@routing_data.redundancy},
+                       @routing_data.nodes,@routing_data.routes])
       end
 
       def dump_binary
-        @rd.dump_binary
+        @routing_data.dump_binary
       end
 
       def check_repetition_in_routing
-        @rd.v_idx.each_value{|value|
+        @routing_data.routes.each_value{|value|
           host = []
           value.each{|instance|
             host << instance.split("_")[0]
@@ -149,9 +149,9 @@ module Roma
 
       def proc_failed(nid)
         t = Time.now
-        if t - @fail_time > @fail_cnt_gap
-          @fail_cnt[nid] += 1
-          if @fail_cnt[nid] >= @fail_cnt_threshold
+        if t - @fail_time > @failure_count_gap
+          @failure_counts[nid] += 1
+          if @failure_counts[nid] >= @failure_count_threshold
             leave(nid)
           end
         end
@@ -159,19 +159,19 @@ module Roma
       end
 
       def proc_succeed(nid)
-        @fail_cnt.delete(nid)
+        @failure_counts.delete(nid)
       end
 
-      # Reconstruct vnodes from v_idx
-      def create_nodes_from_v_idx
-        @rd.create_nodes_from_v_idx
+      # Reconstruct vnodes from routes
+      def create_nodes_from_routes
+        @routing_data.create_nodes_from_routes
       end
 
-      # Returns a new RoutingData object which replaced host name by the sub_nid attribute.
-      def sub_nid_rd(addr)
-        sub_nid.each do |mask, sub|
+      # Returns a new RoutingData object which replaced host name by the node_id_substitutions attribute.
+      def substituted_routing_data(addr)
+        node_id_substitutions.each do |mask, sub|
           if check_netmask?(addr, mask)
-            return get_replaced_rd(sub[:regexp], sub[:replace])
+            return get_replaced_routing_data(sub[:regexp], sub[:replace])
           end
         end
         nil
@@ -179,19 +179,19 @@ module Roma
 
       private
 
-      def get_replaced_rd(regxp, replace)
-        rd = Marshal.load(dump)
+      def get_replaced_routing_data(regexp, replace)
+        routing_data = Marshal.load(dump)
 
-        rd.nodes.map! do |nid|
-          nid.sub(regxp, replace)
+        routing_data.nodes.map! do |nid|
+          nid.sub(regexp, replace)
         end
 
-        rd.v_idx.each_value do |nids|
+        routing_data.routes.each_value do |nids|
           nids.map! do |nid|
-            nid.sub(regxp, replace)
+            nid.sub(regexp, replace)
           end
         end
-        rd
+        routing_data
       end
 
       def check_netmask?(addr, mask)

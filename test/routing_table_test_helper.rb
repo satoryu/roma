@@ -10,17 +10,17 @@ module RoutingTableTestHelper
   B1 = 'hostb_11211'
 
   # 4 vnodes with 32-bit digests.
-  DIV_BITS = 2
-  VN = (0...2**DIV_BITS).map { |i| i << (32 - DIV_BITS) }
+  DIVIDE_BITS = 2
+  VN = (0...2**DIVIDE_BITS).map { |i| i << (32 - DIVIDE_BITS) }
 
-  # Routing data where vnode i is stored on v_idx[i] (primary first).
-  def make_rd(v_idx, rn: 2, nodes: nil)
-    rd = Roma::Routing::RoutingData.new(32, DIV_BITS, rn)
-    rd.nodes = nodes || v_idx.flatten.uniq
-    v_idx.each_with_index do |nids, i|
-      rd.v_idx[VN[i]] = nids
-      rd.v_clk[VN[i]] = 0
+  # Routing data where vnode i is stored on routes[i] (primary first).
+  def make_routing_data(routes, redundancy: 2, nodes: nil)
+    routing_data = Roma::Routing::RoutingData.new(32, DIVIDE_BITS, redundancy)
+    routing_data.nodes = nodes || routes.flatten.uniq
+    routes.each_with_index do |nids, i|
+      routing_data.routes[VN[i]] = nids
+      routing_data.clocks[VN[i]] = 0
     end
-    rd
+    routing_data
   end
 end

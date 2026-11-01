@@ -18,12 +18,12 @@ module Roma
       # each virtual node. The clocks start over.
       def change(node_id, redundancy)
         raise Error, "The redundancy should be 1 or more." if redundancy < 1
-        rd = @client.routing_data(node_id)
-        rd.v_clk.each_key { |vn| rd.v_clk[vn] = 0 }
-        rd.v_idx.each_key { |vn| rd.v_idx[vn] = rd.v_idx[vn].first(redundancy) }
-        rd.rn = redundancy
-        rd.nodes.sort!
-        @out.puts YAML.dump(rd)
+        routing_data = @client.routing_data(node_id)
+        routing_data.clocks.each_key { |vn| routing_data.clocks[vn] = 0 }
+        routing_data.routes.each_key { |vn| routing_data.routes[vn] = routing_data.routes[vn].first(redundancy) }
+        routing_data.redundancy = redundancy
+        routing_data.nodes.sort!
+        @out.puts YAML.dump(routing_data)
       end
     end
   end

@@ -376,7 +376,7 @@ module Roma
         if s.length >= 3
           vn = s[2].to_i
         else
-          d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+          d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
           vn = @rttable.get_vnode_id(d)
         end
         res = @storages[hname].out(vn, key, 0)
@@ -395,7 +395,7 @@ module Roma
         key,hname = s[1].split("\e")
         hname ||= @defhash
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
         data = read_bytes(s[5].to_i)
         read_bytes(2)
         vn = @rttable.get_vnode_id(d)
@@ -418,7 +418,7 @@ module Roma
         key,hname = s[1].split("\e")
         hname ||= @defhash
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
         zdata = read_bytes(s[5].to_i)
         read_bytes(2)
         vn = @rttable.get_vnode_id(d)

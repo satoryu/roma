@@ -16,8 +16,8 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
     FileUtils.rm_rf(@dir)
   end
 
-  def make_rt(v_idx, **opts)
-    @rt = Roma::Routing::ChurnbasedRoutingTable.new(make_rd(v_idx, **opts), @fname)
+  def make_rt(routes, **opts)
+    @rt = Roma::Routing::ChurnbasedRoutingTable.new(make_routing_data(routes, **opts), @fname)
   end
 
   def log_lines

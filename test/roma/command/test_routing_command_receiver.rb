@@ -69,16 +69,16 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
   end
 
   def test_routingdump
-    rd = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
-    assert_equal @rttable.v_idx, rd.v_idx
-    assert_equal [NID, OTHER_NID], rd.nodes
+    routing_data = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
+    assert_equal @rttable.routes, routing_data.routes
+    assert_equal [NID, OTHER_NID], routing_data.nodes
   end
 
   def test_routingdump_yaml
     dump = @conn.request('routingdump yaml')
     assert_true dump.end_with?("\r\nEND\r\n")
-    rd = YAML.unsafe_load(dump.delete_suffix("\r\nEND\r\n"))
-    assert_equal @rttable.v_idx, rd.v_idx
+    routing_data = YAML.unsafe_load(dump.delete_suffix("\r\nEND\r\n"))
+    assert_equal @rttable.routes, routing_data.routes
   end
 
   def test_routingdump_yamlbytes
@@ -90,10 +90,10 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
   def test_routingdump_json
     dump = @conn.request('routingdump json')
     assert_true dump.end_with?("\r\nEND\r\n")
-    params, nodes, v_idx = JSON.parse(dump.delete_suffix("\r\nEND\r\n"))
-    assert_equal({ 'dgst_bits' => 32, 'div_bits' => 3, 'rn' => 2 }, params)
+    params, nodes, routes = JSON.parse(dump.delete_suffix("\r\nEND\r\n"))
+    assert_equal({ 'digest_bits' => 32, 'divide_bits' => 3, 'redundancy' => 2 }, params)
     assert_equal [NID, OTHER_NID], nodes
-    assert_equal [@vn_nid], v_idx[VN.to_s]
+    assert_equal [@vn_nid], routes[VN.to_s]
   end
 
   def test_routingdump_bin
@@ -107,17 +107,17 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_routingdump_with_sub_nid
     # The client connects from 127.0.0.1, so it sees the node names replaced.
-    @rttable.sub_nid['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
-    rd = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
-    assert_equal ['vm_11211', 'vm_11212'], rd.nodes
-    assert_equal [@vn_nid.sub('localhost', 'vm')], rd.v_idx[VN]
+    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    routing_data = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
+    assert_equal ['vm_11211', 'vm_11212'], routing_data.nodes
+    assert_equal [@vn_nid.sub('localhost', 'vm')], routing_data.routes[VN]
     # The routing table itself doesn't change.
     assert_equal [NID, OTHER_NID], @rttable.nodes
 
-    @rttable.sub_nid.clear
-    @rttable.sub_nid['10.0.0.0/8'] = { regexp: 'localhost', replace: 'vm' }
-    rd = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
-    assert_equal [NID, OTHER_NID], rd.nodes
+    @rttable.node_id_substitutions.clear
+    @rttable.node_id_substitutions['10.0.0.0/8'] = { regexp: 'localhost', replace: 'vm' }
+    routing_data = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
+    assert_equal [NID, OTHER_NID], routing_data.nodes
   end
 
   def test_enabled_repetition_in_routing
@@ -163,7 +163,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_mklhash
     root = @conn.request('mklhash 0')
-    assert_equal "#{@rttable.mtree.get('0')}\r\n", root
+    assert_equal "#{@rttable.merkle_tree.get('0')}\r\n", root
     assert_match(/\A\h{40}\r\n\z/, root)
 
     @conn.request("setroute #{VN} 0 #{NID} #{OTHER_NID}")
@@ -176,7 +176,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     # Every vnode of OTHER_NID is lost when it leaves.
     @rttable.enabled_failover = true
     @conn.request("leave #{OTHER_NID}")
-    lost = @rttable.v_idx.select { |_vn, nids| nids.empty? }.keys
+    lost = @rttable.routes.select { |_vn, nids| nids.empty? }.keys
     assert_equal 4, lost.size
     assert_equal lost.map { |vn| "#{vn}\r\n" }.join + "END\r\n", @conn.request('history_of_lost')
     assert_equal lost.map { |vn| "#{vn}\r\n" }.join + "END\r\n", @conn.request('history_of_lost 20000101000000')
@@ -263,33 +263,33 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
   def test_set_threshold_for_failover
     assert_equal replies('STORED'), @conn.request('set_threshold_for_failover 3')
     assert_equal ["rset_threshold_for_failover 3\r\n"], @conn.broadcasts
-    assert_equal 3, @rttable.fail_cnt_threshold
+    assert_equal 3, @rttable.failure_count_threshold
 
     assert_equal "usage:set_threshold_for_failover <n>\r\n", @conn.request('set_threshold_for_failover 0')
     assert_equal "usage:set_threshold_for_failover <n>\r\n", @conn.request('set_threshold_for_failover')
-    assert_equal 3, @rttable.fail_cnt_threshold
+    assert_equal 3, @rttable.failure_count_threshold
   end
 
   def test_rset_threshold_for_failover
     assert_equal "STORED\r\n", @conn.request('rset_threshold_for_failover 3')
-    assert_equal 3, @rttable.fail_cnt_threshold
+    assert_equal 3, @rttable.failure_count_threshold
 
     assert_equal "usage:rset_threshold_for_failover <n>\r\n", @conn.request('rset_threshold_for_failover x')
-    assert_equal 3, @rttable.fail_cnt_threshold
+    assert_equal 3, @rttable.failure_count_threshold
   end
 
   def test_set_gap_for_failover
     assert_equal replies('STORED'), @conn.request('set_gap_for_failover 0.5')
     assert_equal ["rset_gap_for_failover 0.5\r\n"], @conn.broadcasts
-    assert_equal 0.5, @rttable.fail_cnt_gap
+    assert_equal 0.5, @rttable.failure_count_gap
 
     assert_equal "usage:set_gap_for_failover <n>\r\n", @conn.request('set_gap_for_failover')
-    assert_equal 0.5, @rttable.fail_cnt_gap
+    assert_equal 0.5, @rttable.failure_count_gap
   end
 
   def test_rset_gap_for_failover
     assert_equal "STORED\r\n", @conn.request('rset_gap_for_failover 0.5')
-    assert_equal 0.5, @rttable.fail_cnt_gap
+    assert_equal 0.5, @rttable.failure_count_gap
     assert_equal "usage:rset_gap_for_failover <n>\r\n", @conn.request('rset_gap_for_failover')
   end
 
@@ -297,7 +297,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     @conn.relay_reply = 'ADDED'
     assert_equal replies('ADDED'), @conn.request('add_rttable_sub_nid 127.0.0.0/24 localhost vm')
     assert_equal ["radd_rttable_sub_nid 127.0.0.0/24 localhost vm\r\n"], @conn.broadcasts
-    assert_equal({ '127.0.0.0/24' => { regexp: 'localhost', replace: 'vm' } }, @rttable.sub_nid)
+    assert_equal({ '127.0.0.0/24' => { regexp: 'localhost', replace: 'vm' } }, @rttable.node_id_substitutions)
 
     assert_equal "usage:add_rttable_sub_nid <netmask> <regexp> <replace>\r\n",
                  @conn.request('add_rttable_sub_nid 10.0.0.0/8 localhost')
@@ -306,17 +306,17 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_radd_rttable_sub_nid
     assert_equal "ADDED\r\n", @conn.request('radd_rttable_sub_nid 127.0.0.0/24 localhost vm')
-    assert_equal({ '127.0.0.0/24' => { regexp: 'localhost', replace: 'vm' } }, @rttable.sub_nid)
+    assert_equal({ '127.0.0.0/24' => { regexp: 'localhost', replace: 'vm' } }, @rttable.node_id_substitutions)
     assert_equal "usage:add_rttable_sub_nid <netmask> <regexp> <replace>\r\n",
                  @conn.request('radd_rttable_sub_nid 10.0.0.0/8')
   end
 
   def test_delete_rttable_sub_nid
-    @rttable.sub_nid['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     @conn.relay_reply = 'DELETED'
     assert_equal replies('DELETED'), @conn.request('delete_rttable_sub_nid 127.0.0.0/24')
     assert_equal ["rdelete_rttable_sub_nid 127.0.0.0/24\r\n"], @conn.broadcasts
-    assert_equal({}, @rttable.sub_nid)
+    assert_equal({}, @rttable.node_id_substitutions)
 
     @conn.relay_reply = 'NOT_FOUND'
     assert_equal replies('NOT_FOUND'), @conn.request('delete_rttable_sub_nid 127.0.0.0/24')
@@ -324,28 +324,28 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
   end
 
   def test_rdelete_rttable_sub_nid
-    @rttable.sub_nid['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     assert_equal "DELETED\r\n", @conn.request('rdelete_rttable_sub_nid 127.0.0.0/24')
     assert_equal "NOT_FOUND\r\n", @conn.request('rdelete_rttable_sub_nid 127.0.0.0/24')
     assert_equal "usage:delete_rttable_sub_nid <netmask>\r\n", @conn.request('rdelete_rttable_sub_nid')
   end
 
   def test_clear_rttable_sub_nid
-    @rttable.sub_nid['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     @conn.relay_reply = 'CLEARED'
     assert_equal replies('CLEARED'), @conn.request('clear_rttable_sub_nid')
     assert_equal ["rclear_rttable_sub_nid\r\n"], @conn.broadcasts
-    assert_equal({}, @rttable.sub_nid)
+    assert_equal({}, @rttable.node_id_substitutions)
   end
 
   def test_rclear_rttable_sub_nid
-    @rttable.sub_nid['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
+    @rttable.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     assert_equal "CLEARED\r\n", @conn.request('rclear_rttable_sub_nid')
-    assert_equal({}, @rttable.sub_nid)
+    assert_equal({}, @rttable.node_id_substitutions)
   end
 
   def test_get_key_info
-    d = Digest::SHA1.hexdigest('key1').hex % @rttable.hbits
+    d = Digest::SHA1.hexdigest('key1').hex % @rttable.hash_space_size
     vn = @rttable.get_vnode_id(d)
     expected = "d = #{d} 0x#{d.to_s(16)}\r\n" \
                "vn = #{vn} 0x#{vn.to_s(16)}\r\n" \

@@ -15,7 +15,7 @@ module Roma
       end
 
       def get_key_info(key)
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes_for_write(vn)
         s = sprintf("d = %s 0x%x\r\n",d,d)

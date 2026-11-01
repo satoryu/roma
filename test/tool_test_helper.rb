@@ -31,9 +31,9 @@ module ToolTestHelper
     Open3.capture3(*cmd, stdin_data: stdin, chdir: @dir)
   end
 
-  # Makes +node+ answer routingdump with +rd+.
-  def serve_routing(node, rd)
-    dump = Marshal.dump(rd)
+  # Makes +node+ answer routingdump with +routing_data+.
+  def serve_routing(node, routing_data)
+    dump = Marshal.dump(routing_data)
     node.replies['routingdump'] = "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
   end
 

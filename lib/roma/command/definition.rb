@@ -68,7 +68,7 @@ module Roma
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @defhash
-              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hbits
+              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hash_space_size
               params.vn = @rttable.get_vnode_id(params.digest)
               params.nodes = @rttable.search_nodes_for_write(params.vn)
               if params.nodes[0] != @nid
@@ -107,7 +107,7 @@ module Roma
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @defhash
-              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hbits
+              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hash_space_size
               params.vn = @rttable.get_vnode_id(params.digest)
               params.nodes = @rttable.search_nodes_for_write(params.vn)
               if params.nodes[0] != @nid
@@ -178,7 +178,7 @@ module Roma
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @defhash
-              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hbits
+              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hash_space_size
               params.vn = @rttable.get_vnode_id(params.digest)
               params.nodes = @rttable.search_nodes_for_write(params.vn)
               if params.nodes[0] != @nid
@@ -216,7 +216,7 @@ module Roma
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @defhash
-              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hbits
+              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hash_space_size
               params.vn = @rttable.get_vnode_id(params.digest)
               params.nodes = @rttable.search_nodes_for_write(params.vn)
               params.value = read_bytes(s[idx_of_val_len].to_i)
@@ -291,7 +291,7 @@ module Roma
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @defhash
-              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hbits
+              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hash_space_size
               params.vn = @rttable.get_vnode_id(params.digest)
               params.nodes = @rttable.search_nodes_for_write(params.vn)
               params.value = read_bytes(s[idx_of_val_len].to_i)
@@ -333,7 +333,7 @@ module Roma
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @defhash
-              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hbits
+              params.digest = Digest::SHA1.hexdigest(params.key).hex % @rttable.hash_space_size
               params.vn = @rttable.get_vnode_id(params.digest)
               params.nodes = @rttable.search_nodes_for_write(params.vn)
               params.value = read_bytes(s[idx_of_val_len].to_i)

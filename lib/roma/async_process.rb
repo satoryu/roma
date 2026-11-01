@@ -365,7 +365,7 @@ module Roma
     def join_process
       @log.info("#{__method__}:start")
       count = 0
-      nv = @rttable.v_idx.length
+      nv = @rttable.routes.length
       exclude_nodes = @rttable.exclude_nodes_for_join(@stats.ap_str, @stats.rep_host)
 
       @do_join_process = true
@@ -395,7 +395,7 @@ module Roma
     def balance_process
       @log.info("#{__method__}:start")
       count = 0
-      nv = @rttable.v_idx.length
+      nv = @rttable.routes.length
       exclude_nodes = @rttable.exclude_nodes_for_balance(@stats.ap_str, @stats.rep_host)
 
       @do_balance_process = true
@@ -586,14 +586,14 @@ module Roma
     end
 
     def edit_nodes(nodes, new_nid, is_primary)
-      if @rttable.rn == 1
+      if @rttable.redundancy == 1
         return [new_nid]
       end
       # [node_a, node_b, new_nid]
       nodes.delete(new_nid)
       # [node_a, node_b]
 
-      if nodes.length >= @rttable.rn
+      if nodes.length >= @rttable.redundancy
         host = new_nid.split(/[:_]/)[0]
         buf = [] # list of a same host
         nodes.each do |nid|
@@ -1042,9 +1042,9 @@ module Roma
       @log.info("#{__method__} :start.")
 
       @storages.each_key do |hname|
-        @rttable.v_idx.each_key do |vn|
+        @rttable.routes.each_key do |vn|
           raise unless $roma.cr_writer.run_existing_data_replication
-          args[0].v_idx[vn].each do |replica_nid|
+          args[0].routes[vn].each do |replica_nid|
             res = push_a_vnode_stream(hname, vn, replica_nid)
             if res != 'STORED'
               @log.error("#{__method__}:push_a_vnode was failed:hname=#{hname} vn=#{vn}:#{res}")

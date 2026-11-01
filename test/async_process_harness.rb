@@ -36,12 +36,12 @@ class AsyncProcessHarness
     @stats = Roma::Stats.send(:new)
     @stats.address, @stats.port = NID.split('_')
     @dir = Dir.mktmpdir('roma_async')
-    rd = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
     # Choose the nodes of every vnode, instead of at random.
-    rd.v_idx.each_key { |vn| rd.v_idx[vn] = vnode_nodes.dup } if vnode_nodes
-    @rttable = Roma::Routing::ChurnbasedRoutingTable.new(rd, File.join(@dir, 'test.route'))
+    routing_data.routes.each_key { |vn| routing_data.routes[vn] = vnode_nodes.dup } if vnode_nodes
+    @rttable = Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route'))
     @storage = Roma::Storage::HashStorage.new
-    @storage.vn_list = rd.v_idx.keys
+    @storage.vn_list = routing_data.routes.keys
     @storage.storage_path = @dir
     @storage.st_class = Roma::Storage::HashStorage
     @storage.each_vn_dump_sleep = 0
@@ -67,7 +67,7 @@ class AsyncProcessHarness
   # Stores +value+ under +key+ in the vnode the key belongs to, and returns
   # the vnode.
   def store(key, value, expt: 0x7fffffff)
-    d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+    d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
     vn = @rttable.get_vnode_id(d)
     @storage.set(vn, key, d, expt, value)
     vn

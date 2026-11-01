@@ -21,28 +21,28 @@ class MkrouteTest < Test::Unit::TestCase
     out = mkroute(%w(host1:11211 host2_11211), divide_bits: 3)
     assert_equal "nodes => [\"host1_11211\", \"host2_11211\"]\nRouting table has created.\n", out
     %w(host1_11211 host2_11211).each do |nid|
-      rd = load_route(nid)
-      assert_equal %w(host1_11211 host2_11211), rd.nodes
-      assert_equal [32, 3, 2], [rd.dgst_bits, rd.div_bits, rd.rn]
-      assert_equal 8, rd.v_idx.size
+      routing_data = load_route(nid)
+      assert_equal %w(host1_11211 host2_11211), routing_data.nodes
+      assert_equal [32, 3, 2], [routing_data.digest_bits, routing_data.divide_bits, routing_data.redundancy]
+      assert_equal 8, routing_data.routes.size
     end
   end
 
   def test_options
     mkroute(%w(host1_1 host2_1 host3_1), hash_bits: 16, divide_bits: 4, redundancy: 3)
-    rd = load_route('host1_1')
-    assert_equal [16, 4, 3], [rd.dgst_bits, rd.div_bits, rd.rn]
+    routing_data = load_route('host1_1')
+    assert_equal [16, 4, 3], [routing_data.digest_bits, routing_data.divide_bits, routing_data.redundancy]
   end
 
   def test_replication_in_host
     mkroute(%w(host1_1 host1_2), divide_bits: 3, replication_in_host: true)
-    load_route('host1_1').v_idx.each_value { |nids| assert_equal 2, nids.size }
+    load_route('host1_1').routes.each_value { |nids| assert_equal 2, nids.size }
   end
 
   # Without replication_in_host, a host doesn't hold the same data twice.
   def test_without_replication_in_host
     mkroute(%w(host1_1 host1_2 host2_1), divide_bits: 3)
-    load_route('host1_1').v_idx.each_value do |nids|
+    load_route('host1_1').routes.each_value do |nids|
       assert_equal nids.size, nids.map { |nid| nid.split('_').first }.uniq.size
     end
   end
