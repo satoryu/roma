@@ -26,10 +26,10 @@ class ConfigurationTest < Test::Unit::TestCase
   # A mutable default is not shared with another config.
   def test_defaults_are_copied
     @config.plugins << 'plugin_alist.rb'
-    @config.routing.sub_nid['10.0.0.0/8'] = {}
+    @config.routing.node_id_substitutions['10.0.0.0/8'] = {}
     other = Roma::Configuration::Settings.new
     assert_equal ['plugin_storage.rb'], other.plugins
-    assert_equal({}, other.routing.sub_nid)
+    assert_equal({}, other.routing.node_id_substitutions)
   end
 
   def test_set

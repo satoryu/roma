@@ -45,7 +45,7 @@ class PluginTestHarness
       @failed = []
     end
 
-    def hbits
+    def hash_space_size
       2**32
     end
 

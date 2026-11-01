@@ -164,12 +164,12 @@ module StorageCommandTests
     con.gets
     con.close
 
-    magic, ver, dgst_bits, div_bits, rn, nodeslen = bin.unpack('a2nCCCn')
+    magic, ver, digest_bits, divide_bits, redundancy, nodeslen = bin.unpack('a2nCCCn')
     assert_equal('RT', magic)
     assert_equal(1, ver)
-    assert_equal(32, dgst_bits)
-    assert_equal(3, div_bits)
-    assert_equal(2, rn)
+    assert_equal(32, digest_bits)
+    assert_equal(3, divide_bits)
+    assert_equal(2, redundancy)
     assert_equal(2, nodeslen)
   end
 end

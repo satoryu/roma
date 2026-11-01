@@ -159,7 +159,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   end
 
   def test_out
-    vn = @conn.rttable.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.rttable.hbits)
+    vn = @conn.rttable.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.rttable.hash_space_size)
     @conn.storage.set(vn, 'key1', 0, 0x7fffffff, 'value1')
     assert_equal "DELETED\r\n", @conn.request('out key1')
     assert_nil @conn.storage.get(vn, 'key1', 0)
@@ -169,7 +169,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
 
   def test_rset
     assert_equal "STORED\r\n", @conn.request('rset key1 0 1 2147483647 6', 'value1')
-    vn = @conn.rttable.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.rttable.hbits)
+    vn = @conn.rttable.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.rttable.hash_space_size)
     assert_equal 'value1', @conn.storage.get(vn, 'key1', 0)
     assert_equal 1, @conn.stats.redundant_count
   end
@@ -182,7 +182,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   def test_rzset
     zdata = Zlib::Deflate.deflate('value1')
     assert_equal "STORED\r\n", @conn.request("rzset key1 0 1 2147483647 #{zdata.bytesize}", zdata)
-    vn = @conn.rttable.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.rttable.hbits)
+    vn = @conn.rttable.get_vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.rttable.hash_space_size)
     assert_equal 'value1', @conn.storage.get(vn, 'key1', 0)
     assert_equal "NOT_STORED\r\n", @conn.request('rzset key2 0 1 0 6', 'broken')
   end

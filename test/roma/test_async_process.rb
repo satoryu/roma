@@ -23,7 +23,7 @@ module AsyncProcessTestHelper
   end
 
   def digest(key)
-    Digest::SHA1.hexdigest(key).hex % @h.rttable.hbits
+    Digest::SHA1.hexdigest(key).hex % @h.rttable.hash_space_size
   end
 end
 
@@ -448,7 +448,7 @@ class AsyncProcessPushTest < Test::Unit::TestCase
 
   def test_req_push_a_vnode_time_out
     @h.stats.reqpushv_timeout_count = 3
-    other = @h.rttable.v_idx.keys.find { |vn| vn != @vn }
+    other = @h.rttable.routes.keys.find { |vn| vn != @vn }
     @h.rttable.set_route(other, 0, [OTHER_NID])
     assert_equal :timeout, @h.call(:req_push_a_vnode, other, @node.nid, false)
     assert_equal [0.1] * 3, @h.slept
@@ -456,15 +456,15 @@ class AsyncProcessPushTest < Test::Unit::TestCase
 
   def test_req_push_a_vnode_to_a_node_that_is_down
     assert_false @h.call(:req_push_a_vnode, @vn, 'localhost_1', false)
-    assert_equal 1, @h.rttable.fail_cnt['localhost_1']
+    assert_equal 1, @h.rttable.failure_counts['localhost_1']
   end
 
   def test_replicate_existing_data_process
-    replica = Struct.new(:v_idx).new(@h.rttable.v_idx.keys.to_h { |vn| [vn, [@node.nid]] })
+    replica = Struct.new(:routes).new(@h.rttable.routes.keys.to_h { |vn| [vn, [@node.nid]] })
     saved = defined?($roma) ? $roma : nil
     $roma = Struct.new(:cr_writer).new(Struct.new(:run_existing_data_replication).new(true))
     @h.call(:replicate_existing_data_process, [replica])
-    assert_equal @h.rttable.v_idx.keys.sort, @node.dat.keys.sort
+    assert_equal @h.rttable.routes.keys.sort, @node.dat.keys.sort
     assert_equal ['key1'], @node.dat[@vn].keys
   ensure
     $roma = saved
@@ -542,7 +542,7 @@ class AsyncProcessEditNodesTest < Test::Unit::TestCase
   end
 
   def test_edit_nodes_without_redundancy
-    @h.rttable.instance_variable_set(:@rn, 1)
+    @h.rttable.instance_variable_set(:@redundancy, 1)
     assert_equal ['hostc_1'], @h.call(:edit_nodes, %w(hosta_1), 'hostc_1', false)
   end
 end

@@ -26,25 +26,25 @@ module Roma
       # storage files for each hash. Raises Error if it fails.
       def recover(node_id, storage_path, since: nil, all: false)
         raise Error, "The time should be YYYYMMDDHHMMSS." if since && since !~ /\A\d{14}\z/
-        rd = @client.routing_data(node_id)
+        routing_data = @client.routing_data(node_id)
         if all
-          vnodes = rd.v_idx.keys
+          vnodes = routing_data.routes.keys
         else
-          vnodes = rd.get_lost_vnodes
+          vnodes = routing_data.get_lost_vnodes
           vnodes |= history_of_lost(node_id, since) if since
           @out.puts "#{vnodes.length} vnodes where data was lost."
           return if vnodes.empty?
         end
         each_storage(storage_path, vnodes) do |hname, storage|
-          vnodes.each_with_index { |vn, idx| recover_vnode(rd, hname, storage, vn, "#{idx}/#{vnodes.length}") }
+          vnodes.each_with_index { |vn, idx| recover_vnode(routing_data, hname, storage, vn, "#{idx}/#{vnodes.length}") }
         end
       end
 
       # Recovers only the data of +keys+, to the nodes that have it now.
       def recover_keys(node_id, storage_path, keys)
-        rd = @client.routing_data(node_id)
-        each_storage(storage_path, rd.v_idx.keys) do |hname, storage|
-          keys.each { |key| recover_key(rd, hname, storage, key) }
+        routing_data = @client.routing_data(node_id)
+        each_storage(storage_path, routing_data.routes.keys) do |hname, storage|
+          keys.each { |key| recover_key(routing_data, hname, storage, key) }
         end
       end
 
@@ -79,11 +79,11 @@ module Roma
       end
 
       # A vnode without nodes is given to a node, which the others are told.
-      def recover_vnode(rd, hname, storage, vn, progress)
-        nids = rd.v_idx[vn]
+      def recover_vnode(routing_data, hname, storage, vn, progress)
+        nids = routing_data.routes[vn]
         assign = nids.nil? || nids.empty?
         if assign
-          nids = [rd.nodes.sample(random: @random)]
+          nids = [routing_data.nodes.sample(random: @random)]
           @out.puts "#{progress} #{vn} assign to #{nids.inspect}"
         else
           @out.puts "#{progress} #{vn} was auto assigned at #{nids.inspect}"
@@ -94,23 +94,23 @@ module Roma
         end
         return unless assign
 
-        cmd = "setroute #{vn} #{rd.v_clk[vn]} #{nids[0]}"
+        cmd = "setroute #{vn} #{routing_data.clocks[vn]} #{nids[0]}"
         res = @client.request(nids[0], cmd)
         raise Error, "#{nids[0]} replied to #{cmd}: #{res}" unless res == 'STORED'
-        (rd.nodes - nids).each do |nid|
+        (routing_data.nodes - nids).each do |nid|
           @client.request(nid, cmd)
         rescue Error => e
           @out.puts e.message
         end
       end
 
-      def recover_key(rd, hname, storage, key)
+      def recover_key(routing_data, hname, storage, key)
         data = storage.get_raw2(key)
         return unless data
         @out.puts "hit => #{key}"
-        vn = (Digest::SHA1.hexdigest(key).hex % (2**rd.dgst_bits)) & rd.search_mask
+        vn = (Digest::SHA1.hexdigest(key).hex % (2**routing_data.digest_bits)) & routing_data.search_mask
         _vn, last, _clk, expt, val = data
-        Array(rd.v_idx[vn]).each do |nid|
+        Array(routing_data.routes[vn]).each do |nid|
           res = begin
                   push(nid, hname, vn) { |con| write_data(con, pack(vn, last, 0, expt, key, val)) }
                 rescue Error => e

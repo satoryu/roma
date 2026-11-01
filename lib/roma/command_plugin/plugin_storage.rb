@@ -25,7 +25,7 @@ module Roma
 
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes(vn)
 
@@ -54,7 +54,7 @@ module Roma
       def ev_fget(s)
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes(vn)
 
@@ -79,7 +79,7 @@ module Roma
         kvn = {} # {key1=>vn1, key2=>vn2, ... }
         s[1..-1].each{|kh|
           key, = kh.split("\e") # split a hash-name
-          d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+          d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
           kvn[key] = vn = @rttable.get_vnode_id(d)
           nodes = @rttable.search_nodes(vn)
           unless nodes.empty? # check the node existence
@@ -123,7 +123,7 @@ module Roma
 
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes_for_write(vn)
 
@@ -180,7 +180,7 @@ module Roma
       def ev_fdelete(s)
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes_for_write(vn)
         if nodes.include?(@nid) == false
@@ -229,7 +229,7 @@ module Roma
       def ev_rdelete(s)
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         unless @storages.key?(hname)
           send_data("SERVER_ERROR #{hname} does not exists.\r\n")
@@ -273,7 +273,7 @@ module Roma
       def ev_cas(s)
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         v = read_bytes(s[4].to_i)
         read_bytes(2)
         vn = @rttable.get_vnode_id(d)
@@ -294,7 +294,7 @@ module Roma
         key,hname = s[1].split("\e")
         hname ||= @defhash
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
         vn = @rttable.get_vnode_id(d)
@@ -320,7 +320,7 @@ module Roma
       def ev_set_expt(s)
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes_for_write(vn)
         if nodes[0] != @nid
@@ -367,7 +367,7 @@ module Roma
       def ev_fset_expt(s)
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes_for_write(vn)
         if nodes.include?(@nid) == false
@@ -429,7 +429,7 @@ module Roma
           return
         end
 
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
 
         nodes = @rttable.search_nodes(vn)
@@ -652,7 +652,7 @@ module Roma
 
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         v = read_bytes(bytes)
         read_bytes(2)
         vn = @rttable.get_vnode_id(d)
@@ -673,7 +673,7 @@ module Roma
         key,hname = s[1].split("\e")
         hname ||= @defhash
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
         vn = @rttable.get_vnode_id(d)
@@ -719,7 +719,7 @@ module Roma
       def incr_decr(fnc,s)
         key,hname = s[1].split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size
         v = s[2].to_i
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes_for_write(vn)
@@ -739,7 +739,7 @@ module Roma
         key,hname = s[1].split("\e")
         hname ||= @defhash
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @rttable.hbits if d == 0
+        d = Digest::SHA1.hexdigest(key).hex % @rttable.hash_space_size if d == 0
         v = s[3].to_i
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes_for_write(vn)

@@ -15,29 +15,29 @@ class ChgRedundancyTest < Test::Unit::TestCase
 
   def serve(redundancy)
     node = fake_node
-    rd = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.nid, 'localhost_1', 'localhost_0'], true)
-    rd.v_clk.each_key { |vn| rd.v_clk[vn] = 5 }
-    serve_routing(node, rd)
-    [node, rd]
+    routing_data = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.nid, 'localhost_1', 'localhost_0'], true)
+    routing_data.clocks.each_key { |vn| routing_data.clocks[vn] = 5 }
+    serve_routing(node, routing_data)
+    [node, routing_data]
   end
 
   def test_lower
-    node, rd = serve(2)
-    assert_equal [2], rd.v_idx.values.map(&:size).uniq
+    node, routing_data = serve(2)
+    assert_equal [2], routing_data.routes.values.map(&:size).uniq
     changed = change(node.nid.sub('_', ':'), 1)
-    assert_equal 1, changed.rn
-    assert_equal rd.v_idx.transform_values { |nids| nids.first(1) }, changed.v_idx
+    assert_equal 1, changed.redundancy
+    assert_equal routing_data.routes.transform_values { |nids| nids.first(1) }, changed.routes
     # The clocks start over.
-    assert_equal [0], changed.v_clk.values.uniq
-    assert_equal rd.nodes.sort, changed.nodes
+    assert_equal [0], changed.clocks.values.uniq
+    assert_equal routing_data.nodes.sort, changed.nodes
   end
 
   # The nodes are added by romad later.
   def test_higher
-    node, rd = serve(1)
+    node, routing_data = serve(1)
     changed = change(node.nid, 3)
-    assert_equal 3, changed.rn
-    assert_equal rd.v_idx, changed.v_idx
+    assert_equal 3, changed.redundancy
+    assert_equal routing_data.routes, changed.routes
   end
 
   data('zero' => 0, 'negative' => -1)

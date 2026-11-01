@@ -22,15 +22,15 @@ module Roma
       end
 
       def ev_create_nodes_from_v_idx(s)
-        @rttable.create_nodes_from_v_idx
+        @rttable.create_nodes_from_routes
         send_data("CREATED\r\n")
       end
 
       # routingdump [yaml|json|yamlbytes|bin]\r\n
       def ev_routingdump(s)
         rt = @rttable
-        rd = @rttable.sub_nid_rd(@addr)
-        rt = Roma::Routing::RoutingTable.new(rd) if rd
+        routing_data = @rttable.substituted_routing_data(@addr)
+        rt = Roma::Routing::RoutingTable.new(routing_data) if routing_data
 
         if s.length == 1
           dmp = rt.dump
@@ -54,8 +54,8 @@ module Roma
 
       def ev_enabled_repetition_in_routing?(s)
         rt = @rttable
-        rd = @rttable.sub_nid_rd(@addr)
-        rt = Roma::Routing::RoutingTable.new(rd) if rd
+        routing_data = @rttable.substituted_routing_data(@addr)
+        rt = Roma::Routing::RoutingTable.new(routing_data) if routing_data
 
         if s.length == 1
           repetition = rt.check_repetition_in_routing
@@ -106,7 +106,7 @@ module Roma
 
       # mklhash <id>
       def ev_mklhash(s)
-        send_data("#{@rttable.mtree.get(s[1])}\r\n")
+        send_data("#{@rttable.merkle_tree.get(s[1])}\r\n")
       end
 
       # history_of_lost [yyyymmddhhmmss]
@@ -192,7 +192,7 @@ module Roma
           return send_data("usage:set_threshold_for_failover <n>\r\n")
         end
         res = broadcast_cmd("rset_threshold_for_failover #{s[1]}\r\n")
-        @rttable.fail_cnt_threshold = s[1].to_i
+        @rttable.failure_count_threshold = s[1].to_i
         res[@stats.ap_str] = "STORED"
         send_data("#{res}\r\n")
       end
@@ -202,7 +202,7 @@ module Roma
         if s.length != 2 || s[1].to_i == 0
           return send_data("usage:rset_threshold_for_failover <n>\r\n")
         end
-        @rttable.fail_cnt_threshold = s[1].to_i
+        @rttable.failure_count_threshold = s[1].to_i
         send_data("STORED\r\n")
       end
 
@@ -212,7 +212,7 @@ module Roma
           return send_data("usage:set_gap_for_failover <n>\r\n")
         end
         res = broadcast_cmd("rset_gap_for_failover #{s[1]}\r\n")
-        @rttable.fail_cnt_gap = s[1].to_f
+        @rttable.failure_count_gap = s[1].to_f
         res[@stats.ap_str] = "STORED"
         send_data("#{res}\r\n")        
       end
@@ -222,20 +222,20 @@ module Roma
         if s.length != 2
           return send_data("usage:rset_gap_for_failover <n>\r\n")
         end
-        @rttable.fail_cnt_gap = s[1].to_f
+        @rttable.failure_count_gap = s[1].to_f
         send_data("STORED\r\n")        
       end
 
       # cleat RTTABLE_SUB_NID map
       def ev_clear_rttable_sub_nid(s)
         res = broadcast_cmd("rclear_rttable_sub_nid\r\n")
-        @rttable.sub_nid.clear()
+        @rttable.node_id_substitutions.clear()
         res[@stats.ap_str] = "CLEARED"
         send_data("#{res}\r\n")
       end
 
       def ev_rclear_rttable_sub_nid(s)
-        @rttable.sub_nid.clear()
+        @rttable.node_id_substitutions.clear()
         send_data("CLEARED\r\n")
       end
       
@@ -245,7 +245,7 @@ module Roma
           return send_data("usage:add_rttable_sub_nid <netmask> <regexp> <replace>\r\n")
         end
         res = broadcast_cmd("radd_rttable_sub_nid #{s[1]} #{s[2]} #{s[3]}\r\n")
-        @rttable.sub_nid[s[1]] = {:regexp => "#{s[2]}", :replace => "#{s[3]}"}
+        @rttable.node_id_substitutions[s[1]] = {:regexp => "#{s[2]}", :replace => "#{s[3]}"}
         res[@stats.ap_str] = "ADDED"
         send_data("#{res}\r\n")
       end
@@ -255,7 +255,7 @@ module Roma
         if s.length != 4
           return send_data("usage:add_rttable_sub_nid <netmask> <regexp> <replace>\r\n")
         end
-        @rttable.sub_nid[s[1]] = {:regexp => "#{s[2]}", :replace => "#{s[3]}"}
+        @rttable.node_id_substitutions[s[1]] = {:regexp => "#{s[2]}", :replace => "#{s[3]}"}
         send_data("ADDED\r\n")
       end
 
@@ -266,7 +266,7 @@ module Roma
         end
 
         res = broadcast_cmd("rdelete_rttable_sub_nid #{s[1]}\r\n")
-        unless @rttable.sub_nid.delete s[1]
+        unless @rttable.node_id_substitutions.delete s[1]
           res[@stats.ap_str] = "NOT_FOUND"
         else
           res[@stats.ap_str] = "DELETED"
@@ -280,7 +280,7 @@ module Roma
           return send_data("usage:delete_rttable_sub_nid <netmask>\r\n")
         end
 
-        unless @rttable.sub_nid.delete s[1]
+        unless @rttable.node_id_substitutions.delete s[1]
           send_data("NOT_FOUND\r\n")
         else
           send_data("DELETED\r\n")
@@ -293,7 +293,7 @@ module Roma
           return send_data("CLIENT_ERROR number of arguments(0 for 1)\r\n")
         end
 
-        d = Digest::SHA1.hexdigest(s[1]).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(s[1]).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes_for_write(vn)
         send_data(sprintf("d = %s 0x%x\r\n",d,d))

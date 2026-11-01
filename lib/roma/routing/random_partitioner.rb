@@ -34,14 +34,14 @@ module Roma
         idx = {}
         myhost = exclude_nodes[0].split(/[:_]/)[0]
 
-        @rd.v_idx.each_pair do |vn, nids|
+        @routing_data.routes.each_pair do |vn, nids|
           unless list_include?(nids, exclude_nodes)
             if myhost_include?(nids, myhost)
               myhost_idx[vn] = nids
             else
               idx[vn] = nids # other hosts
             end
-            short_idx[vn] = nids if nids.length < @rd.rn
+            short_idx[vn] = nids if nids.length < @routing_data.redundancy
           end
         end
 
@@ -64,7 +64,7 @@ module Roma
         if !rep_host && nids[0].split(/[:_]/)[0] == myhost
           is_primary = true
         else
-          is_primary = rand(@rd.rn) == 0
+          is_primary = rand(@routing_data.redundancy) == 0
         end
 
         [vn, nids, is_primary]
@@ -73,8 +73,8 @@ module Roma
       # select a vnodes where short of redundancy.
       def select_vn_for_recover(exclude_nodes, _rep_host)
         ret = []
-        @rd.v_idx.each_pair do |vn, nids|
-          if nids.length < @rd.rn && list_include?(nids, exclude_nodes) == false
+        @routing_data.routes.each_pair do |vn, nids|
+          if nids.length < @routing_data.redundancy && list_include?(nids, exclude_nodes) == false
             ret << [vn, nids]
           end
         end
@@ -82,7 +82,7 @@ module Roma
           nil
         else
           n = rand(ret.length)
-          [ret[n][0], ret[n][1], (rand(@rd.rn) == 0)]
+          [ret[n][0], ret[n][1], (rand(@routing_data.redundancy) == 0)]
         end
       end
 
@@ -110,10 +110,10 @@ module Roma
       def select_vn_for_balance(exclude_nodes, _rep_host)
         short_idx = {}
         idx = {}
-        @rd.v_idx.each_pair do |vn, nids|
+        @routing_data.routes.each_pair do |vn, nids|
           unless list_include?(nids, exclude_nodes)
             idx[vn] = nids
-            short_idx[vn] = nids if nids.length < @rd.rn
+            short_idx[vn] = nids if nids.length < @routing_data.redundancy
           end
         end
         idx = short_idx if short_idx.length > 0
@@ -122,7 +122,7 @@ module Roma
         return nil if ks.length == 0
         vn = ks[rand(ks.length)]
         nids = idx[vn]
-        [vn, nids, rand(@rd.rn) == 0]
+        [vn, nids, rand(@routing_data.redundancy) == 0]
       end
     end
   end

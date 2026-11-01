@@ -1379,7 +1379,7 @@ module Roma
       def calc_hash(key)
         k,hname = key.split("\e")
         hname ||= @defhash
-        d = Digest::SHA1.hexdigest(k).hex % @rttable.hbits
+        d = Digest::SHA1.hexdigest(k).hex % @rttable.hash_space_size
         vn = @rttable.get_vnode_id(d)
         nodes = @rttable.search_nodes_for_write(vn)
         [hname, k, d, vn, nodes]        

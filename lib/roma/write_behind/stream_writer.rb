@@ -93,9 +93,9 @@ module Roma
           end
           con.read(2) # "\r\n"
           con.gets
-          rd = Marshal.load(routes)
+          routing_data = Marshal.load(routes)
           Roma::Messaging::ConPool.instance.return_connection(nid, con)
-          @replica_rttable = rd
+          @replica_rttable = routing_data
           @log.debug("replica_rttable has updated: [#{@replica_rttable}]")
         end
       rescue => e
@@ -104,8 +104,8 @@ module Roma
       end
 
       def search_replica_primary_node(key)
-        d = Digest::SHA1.hexdigest(key).hex % (2**@replica_rttable.dgst_bits)
-        nodes = @replica_rttable.v_idx[d & @replica_rttable.search_mask]
+        d = Digest::SHA1.hexdigest(key).hex % (2**@replica_rttable.digest_bits)
+        nodes = @replica_rttable.routes[d & @replica_rttable.search_mask]
         return nodes[0] # for send primary node of replica cluster
       rescue => e
         @log.error("#{e}\n#{$@}")

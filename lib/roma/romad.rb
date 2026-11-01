@@ -374,14 +374,14 @@ module Roma
       else
         fname = "#{routing.path}/#{@stats.ap_str}.route"
         raise "#{fname} not found." unless File::exist?(fname)
-        rd = Roma::Routing::RoutingData::load(fname)
-        raise "It failed in loading the routing table data." unless rd
-        @rttable = (routing.table_class || Roma::Routing::ChurnbasedRoutingTable).new(rd, fname)
+        routing_data = Roma::Routing::RoutingData::load(fname)
+        raise "It failed in loading the routing table data." unless routing_data
+        @rttable = (routing.table_class || Roma::Routing::ChurnbasedRoutingTable).new(routing_data, fname)
       end
 
-      @rttable.sub_nid = routing.sub_nid
-      @rttable.fail_cnt_threshold = routing.fail_cnt_threshold
-      @rttable.fail_cnt_gap = routing.fail_cnt_gap
+      @rttable.node_id_substitutions = routing.node_id_substitutions
+      @rttable.failure_count_threshold = routing.failure_count_threshold
+      @rttable.failure_count_gap = routing.failure_count_gap
       @rttable.lost_action = routing.lost_action
       @rttable.auto_recover = routing.auto_recover
 
@@ -422,17 +422,17 @@ module Roma
       end
 
       fname = "#{Roma.config.routing.path}/#{@stats.ap_str}.route"
-      if rd = get_routedump(@stats.join_ap)
-        rd.save(fname)
+      if routing_data = get_routedump(@stats.join_ap)
+        routing_data.save(fname)
       else
         raise "It failed in getting the routing table data from #{@stats.join_ap}."
       end
 
-      if rd.nodes.include?(@stats.ap_str)
+      if routing_data.nodes.include?(@stats.ap_str)
         raise "ROMA has already contained #{@stats.ap_str}."
       end
 
-      @rttable = Roma::Routing::ChurnbasedRoutingTable.new(rd,fname)
+      @rttable = Roma::Routing::ChurnbasedRoutingTable.new(routing_data,fname)
       nodes = @rttable.nodes
 
       nodes.each{|nid|
@@ -454,11 +454,11 @@ module Roma
       rcv = receive_routing_dump(nid, "routingdump bin\r\n")
       unless rcv
         rcv = receive_routing_dump(nid, "routingdump\r\n")
-        rd = Marshal.load(rcv)
+        routing_data = Marshal.load(rcv)
       else
-        rd = Routing::RoutingData.decode_binary(rcv)
+        routing_data = Routing::RoutingData.decode_binary(rcv)
       end
-      rd
+      routing_data
     rescue
       nil
     end
@@ -619,9 +619,9 @@ module Roma
         begin
           ret = routing_hash_comparison(nodes[idx-1])
           if ret == :inconsistent
-            @log.info("create nodes from v_idx");
+            @log.info("create nodes from routes");
 
-            @rttable.create_nodes_from_v_idx
+            @rttable.create_nodes_from_routes
             begin
               con = Roma::Messaging::ConPool.instance.get_connection(nodes[idx-1])
               con.write("create_nodes_from_v_idx\r\n")
@@ -647,8 +647,8 @@ module Roma
       return :skip if @stats.run_join || @stats.run_recover || @stats.run_balance
 
       h = async_send_cmd(nid,"mklhash #{id}\r\n")
-      if h && h.start_with?("ERROR") == false && @rttable.mtree.get(id) != h
-        if (id.length - 1) == @rttable.div_bits
+      if h && h.start_with?("ERROR") == false && @rttable.merkle_tree.get(id) != h
+        if (id.length - 1) == @rttable.divide_bits
           sync_routing(nid,id)
         else
           routing_hash_comparison(nid,"#{id}0")
@@ -660,7 +660,7 @@ module Roma
     end
 
     def sync_routing(nid,id)
-      vn = @rttable.mtree.to_vn(id)
+      vn = @rttable.merkle_tree.to_vn(id)
       @log.warn("vn=#{vn} inconsistent")
 
       res = async_send_cmd(nid,"getroute #{vn}\r\n")

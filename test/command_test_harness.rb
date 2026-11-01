@@ -150,8 +150,8 @@ class CommandTestHarness
     @storage.st_class = Roma::Storage::HashStorage
     @storage.opendb
     @storages = { @defhash => @storage }
-    rd = Roma::Routing::RoutingData.create(32, 3, 2, [NID, OTHER_NID])
-    @rttable = Roma::Routing::ChurnbasedRoutingTable.new(rd, File.join(@dir, 'test.route'))
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [NID, OTHER_NID])
+    @rttable = Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route'))
     @broadcasts = []
     @relay_reply = 'STORED'
   end

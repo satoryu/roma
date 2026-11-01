@@ -42,10 +42,10 @@ module RomadTestHelper
     stats = Roma::Stats.send(:new)
     stats.address, stats.port = ap.split('_')
     stats.name = 'ROMA'
-    rd = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
-    rd.v_idx.each_key { |vn| rd.v_idx[vn] = nodes.dup }
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
+    routing_data.routes.each_key { |vn| routing_data.routes[vn] = nodes.dup }
     set(stats: stats, log: Logger.new(nil), startup: true,
-        rttable: Roma::Routing::ChurnbasedRoutingTable.new(rd, File.join(@dir, 'test.route')),
+        rttable: Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route')),
         storages: {})
     @romad
   end
@@ -232,7 +232,7 @@ class RomadInitializeTest < Test::Unit::TestCase
     rttable = @romad.rttable
     assert_equal [OTHER_NID, ap].sort, rttable.nodes.sort
     assert_equal Roma.config.routing.lost_action, rttable.lost_action
-    assert_equal Roma.config.routing.fail_cnt_threshold, rttable.fail_cnt_threshold
+    assert_equal Roma.config.routing.failure_count_threshold, rttable.failure_count_threshold
     assert_equal Roma.config.routing.event_limit_line, rttable.event_limit_line
     assert_false rttable.enabled_failover
     assert_equal 'start_get_routing_event', Roma::AsyncProcess.queue.pop.event
@@ -301,8 +301,8 @@ class RomadInitializeTest < Test::Unit::TestCase
   # Joining an existing cluster gets the routing table from a node of it.
   def test_initialize_rttable_join
     node = fake_node
-    rd = Roma::Routing::RoutingData.create(32, 3, 2, [node.nid])
-    node.replies['routingdump'] = "#{rd.dump_binary.bytesize}\r\n#{rd.dump_binary}\r\nEND\r\n"
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [node.nid])
+    node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
     node.replies['join'] = "ADDED\r\n"
     @romad.stats.join_ap = node.nid
     fname = routing_file
@@ -327,12 +327,12 @@ class RomadInitializeTest < Test::Unit::TestCase
     assert_raise_message(/failed in getting the routing table/) { call(:initialize_rttable_join) }
 
     routing_file
-    rd = Roma::Routing::RoutingData.create(32, 3, 2, [node.nid, ap])
-    node.replies['routingdump'] = "#{rd.dump_binary.bytesize}\r\n#{rd.dump_binary}\r\nEND\r\n"
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [node.nid, ap])
+    node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
     assert_raise_message(/already contained/) { call(:initialize_rttable_join) }
 
-    rd = Roma::Routing::RoutingData.create(32, 3, 2, [node.nid])
-    node.replies['routingdump'] = "#{rd.dump_binary.bytesize}\r\n#{rd.dump_binary}\r\nEND\r\n"
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [node.nid])
+    node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
     node.replies['join'] = "SERVER_ERROR busy\r\n"
     assert_raise_message(/Hotscale initialize failed/) { call(:initialize_rttable_join) }
   ensure
@@ -438,7 +438,7 @@ class RomadRoutingSyncTest < Test::Unit::TestCase
 
   def test_routing_hash_comparison_consistent
     romad
-    stub_send_cmd('mklhash' => ->(_nid, cmd) { @romad.rttable.mtree.get(cmd.split(' ')[1].chomp) })
+    stub_send_cmd('mklhash' => ->(_nid, cmd) { @romad.rttable.merkle_tree.get(cmd.split(' ')[1].chomp) })
     assert_equal :consistent, call(:routing_hash_comparison, OTHER_NID)
   end
 
@@ -446,11 +446,11 @@ class RomadRoutingSyncTest < Test::Unit::TestCase
   def test_routing_hash_comparison_inconsistent
     romad
     other = Roma::Routing::ChurnbasedRoutingTable.new(
-      Marshal.load(Marshal.dump(@romad.rttable.instance_variable_get(:@rd))), File.join(@dir, 'other.route'))
-    vn = other.v_idx.keys[3]
+      Marshal.load(Marshal.dump(@romad.rttable.instance_variable_get(:@routing_data))), File.join(@dir, 'other.route'))
+    vn = other.routes.keys[3]
     other.set_route(vn, 0, [OTHER_NID])
     sent = stub_send_cmd(
-      'mklhash' => ->(_nid, cmd) { other.mtree.get(cmd.split(' ')[1].chomp) },
+      'mklhash' => ->(_nid, cmd) { other.merkle_tree.get(cmd.split(' ')[1].chomp) },
       'getroute' => ->(_nid, _cmd) { clk, nids = other.search_nodes_with_clk(vn); "#{clk} #{nids.join(' ')}" }
     )
     assert_equal :inconsistent, call(:routing_hash_comparison, OTHER_NID)
@@ -462,7 +462,7 @@ class RomadRoutingSyncTest < Test::Unit::TestCase
 
   def test_sync_routing_with_an_older_route
     romad
-    vn = @romad.rttable.v_idx.keys[0]
+    vn = @romad.rttable.routes.keys[0]
     @romad.rttable.set_route(vn, 0, [NID])
     # The other node's route is older than ours (clock 1); send it ours, with
     # the clock to give setroute.
@@ -481,7 +481,7 @@ class RomadRoutingSyncTest < Test::Unit::TestCase
 
   def test_start_sync_routing_process
     romad
-    stub_send_cmd('mklhash' => ->(_nid, cmd) { @romad.rttable.mtree.get(cmd.split(' ')[1].chomp) })
+    stub_send_cmd('mklhash' => ->(_nid, cmd) { @romad.rttable.merkle_tree.get(cmd.split(' ')[1].chomp) })
     call(:start_sync_routing_process)
     deadline = Time.now + 5
     Kernel.sleep 0.01 while @romad.stats.run_sync_routing && Time.now < deadline
@@ -514,7 +514,7 @@ class RomadSendCmdTest < Test::Unit::TestCase
   def test_async_send_cmd_to_a_node_that_is_down
     assert_nil call(:async_send_cmd, 'localhost_1', "whoami\r\n")
     assert_nil call(:async_send_cmd, 'localhost_1', "whoami\r\n", 1)
-    assert_equal 2, @romad.rttable.fail_cnt['localhost_1']
+    assert_equal 2, @romad.rttable.failure_counts['localhost_1']
   end
 
   def test_async_send_cmd_without_a_reply
@@ -535,19 +535,19 @@ class RomadSendCmdTest < Test::Unit::TestCase
   end
 
   def test_receive_routing_dump
-    rd = @romad.rttable.instance_variable_get(:@rd)
-    @node.replies['routingdump'] = "#{rd.dump_binary.bytesize}\r\n#{rd.dump_binary}\r\nEND\r\n"
+    routing_data = @romad.rttable.instance_variable_get(:@routing_data)
+    @node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
     got = call(:get_routedump, @node.nid)
-    assert_equal rd.v_idx, got.v_idx
+    assert_equal routing_data.routes, got.routes
   end
 
   def test_get_routedump_falls_back_to_marshal
-    rd = @romad.rttable.instance_variable_get(:@rd)
-    dump = Marshal.dump(rd)
+    routing_data = @romad.rttable.instance_variable_get(:@routing_data)
+    dump = Marshal.dump(routing_data)
     @node.replies['routingdump'] = lambda do |line|
       line.include?('bin') ? "0\r\n" : "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
     end
-    assert_equal rd.v_idx, call(:get_routedump, @node.nid).v_idx
+    assert_equal routing_data.routes, call(:get_routedump, @node.nid).routes
   end
 
   def test_stop

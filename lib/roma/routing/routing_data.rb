@@ -8,20 +8,20 @@ module Roma
 
       include Routing::RandomBalancer
 
-      attr_accessor :dgst_bits
-      attr_accessor :div_bits
-      attr_accessor :rn
+      attr_accessor :digest_bits
+      attr_accessor :divide_bits
+      attr_accessor :redundancy
       attr_accessor :nodes
-      attr_accessor :v_idx
-      attr_accessor :v_clk
+      attr_accessor :routes
+      attr_accessor :clocks
 
-      def initialize(dgst_bits,div_bits,rn)
-        @dgst_bits=dgst_bits
-        @div_bits=div_bits
-        @rn=rn
+      def initialize(digest_bits,divide_bits,redundancy)
+        @digest_bits=digest_bits
+        @divide_bits=divide_bits
+        @redundancy=redundancy
         @nodes=[]
-        @v_idx={}
-        @v_clk={}
+        @routes={}
+        @clocks={}
       end
 
       def save(fname)
@@ -32,41 +32,41 @@ module Roma
       end
 
       def self.load(fname)
-        rd=load_snapshot(fname)
-        rd.load_log_all(fname)
-        rd
+        routing_data=load_snapshot(fname)
+        routing_data.load_log_all(fname)
+        routing_data
       end
 
       def self.load_snapshot(fname)
-        rd=nil
+        routing_data=nil
         open(fname,'rb'){|io|
-          rd = YAML.unsafe_load(io.read)
+          routing_data = YAML.unsafe_load(io.read)
         }
-        rd
+        routing_data
       end
 
       def self.snapshot(fname)
-        rd=load_snapshot(fname)
-        loglist=rd.get_file_list(fname)
+        routing_data=load_snapshot(fname)
+        loglist=routing_data.get_file_list(fname)
         if loglist.length<2
           return false
         end
         loglist.delete(loglist.last)
         loglist.each{|i,f|
-          rd.load_log_one(f)
+          routing_data.load_log_one(f)
           File.rename(f,"#{f}~")
         }
         File.rename(fname,"#{fname}~")
-        rd.save(fname)
+        routing_data.save(fname)
         true
       end
 
       def self.decode_binary(bin)
-        magic, ver, dgst_bits, div_bits, rn, nodeslen = bin.unpack('a2nCCCn')
+        magic, ver, digest_bits, divide_bits, redundancy, nodeslen = bin.unpack('a2nCCCn')
         raise 'Illegal format error' if magic != 'RT'
         raise 'Unsupported version error' if ver != 1
 
-        rd = RoutingData.new(dgst_bits, div_bits, rn)
+        routing_data = RoutingData.new(digest_bits, divide_bits, redundancy)
         
         bin = bin[9..-1]
         nodeslen.times{|i|
@@ -75,21 +75,21 @@ module Roma
           nid, = bin.unpack("a#{len}")
           bin = bin[len..-1]
           nid.encode!("utf-8") if RUBY_VERSION >= "1.9.3"
-          rd.nodes << nid 
+          routing_data.nodes << nid 
         }
-        (2**div_bits).times{|i|
-          vn=i<<(dgst_bits-div_bits)
-          v_clk,len = bin.unpack('Nc')
-          rd.v_clk[vn] = v_clk
+        (2**divide_bits).times{|i|
+          vn=i<<(digest_bits-divide_bits)
+          clocks,len = bin.unpack('Nc')
+          routing_data.clocks[vn] = clocks
           bin = bin[5..-1]
           len.times{|i|
             idx, = bin.unpack('n')
-            rd.v_idx[vn] = [] unless rd.v_idx[vn]
-            rd.v_idx[vn] << rd.nodes[idx]
+            routing_data.routes[vn] = [] unless routing_data.routes[vn]
+            routing_data.routes[vn] << routing_data.nodes[idx]
             bin = bin[2..-1]
           }
         }
-        rd
+        routing_data
       end
 
       # for deep copy
@@ -99,33 +99,33 @@ module Roma
  
       # 2 bytes('RT'):magic code
       # unsigned short:format version
-      # unsigned char:dgst_bits
-      # unsigned char:div_bits
-      # unsigned char:rn
+      # unsigned char:digest_bits
+      # unsigned char:divide_bits
+      # unsigned char:redundancy
       # unsigned short:number of nodes
       # while number of nodes
       #  unsigned short:length of node-id string
       #  node-id string
       # while umber of vnodes
-      #  unsigned int32:v_clk
+      #  unsigned int32:clocks
       #  unsigned char:number of nodes
       #  while umber of nodes
       #   unsigned short:index of nodes
       def dump_binary
         format_version = 1
         # 9 bytes
-        ret = ['RT',format_version,dgst_bits,div_bits,rn,nodes.length].pack('a2nCCCn')
+        ret = ['RT',format_version,digest_bits,divide_bits,redundancy,nodes.length].pack('a2nCCCn')
         rev_hash = {}
         nodes.each_with_index{|nid,idx|
           rev_hash[nid] = idx
           # 2 + nid.length bytes
           ret += [nid.length,nid].pack('na*')
         }
-        (2**div_bits).times{|i|
-          vn=i<<(dgst_bits-div_bits)
+        (2**divide_bits).times{|i|
+          vn=i<<(digest_bits-divide_bits)
           # 5 bytes
-          ret += [v_clk[vn],v_idx[vn].length].pack('Nc')
-          v_idx[vn].each{|nid|
+          ret += [clocks[vn],routes[vn].length].pack('Nc')
+          routes[vn].each{|nid|
             # 2 bytes
             ret += [rev_hash[nid]].pack('n')
           }
@@ -173,8 +173,8 @@ module Roma
           # setroute <vnode-id> <clock> <node-id> ...
           nids=[]
           s[3..-1].each{ |nid| nids << nid }
-          @v_idx[s[1].to_i]=nids
-          @v_clk[s[1].to_i]=s[2].to_i
+          @routes[s[1].to_i]=nids
+          @clocks[s[1].to_i]=s[2].to_i
         when 'join'
           # join <node-id>
           @nodes << s[1] unless @nodes.include?(s[1])
@@ -187,18 +187,18 @@ module Roma
       end
 
       def search_mask
-        2**@div_bits-1<<(@dgst_bits-@div_bits)
+        2**@divide_bits-1<<(@digest_bits-@divide_bits)
       end
 
       def next_vnode(vn)
-        n = (vn >> (@dgst_bits-@div_bits)) + 1
-        n = 0 if n == (2**@div_bits)
-        n << (@dgst_bits-@div_bits)
+        n = (vn >> (@digest_bits-@divide_bits)) + 1
+        n = 0 if n == (2**@divide_bits)
+        n << (@digest_bits-@divide_bits)
       end
 
-      def create_nodes_from_v_idx
+      def create_nodes_from_routes
         buf_nodes={}
-        v_idx.each_value{|nids|
+        routes.each_value{|nids|
           nids.each{|nid| buf_nodes[nid]=nid }
         }
         @nodes=buf_nodes.values.sort
@@ -207,22 +207,22 @@ module Roma
       # Returns the losted vnode-id list.
       def get_lost_vnodes
         ret=[]
-        v_idx.each_pair{|vn,nids|
+        routes.each_pair{|vn,nids|
           ret << vn if nids.length == 0
         }
         ret
       end
 
-      def self.create(dgst_bits,div_bits,rn,nodes,repethost=false)
-        ret=RoutingData.new(dgst_bits,div_bits,rn)
+      def self.create(digest_bits,divide_bits,redundancy,nodes,repethost=false)
+        ret=RoutingData.new(digest_bits,divide_bits,redundancy)
         ret.nodes=nodes.clone
 
         rnlm=RandomNodeListMaker.new(nodes,repethost)
 
-        (2**div_bits).times do |i|
-          vn=i<<(dgst_bits-div_bits)
-          ret.v_clk[vn]=0
-          ret.v_idx[vn]=rnlm.list(rn)
+        (2**divide_bits).times do |i|
+          vn=i<<(digest_bits-divide_bits)
+          ret.clocks[vn]=0
+          ret.routes[vn]=rnlm.list(redundancy)
         end
 
         # vnode balanceing process
@@ -248,12 +248,12 @@ module Roma
         l.to_a.sort{|a,b| a[0]<=>b[0]}
       end
 
-      def get_histgram
+      def get_histogram
         ret = {}
         nodes.each{|nid|
-          ret[nid] = Array.new(rn,0)
+          ret[nid] = Array.new(redundancy,0)
         }
-        v_idx.each_pair{|vn,nids|
+        routes.each_pair{|vn,nids|
           nids.each_with_index{|nid,i|
             ret[nid][i] += 1
           }

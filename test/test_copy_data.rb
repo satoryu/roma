@@ -25,7 +25,7 @@ class CopyDataTest < Test::Unit::TestCase
     keys = []
     n = 1000
     n.times do |i|
-      d = Digest::SHA1.hexdigest(i.to_s).hex % @rc.rttable.hbits
+      d = Digest::SHA1.hexdigest(i.to_s).hex % @rc.rttable.hash_space_size
       vn = @rc.rttable.get_vnode_id(d)
       if vn == 0
         keys << i.to_s

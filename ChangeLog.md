@@ -55,8 +55,8 @@ end
 | `DEFAULT_NAME`, `DEFAULT_PORT` | `name`, `port` |
 | `PLUGIN_FILES` | `plugins` |
 | `DEFAULT_LOST_ACTION`, `AUTO_RECOVER` | `routing.lost_action`, `routing.auto_recover` |
-| `ROUTING_FAIL_CNT_THRESHOLD`, `ROUTING_FAIL_CNT_GAP`, `ROUTING_EVENT_LIMIT_LINE` | `routing.fail_cnt_threshold`, `routing.fail_cnt_gap`, `routing.event_limit_line` |
-| `RTTABLE_PATH`, `RTTABLE_CLASS`, `RTTABLE_SUB_NID` | `routing.path`, `routing.table_class`, `routing.sub_nid` |
+| `ROUTING_FAIL_CNT_THRESHOLD`, `ROUTING_FAIL_CNT_GAP`, `ROUTING_EVENT_LIMIT_LINE` | `routing.failure_count_threshold`, `routing.failure_count_gap`, `routing.event_limit_line` |
+| `RTTABLE_PATH`, `RTTABLE_CLASS`, `RTTABLE_SUB_NID` | `routing.path`, `routing.table_class`, `routing.node_id_substitutions` |
 | `LOG_PATH`, `LOG_LEVEL`, `LOG_SHIFT_AGE`, `LOG_SHIFT_SIZE`, `LOG_STREAM_SHOW_WAIT_PARAM` | `log.path`, `log.level`, `log.shift_age`, `log.shift_size`, `log.stream_show_wait_param` |
 | `CONNECTION_USE_EPOLL`, `CONNECTION_DESCRIPTOR_TABLE_SIZE` | `connection.use_epoll`, `connection.descriptor_table_size` |
 | `CONNECTION_CONTINUOUS_LIMIT`, `CONNECTION_EXPTIME`, `DNS_CACHING` | `connection.continuous_limit`, `connection.expire_time`, `connection.dns_caching` |
@@ -71,6 +71,18 @@ end
 | `VERSION`, `STORAGE_DUMP_PATH` | removed |
 
 The `stats` command still shows the settings by the old names, such as `config.LOG_PATH`.
+
+### Routing names
+The abbreviated names of the routing are words now [#60](https://github.com/satoryu/roma/issues/60). ROMA 2.0 doesn't read a routing file of 1.x: make it again by `roma mkroute`.
+
+| Before | After |
+| --- | --- |
+| The keys of the routing file (`RoutingData`): `dgst_bits`, `div_bits`, `rn`, `v_idx`, `v_clk` | `digest_bits`, `divide_bits`, `redundancy`, `routes`, `clocks` |
+| `routingdump json`: `dgst_bits`, `div_bits`, `rn` | `digest_bits`, `divide_bits`, `redundancy` |
+| `stats`: `routing.dgst_bits`, `routing.div_bits`, `routing.fail_cnt_threshold`, `routing.fail_cnt_gap`, `routing.sub_nid` | `routing.digest_bits`, `routing.divide_bits`, `routing.failure_count_threshold`, `routing.failure_count_gap`, `routing.node_id_substitutions` |
+| `RoutingTable#rd`, `#rn`, `#div_bits`, `#hbits`, `#mtree`, `#fail_cnt`, `#sub_nid` | `#routing_data`, `#redundancy`, `#divide_bits`, `#hash_space_size`, `#merkle_tree`, `#failure_counts`, `#node_id_substitutions` |
+
+A client that reads the routing table by `routingdump` (in Marshal or YAML) needs the new names, too. `routingdump bin` doesn't change.
 
 ### File names
 The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins require, stays as a deprecated alias of `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)

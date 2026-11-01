@@ -20,10 +20,10 @@ class RecoverLostTest < Test::Unit::TestCase
     super
     @node = fake_node
     @node.replies['setroute'] = "STORED\r\n"
-    @rd = Roma::Routing::RoutingData.create(32, 3, 1, [@node.nid])
-    serve_routing(@node, @rd)
+    @routing_data = Roma::Routing::RoutingData.create(32, 3, 1, [@node.nid])
+    serve_routing(@node, @routing_data)
     @storage = Roma::Storage::HashStorage.new
-    @storage.vn_list = @rd.v_idx.keys
+    @storage.vn_list = @routing_data.routes.keys
     @storage.each_vn_dump_sleep = 0
     @storage.opendb
     # A directory of a hash, as recoverlost finds in the storage path.
@@ -45,15 +45,15 @@ class RecoverLostTest < Test::Unit::TestCase
   # Set twice, so that the clock is not 0.
   def store(key, value)
     d = Digest::SHA1.hexdigest(key).hex % (2**32)
-    vn = d & @rd.search_mask
+    vn = d & @routing_data.search_mask
     2.times { @storage.set(vn, key, d, 0x7fffffff, value) }
     assert_equal 1, @storage.get_raw(vn, key, d)[2]
     vn
   end
 
   def lose(vn)
-    @rd.v_idx[vn] = []
-    serve_routing(@node, @rd)
+    @routing_data.routes[vn] = []
+    serve_routing(@node, @routing_data)
     vn
   end
 
@@ -75,7 +75,7 @@ class RecoverLostTest < Test::Unit::TestCase
   def test_tell_the_other_nodes
     other = fake_node
     down = down_node
-    @rd.nodes.push(other.nid, down)
+    @routing_data.nodes.push(other.nid, down)
     vn = lose(store('key1', 'value1'))
     tool.recover(@node.nid, @dir)
     assert_include other.commands, "setroute #{vn} 0 #{@node.nid}"
@@ -124,7 +124,7 @@ class RecoverLostTest < Test::Unit::TestCase
     vn = store('key1', 'value1')
     tool.recover(@node.nid, @dir, all: true)
     assert_equal ['key1'], @node.dat[vn].keys
-    assert_equal @rd.v_idx.keys.sort, @node.dat.keys.sort
+    assert_equal @routing_data.routes.keys.sort, @node.dat.keys.sort
     assert_not_match(/vnodes where data was lost/, @out.string)
   end
 

@@ -86,10 +86,10 @@ class DefinitionTestReceiver
   #
 
   class RtStub
-    attr_reader :hbits
+    attr_reader :hash_space_size
 
     def initialize
-      @hbits = 10
+      @hash_space_size = 10
     end
 
     def get_vnode_id(d) 1 end

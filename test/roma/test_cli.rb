@@ -58,9 +58,9 @@ class CLITest < Test::Unit::TestCase
     out, _err, status = roma('mkroute', 'host1:1', 'host2_1')
     assert_nil status
     assert_match(/Routing table has created/, out)
-    rd = load_route('host1_1')
-    assert_equal %w(host1_1 host2_1), rd.nodes
-    assert_equal [32, 9, 2], [rd.dgst_bits, rd.div_bits, rd.rn]
+    routing_data = load_route('host1_1')
+    assert_equal %w(host1_1 host2_1), routing_data.nodes
+    assert_equal [32, 9, 2], [routing_data.digest_bits, routing_data.divide_bits, routing_data.redundancy]
   end
 
   data('short' => %w(-h 16 -d 4 -r 3),
@@ -68,15 +68,15 @@ class CLITest < Test::Unit::TestCase
   def test_mkroute_options(options)
     _out, _err, status = roma('mkroute', 'host1_1', 'host2_1', *options, 'host3_1')
     assert_nil status
-    rd = load_route('host1_1')
-    assert_equal [16, 4, 3], [rd.dgst_bits, rd.div_bits, rd.rn]
+    routing_data = load_route('host1_1')
+    assert_equal [16, 4, 3], [routing_data.digest_bits, routing_data.divide_bits, routing_data.redundancy]
   end
 
   # Both spellings, since the old mkroute took --replication_in_host.
   data('hyphen' => '--replication-in-host', 'underscore' => '--replication_in_host')
   def test_mkroute_replication_in_host(option)
     roma('mkroute', '-d', '3', option, 'host1_1', 'host1_2')
-    load_route('host1_1').v_idx.each_value { |nids| assert_equal 2, nids.size }
+    load_route('host1_1').routes.each_value { |nids| assert_equal 2, nids.size }
   end
 
   data('after' => %w(mkroute host1_1 --help), 'before' => %w(--help mkroute), 'help' => %w(help mkroute))
@@ -101,8 +101,8 @@ class CLITest < Test::Unit::TestCase
   end
 
   def test_ssroute
-    rd = Roma::Routing::RoutingData.create(32, 3, 1, ['host1_1'])
-    rd.save(File.join(@dir, 'host1_1.route'))
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 1, ['host1_1'])
+    routing_data.save(File.join(@dir, 'host1_1.route'))
     2.times { |i| File.write(File.join(@dir, "host1_1.route.#{i + 1}"), "2026-01-01T00:00:00.1 join host#{i + 2}_1\n") }
     out, _err, status = roma('ssroute', 'host1_1')
     assert_nil status
@@ -122,8 +122,8 @@ class CLITest < Test::Unit::TestCase
   def routing_node(*others, redundancy: 1)
     node = FakeNode.new
     @fake_nodes << node
-    @rd = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.nid, *others], true)
-    dump = Marshal.dump(@rd)
+    @routing_data = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.nid, *others], true)
+    dump = Marshal.dump(@routing_data)
     node.replies['routingdump'] = "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
     node
   end
@@ -132,9 +132,9 @@ class CLITest < Test::Unit::TestCase
     node = routing_node('localhost_1', redundancy: 2)
     out, _err, status = roma('chg_redundancy', '1', node.nid)
     assert_nil status
-    rd = YAML.unsafe_load(out)
-    assert_equal 1, rd.rn
-    assert_equal [1], rd.v_idx.values.map(&:size).uniq
+    routing_data = YAML.unsafe_load(out)
+    assert_equal 1, routing_data.redundancy
+    assert_equal [1], routing_data.routes.values.map(&:size).uniq
   end
 
   data('not a number' => [%w(one localhost_1), /The redundancy should be 1 or more/],
@@ -155,7 +155,7 @@ class CLITest < Test::Unit::TestCase
     node = routing_node(other.nid)
     out, _err, status = roma('multi_commander', node.nid, 'stats', 'run')
     assert_nil status
-    assert_equal @rd.nodes.map { |nid| "****** #{nid}\r\nSTORED\r\n" }.join, out
+    assert_equal @routing_data.nodes.map { |nid| "****** #{nid}\r\nSTORED\r\n" }.join, out
     assert_equal ['stats run'], other.commands
   end
 

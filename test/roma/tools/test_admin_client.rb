@@ -12,9 +12,9 @@ class AdminClientTest < Test::Unit::TestCase
 
   def test_routing_data
     node = fake_node
-    rd = Roma::Routing::RoutingData.create(32, 3, 1, [node.nid])
-    serve_routing(node, rd)
-    assert_equal rd.v_idx, client.routing_data(node.nid).v_idx
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 1, [node.nid])
+    serve_routing(node, routing_data)
+    assert_equal routing_data.routes, client.routing_data(node.nid).routes
   end
 
   data('no routing data' => ["0\r\n", /has no routing data/],
