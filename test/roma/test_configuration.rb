@@ -2,6 +2,7 @@ require 'test_helper'
 require 'open3'
 require 'rbconfig'
 require 'tmpdir'
+require 'fileutils'
 require 'roma/configuration'
 
 class ConfigurationTest < Test::Unit::TestCase
@@ -50,7 +51,7 @@ class ConfigurationTest < Test::Unit::TestCase
        'boolean' => [->(c) { c.connection.use_epoll = 'yes' }, /\Aconnection.use_epoll should be one of true, false/],
        'nested' => [->(c) { c.connection.pool.max = 1.5 }, /\Aconnection.pool.max should be a valid Integer: 1.5\z/],
        'continuous limit' => [->(c) { c.connection.continuous_limit = '1:2' }, /continuous_limit should be/],
-       'unknown engine' => [->(c) { c.storage.engine = :tc }, /\Astorage.engine should be a valid Symbol or Class: :tc\z/],
+       'engine' => [->(c) { c.storage.engine = :'my-kvs' }, /\Astorage.engine should be a valid Symbol or Class: :"my-kvs"\z/],
        'plugins' => [->(c) { c.plugins = [1] }, /\Aplugins should be/])
   def test_wrong_value(data)
     set, message = data
@@ -70,17 +71,48 @@ class ConfigurationTest < Test::Unit::TestCase
     assert_same klass, @config.storage.engine_class
   end
 
+  # A storage of another gem, which has roma/storage/<name>.rb.
+  def test_engine_class_by_name
+    with_storage_file('my_kvs', "module Roma\n  module Storage\n    class MyKVSStorage; end\n  end\nend\n") do
+      @config.storage.engine = :my_kvs
+      assert_equal 'Roma::Storage::MyKVSStorage', @config.storage.engine_class.name
+    end
+  end
+
   def test_engine_class_missing_gem
-    saved = Roma::Configuration::STORAGE_ENGINES
-    Roma::Configuration.send(:remove_const, :STORAGE_ENGINES)
-    Roma::Configuration.const_set(:STORAGE_ENGINES, { missing: ['roma/storage/missing', :Missing, 'roma-storage-missing'] })
     @config.storage.engine = :missing
     error = assert_raise(Roma::Configuration::Error) { @config.storage.engine_class }
     assert_equal 'storage.engine :missing needs roma-storage-missing. Install it by gem install roma-storage-missing.',
                  error.message
-  ensure
-    Roma::Configuration.send(:remove_const, :STORAGE_ENGINES)
-    Roma::Configuration.const_set(:STORAGE_ENGINES, saved)
+  end
+
+  def test_engine_class_missing_class
+    with_storage_file('no_class', "# no storage class\n") do
+      @config.storage.engine = :no_class
+      error = assert_raise(Roma::Configuration::Error) { @config.storage.engine_class }
+      assert_equal 'roma/storage/no_class has no storage class such as Roma::Storage::NoClassStorage.', error.message
+    end
+  end
+
+  # A LoadError in the storage file is not taken as a missing gem.
+  def test_engine_class_load_error_in_file
+    with_storage_file('broken', "require 'roma/storage/missing_dependency'\n") do
+      @config.storage.engine = :broken
+      error = assert_raise(LoadError) { @config.storage.engine_class }
+      assert_equal 'roma/storage/missing_dependency', error.path
+    end
+  end
+
+  # Makes roma/storage/<name>.rb with +body+ in a load path while the block runs.
+  def with_storage_file(name, body)
+    Dir.mktmpdir do |dir|
+      FileUtils.mkdir_p(File.join(dir, 'roma/storage'))
+      File.write(File.join(dir, "roma/storage/#{name}.rb"), body)
+      $LOAD_PATH.unshift(dir)
+      yield
+    ensure
+      $LOAD_PATH.delete(dir)
+    end
   end
 
   def test_to_h
