@@ -141,6 +141,12 @@ class DefineCommandTest < Test::Unit::TestCase
     @obj = DefCmdTest.new
   end
 
+  # Plugins require the old file.
+  def test_old_file_name
+    require 'roma/command/command_definition'
+    assert_true $LOADED_FEATURES.any? { |f| f.end_with?('roma/command/command_definition.rb') }
+  end
+
   def teardown
   end
 
