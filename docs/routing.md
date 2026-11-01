@@ -39,8 +39,11 @@ ROMA does not map each key to a node directly. It splits the space of key
 hashes into a fixed number of ranges called **virtual nodes** (vnodes), and
 maps each vnode to nodes:
 
-```
-key --(SHA-1)--> hash --(upper bits)--> vnode --(routing table)--> nodes
+```mermaid
+flowchart LR
+    key["key<br>foo"] -->|"SHA-1 mod 2^32"| hash["hash<br>0x75da8a33"]
+    hash -->|"upper 9 bits"| vnode["vnode<br>0x75800000"]
+    vnode -->|"routing table"| nodes["nodes<br>roma1_11211, roma2_11211"]
 ```
 
 The number of vnodes never changes while the cluster runs. When nodes join or
@@ -81,6 +84,35 @@ So, the routing table is:
 - for each vnode, the ordered list of its nodes (primary first), and
 - for each vnode, a **clock**: a number that goes up every time the nodes of
   the vnode change. The nodes use it to tell a newer route from an older one.
+
+This is a routing table of 3 nodes on 3 hosts, with 4 vnodes (divide bits 2)
+and redundancy 2. Each vnode covers a quarter of the hash space, and has a
+primary and a secondary on different hosts:
+
+```mermaid
+flowchart LR
+    subgraph space["Hash space: 0 to 2^32 - 1"]
+        direction TB
+        v0["vnode 0"]
+        v1["vnode 1073741824"]
+        v2["vnode 2147483648"]
+        v3["vnode 3221225472"]
+    end
+    subgraph cluster["Nodes"]
+        direction TB
+        n1["roma1_11211"]
+        n2["roma2_11211"]
+        n3["roma3_11211"]
+    end
+    v0 -->|primary| n1
+    v0 -.->|secondary| n2
+    v1 -->|primary| n2
+    v1 -.->|secondary| n3
+    v2 -->|primary| n3
+    v2 -.->|secondary| n1
+    v3 -->|primary| n1
+    v3 -.->|secondary| n3
+```
 
 ## The routing file
 
@@ -136,7 +168,16 @@ over about 1 MB. Each line is a time and one change:
   this clock.
 
 When a node starts, it reads the routing file and then replays the logs in
-order, so it starts with the routing table it had when it stopped. Keep the
+order, so it starts with the routing table it had when it stopped.
+
+```mermaid
+flowchart LR
+    file["roma1_11211.route<br>the table when the logs began"] --> replay
+    log1["roma1_11211.route.1"] --> replay
+    log2["roma1_11211.route.2"] --> replay
+    replay(["read and replay in order"]) --> table["routing table<br>in memory"]
+    table -->|"each change"| next["the last log, or a new one"]
+``` Keep the
 routing file and its logs together: the file alone is the table from when the
 logs began.
 
@@ -156,6 +197,27 @@ the routing table:
   primary.
 - **Read** (get, ...): any node of the vnode answers from its own storage. A
   node that does not hold the vnode forwards the request to the primary.
+
+This is a write that a client sends to a node that does not hold the vnode of
+the key:
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant X as roma3 (not of the vnode)
+    participant P as roma1 (primary)
+    participant S as roma2 (secondary)
+    C->>X: set foo
+    X->>P: forward set foo
+    P->>P: store foo
+    P->>S: copy foo
+    S-->>P: STORED
+    P-->>X: STORED
+    X-->>C: STORED
+```
+
+If the copy to a secondary fails, the primary retries it later in the
+background.
 
 So clients can connect to any node. This is how memcached clients work with
 ROMA. The ROMA client libraries fetch the routing table from a node instead and
@@ -186,7 +248,15 @@ before using it.
 
 Each node changes its own routing table and tells the others. A node can miss a
 change, for example while it was busy. So every 10 seconds each node compares
-its routing table with the one of the node before it in the node list.
+its routing table with the one of the node before it in the node list. The
+first node compares with the last, so the comparisons go around the cluster:
+
+```mermaid
+flowchart LR
+    n1["roma1_11211"] -->|compares with| n3["roma3_11211"]
+    n2["roma2_11211"] -->|compares with| n1
+    n3 -->|compares with| n2
+```
 
 To compare without sending the whole table, the nodes keep a Merkle tree of
 hashes over the vnodes. They compare the root, then the halves that differ, and
@@ -215,6 +285,26 @@ decides what happens then:
 - `:shutdown`: every node stops, so that no one reads a wrong empty value.
 - `:no_action`: the vnode stays without nodes, and requests for its keys fail.
 
+A vnode goes through these states:
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    state "Full<br>as many nodes as the redundancy" as Full
+    state "Short<br>fewer nodes, data kept" as Short
+    state "Lost<br>no node, data gone" as Lost
+    [*] --> Full
+    Full --> Short: a node of the vnode fails
+    Short --> Short: another node of it fails
+    Short --> Full: recover
+    Short --> Lost: its last node fails
+    Lost --> Full: lost_action auto_assign
+    Lost --> [*]: lost_action shutdown
+```
+
+With `:auto_assign`, the vnode takes over the nodes of the next vnode, and is
+full or short like that one.
+
 ### When nodes join and leave
 
 The number of nodes changes while the cluster runs. ROMA moves vnodes one by
@@ -228,6 +318,25 @@ one, and for each vnode it copies the data first and changes the route after:
   others.
 - **Release**: a node gives each of its vnodes to other nodes. When it holds no
   vnode, you can stop it without making any vnode short.
+
+This is how a joining node takes one vnode from a node that holds it. While the
+data is copied, writes to the vnode also go to the joining node, so that it
+misses none:
+
+```mermaid
+sequenceDiagram
+    participant J as roma4 (joining)
+    participant H as roma1 (holds the vnode)
+    participant O as other nodes
+    J->>H: reqpushv vnode
+    H-->>J: PUSHED
+    Note over H: writes of the vnode<br>also go to roma4
+    H->>J: copy the data of the vnode
+    J-->>H: STORED
+    Note over H: route of the vnode:<br>roma4 replaces a node,<br>clock goes up
+    H->>O: setroute vnode clock nodes
+    H->>J: setroute vnode clock nodes
+```
 
 ## Setting up routing with the roma command
 
