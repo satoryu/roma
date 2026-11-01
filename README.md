@@ -62,12 +62,14 @@ Refer to [Shell Commands](http://roma-kvs.org/commands.html#dist-jump-link-shell
 ROMA keeps data in a Ruby Hash on memory by default. To keep data in files,
 install one of the storage gems and set it in your config file.
 
-| Storage | Gem | `require` | `STORAGE_CLASS` |
-| --- | --- | --- | --- |
-| Ruby Hash (default) | roma-storage (installed with ROMA) | `roma/storage/ruby_hash_storage` | `Roma::Storage::RubyHashStorage` |
-| DBM | [roma-storage-dbm](https://rubygems.org/gems/roma-storage-dbm) | `roma/storage/dbm` | `Roma::Storage::DbmStorage` |
-| SQLite3 | [roma-storage-sqlite3](https://rubygems.org/gems/roma-storage-sqlite3) | `roma/storage/sqlite3` | `Roma::Storage::SQLite3Storage` |
-| Groonga | [roma-storage-groonga](https://rubygems.org/gems/roma-storage-groonga) | `roma/storage/groonga` | `Roma::Storage::GroongaStorage` |
+| Storage | Gem | `config.storage.engine` |
+| --- | --- | --- |
+| Ruby Hash (default) | roma-storage (installed with ROMA) | `:ruby_hash` |
+| DBM | [roma-storage-dbm](https://rubygems.org/gems/roma-storage-dbm) | `:dbm` |
+| SQLite3 | [roma-storage-sqlite3](https://rubygems.org/gems/roma-storage-sqlite3) | `:sqlite3` |
+| Groonga | [roma-storage-groonga](https://rubygems.org/gems/roma-storage-groonga) | `:groonga` |
+
+`config.storage.engine` also takes a storage class, such as one of another gem.
 
 roma-storage-groonga needs [Groonga](https://groonga.org/) 12.0.2 or later. Install it first, for example by `brew install groonga`.
 
@@ -81,18 +83,34 @@ $ roma mkconfig
 Then edit the generated `config.rb`:
 
 ```ruby
-require 'roma/storage/sqlite3'
-
-module Roma
-  module Config
-    STORAGE_CLASS = Roma::Storage::SQLite3Storage
-    STORAGE_PATH = '/var/lib/roma'
-    # ...
-  end
+Roma.configure do |config|
+  config.storage.engine = :sqlite3
+  config.storage.path = '/var/lib/roma'
+  # ...
 end
 ```
 
 Start romad with the config file by `romad localhost -p 10001 -d --config config.rb`.
+
+### Configure romad
+The config file sets the settings in `Roma.configure`. Each one has a default, so the file only needs what differs. A wrong value stops romad with a message such as `routing.lost_action should be one of :no_action, :auto_assign, :shutdown: :foo`.
+
+```ruby
+Roma.configure do |config|
+  config.name = 'ROMA'
+  config.port = 12000
+  config.plugins = %w(plugin_storage.rb plugin_alist.rb)
+
+  config.log.path = '/var/log/roma'
+  config.log.level = :info
+
+  config.routing.path = '/var/lib/roma'
+  config.connection.pool.max = 10
+  config.write_behind.path = '/var/lib/roma/wb'
+end
+```
+
+The settings and their defaults are in [lib/roma/configuration.rb](lib/roma/configuration.rb). Without `--config`, romad runs with the defaults.
 
 ### Tools
 The `roma` command has the tools to run ROMA, such as `roma mkroute`, `roma adm` and `roma recoverlost`. `roma help` lists them, and `roma help COMMAND` tells about one.
