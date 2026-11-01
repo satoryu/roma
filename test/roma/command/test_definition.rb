@@ -93,7 +93,7 @@ class DefinitionTestReceiver
     end
 
     def get_vnode_id(d) 1 end
-    def search_nodes_for_write(vn) ['roma0','roma1'] end
+    def search_nodes_for_write(vnode) ['roma0','roma1'] end
   end
 
   class LogStub
@@ -219,14 +219,14 @@ class DefinitionTest < Test::Unit::TestCase
     assert_equal 'arg1', ctx.params.key
     assert_equal 'roma', ctx.params.hash_name
     assert_equal Digest::SHA1.hexdigest('arg1').hex % 10, ctx.params.digest
-    assert_equal 1, ctx.params.vn
+    assert_equal 1, ctx.params.vnode
     assert_equal ['roma0','roma1'], ctx.params.nodes
 
     ctx = @obj.ev_get ['get',"arg2\eruby"]
     assert_equal ['get',"arg2\eruby"], ctx.argv
     assert_equal 'arg2', ctx.params.key
     assert_equal 'ruby', ctx.params.hash_name
-    assert_equal 1, ctx.params.vn
+    assert_equal 1, ctx.params.vnode
     assert_equal Digest::SHA1.hexdigest('arg2').hex % 10, ctx.params.digest
     assert_equal ['roma0','roma1'], ctx.params.nodes
 
@@ -253,7 +253,7 @@ class DefinitionTest < Test::Unit::TestCase
     assert_equal 'arg1', ctx.params.key
     assert_equal 'roma', ctx.params.hash_name
     assert_equal Digest::SHA1.hexdigest('arg1').hex % 10, ctx.params.digest
-    assert_equal 1, ctx.params.vn
+    assert_equal 1, ctx.params.vnode
     assert_equal ['roma0','roma1'], ctx.params.nodes
     assert_equal 'abcde', ctx.params.value
 
@@ -262,7 +262,7 @@ class DefinitionTest < Test::Unit::TestCase
     assert_equal 'arg2', ctx.params.key
     assert_equal 'ruby', ctx.params.hash_name
     assert_equal Digest::SHA1.hexdigest('arg2').hex % 10, ctx.params.digest
-    assert_equal 1, ctx.params.vn
+    assert_equal 1, ctx.params.vnode
     assert_equal ['roma0','roma1'], ctx.params.nodes
     assert_equal 'abcde', ctx.params.value
 

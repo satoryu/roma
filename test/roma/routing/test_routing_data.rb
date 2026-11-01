@@ -49,7 +49,7 @@ class RoutingDataTest < Test::Unit::TestCase
 
   def test_create
     # digest bit count 32
-    # vn bit count 8
+    # vnode bit count 8
     # redundancy 1
     # array of node ID [roma0_3300]
     routing_data=Roma::Routing::RoutingData.create(32,8,1,['roma0_3300'])
@@ -61,7 +61,7 @@ class RoutingDataTest < Test::Unit::TestCase
     assert_equal(8, routing_data.divide_bits)
     assert_equal(1, routing_data.redundancy)
     # digest bit count 32
-    # vn bit count 9
+    # vnode bit count 9
     # redundancy 2
     # array of node ID ['roma0_3300','roma1_3300','roma2_3300']
     routing_data=Roma::Routing::RoutingData.create(32,9,2,['roma0_3300','roma1_3300','roma2_3300'])
@@ -92,8 +92,8 @@ class RoutingDataTest < Test::Unit::TestCase
     routing_data=Roma::Routing::RoutingData.create(32,9,2,['roma0_3300','roma1_3300'])
     # set to a bummy clock
     (2**routing_data.divide_bits).times{|i|
-      vn=i<<(routing_data.digest_bits-routing_data.divide_bits)
-      routing_data.clocks[vn] = i
+      vnode=i<<(routing_data.digest_bits-routing_data.divide_bits)
+      routing_data.clocks[vnode] = i
     }
 
     bin = routing_data.dump_binary
@@ -115,15 +115,15 @@ class RoutingDataTest < Test::Unit::TestCase
       assert_equal(routing_data.nodes[i], nid)
     }
     (2**divide_bits).times{|i|
-      vn=i<<(digest_bits-divide_bits)
+      vnode=i<<(digest_bits-divide_bits)
       clocks,len = bin.unpack('Nc')
-      assert_equal(routing_data.clocks[vn], clocks)
-      assert_equal(routing_data.routes[vn].length, len)
-#      puts "#{i} #{vn} #{clocks} #{len}"
+      assert_equal(routing_data.clocks[vnode], clocks)
+      assert_equal(routing_data.routes[vnode].length, len)
+#      puts "#{i} #{vnode} #{clocks} #{len}"
       bin = bin[5..-1]
       len.times{|i|
         idx, = bin.unpack('n')
-        assert_equal(routing_data.nodes[idx], routing_data.routes[vn][i])
+        assert_equal(routing_data.nodes[idx], routing_data.routes[vnode][i])
         bin = bin[2..-1]
 #        puts routing_data.nodes[idx]
       }
@@ -135,8 +135,8 @@ class RoutingDataTest < Test::Unit::TestCase
     routing_data=Roma::Routing::RoutingData.create(32,9,2,['roma0_3300','roma1_3300'])
     # set to a bummy clock
     (2**routing_data.divide_bits).times{|i|
-      vn=i<<(routing_data.digest_bits-routing_data.divide_bits)
-      routing_data.clocks[vn] = i
+      vnode=i<<(routing_data.digest_bits-routing_data.divide_bits)
+      routing_data.clocks[vnode] = i
     }
 
     bin = routing_data.dump_binary

@@ -182,7 +182,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
     @rc.decr('key3', 10)
     assert_eventually_equal('89') { @rc_replica.get('key3', true) }
 
-    # expt and set_expt. Both keys expire in 1 second; wait for them together.
+    # expire_time and set_expt. Both keys expire in 1 second; wait for them together.
     @rc.set('key4', 'val4', 1)
     @rc.set('key5', 'val5')
     assert_eventually_equal('val4') { @rc_replica.get('key4') }
@@ -239,9 +239,9 @@ class ClusterReplicationTest < Test::Unit::TestCase
   end
 
   def test_rc_background_copy_not_overwrite
-    @rc.set('key1', 'val1') #clk = 0
+    @rc.set('key1', 'val1') #clock = 0
     @rc_replica.set('key1', 'replica1')
-    @rc_replica.set('key1', 'replica1') # clk = 1
+    @rc_replica.set('key1', 'replica1') # clock = 1
 
     send_cmd('localhost_11211', 'switch_replication true localhost_21211 all')
     assert_eventually_equal("write-behind.run_existing_data_replication false\r\n") do

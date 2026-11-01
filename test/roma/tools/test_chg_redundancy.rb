@@ -16,7 +16,7 @@ class ChgRedundancyTest < Test::Unit::TestCase
   def serve(redundancy)
     node = fake_node
     routing_data = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.nid, 'localhost_1', 'localhost_0'], true)
-    routing_data.clocks.each_key { |vn| routing_data.clocks[vn] = 5 }
+    routing_data.clocks.each_key { |vnode| routing_data.clocks[vnode] = 5 }
     serve_routing(node, routing_data)
     [node, routing_data]
   end

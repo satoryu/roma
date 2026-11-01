@@ -120,8 +120,8 @@ module Roma
         send_stat_result(nil,h,regexp)
         send_stat_result(nil,get_config_stat,regexp)
         send_stat_result(nil,@stats.get_stat,regexp)
-        @storages.each{|hname,st|
-          send_stat_result("storages[#{hname}].",st.get_stat,regexp)
+        @storages.each{|hash_name,st|
+          send_stat_result("storages[#{hash_name}].",st.get_stat,regexp)
         }
         send_stat_result(nil,$roma.wb_get_stat,regexp)
         send_stat_result(nil,@routing_table.get_stat(@stats.my_node_id),regexp)
@@ -369,17 +369,17 @@ module Roma
         send_data("STORED\r\n")
       end
 
-      # out <key> <vn>
+      # out <key> <vnode>
       def ev_out(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         if s.length >= 3
-          vn = s[2].to_i
+          vnode = s[2].to_i
         else
           d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-          vn = @routing_table.get_vnode_id(d)
+          vnode = @routing_table.get_vnode_id(d)
         end
-        res = @storages[hname].out(vn, key, 0)
+        res = @storages[hash_name].out(vnode, key, 0)
         @stats.out_message_count += 1
         unless res
           return send_data("NOT_DELETED\r\n")
@@ -392,21 +392,21 @@ module Roma
       # <command name> <key> <digest> <exptime> <bytes> [noreply]\r\n
       # <data block>\r\n
       def ev_rset(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = s[2].to_i
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         data = read_bytes(s[5].to_i)
         read_bytes(2)
-        vn = @routing_table.get_vnode_id(d)
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        vnode = @routing_table.get_vnode_id(d)
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
-        if @storages[hname].rset(vn, key, d, s[3].to_i, s[4].to_i, data)
+        if @storages[hash_name].rset(vnode, key, d, s[3].to_i, s[4].to_i, data)
           send_data("STORED\r\n")
         else
-          @log.error("rset NOT_STORED:#{@storages[hname].error_message} #{vn} #{s[1]} #{d} #{s[3]} #{s[4]}")
+          @log.error("rset NOT_STORED:#{@storages[hash_name].error_message} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
           send_data("NOT_STORED\r\n")
         end
         @stats.redundant_count += 1
@@ -415,29 +415,29 @@ module Roma
       # <command name> <key> <digest> <exptime> <bytes> [noreply]\r\n
       # <compressed data block>\r\n
       def ev_rzset(s)
-        key,hname = s[1].split("\e")
-        hname ||= @default_hash_name
+        key,hash_name = s[1].split("\e")
+        hash_name ||= @default_hash_name
         d = s[2].to_i
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         zdata = read_bytes(s[5].to_i)
         read_bytes(2)
-        vn = @routing_table.get_vnode_id(d)
-        unless @storages.key?(hname)
-          send_data("SERVER_ERROR #{hname} does not exists.\r\n")
+        vnode = @routing_table.get_vnode_id(d)
+        unless @storages.key?(hash_name)
+          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
         end
 
         data = Zlib::Inflate.inflate(zdata)
 # @log.debug("data = #{data}")
-        if @storages[hname].rset(vn, key, d, s[3].to_i, s[4].to_i, data)
+        if @storages[hash_name].rset(vnode, key, d, s[3].to_i, s[4].to_i, data)
           send_data("STORED\r\n")
         else
-          @log.error("rzset NOT_STORED:#{@storages[hname].error_message} #{vn} #{s[1]} #{d} #{s[3]} #{s[4]}")
+          @log.error("rzset NOT_STORED:#{@storages[hash_name].error_message} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
           send_data("NOT_STORED\r\n")
         end
         @stats.redundant_count += 1
       rescue Zlib::DataError => e
-        @log.error("rzset NOT_STORED:#{e} #{vn} #{s[1]} #{d} #{s[3]} #{s[4]}")
+        @log.error("rzset NOT_STORED:#{e} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
         send_data("NOT_STORED\r\n")
       end
 
@@ -1156,34 +1156,34 @@ module Roma
         end
 
         if s.length >= 4
-          hname = s[3]
+          hash_name = s[3]
         else
-          hname = 'roma'
+          hash_name = 'roma'
         end
-        st = @storages[hname]
+        st = @storages[hash_name]
         unless st
-          return send_data("CLIENT_ERROR hash_name = #{hname} does not found\r\n")
+          return send_data("CLIENT_ERROR hash_name = #{hash_name} does not found\r\n")
         end
-        dn = s[1].to_i
-        if st.divnum <= dn
-          return send_data("CLIENT_ERROR divnum <= #{dn}\r\n")
+        db_index = s[1].to_i
+        if st.divnum <= db_index
+          return send_data("CLIENT_ERROR divnum <= #{db_index}\r\n")
         end
         if s[2] == 'safecopy'
-          if st.dbs[dn] != :normal
-            return send_data("CLIENT_ERROR storage[#{dn}] != :normal status\r\n")
+          if st.dbs[db_index] != :normal
+            return send_data("CLIENT_ERROR storage[#{db_index}] != :normal status\r\n")
           end
-          if st.set_db_stat(dn, :safecopy_flushing) == false
-            return send_data("CLIENT_ERROR storage[#{dn}] status can't changed\r\n")
+          if st.set_db_stat(db_index, :safecopy_flushing) == false
+            return send_data("CLIENT_ERROR storage[#{db_index}] status can't changed\r\n")
           end
-          Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_storage_flush_process',[hname, dn]))
+          Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_storage_flush_process',[hash_name, db_index]))
         elsif s[2] ==  'normal'
-          if st.dbs[dn] != :safecopy_flushed
-            return send_data("CLIENT_ERROR storage[#{dn}] != :safecopy_flushed status\r\n")
+          if st.dbs[db_index] != :safecopy_flushed
+            return send_data("CLIENT_ERROR storage[#{db_index}] != :safecopy_flushed status\r\n")
           end
-          if st.set_db_stat(dn, :cachecleaning) == false
-            return send_data("CLIENT_ERROR storage[#{dn}] status can't changed\r\n")
+          if st.set_db_stat(db_index, :cachecleaning) == false
+            return send_data("CLIENT_ERROR storage[#{db_index}] status can't changed\r\n")
           end
-          Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_storage_cachecleaning_process',[hname, dn]))
+          Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('start_storage_cachecleaning_process',[hash_name, db_index]))
         else
           return send_data("CLIENT_ERROR status parse error\r\n")
         end
@@ -1246,7 +1246,7 @@ module Roma
           return send_data("CLIENT_ERROR failover disable now!!\r\n")
         end
 
-        @storages.each{|hname,st|
+        @storages.each{|hash_name,st|
           st.cleanup_regexp = s[1]
           st.stop_clean_up
           send_data("STORED\r\n")

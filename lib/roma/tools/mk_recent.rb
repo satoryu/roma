@@ -19,10 +19,10 @@ module Roma
         raise Error, "The hash bits should be divide bits or more." if hash_bits < divide_bits
         vnodes = Array.new(2**divide_bits) { |i| i << (hash_bits - divide_bits) }
         hashes = []
-        StorageFiles.each_hash(path1) { |hname, dir| hashes << [hname, dir] }
+        StorageFiles.each_hash(path1) { |hash_name, dir| hashes << [hash_name, dir] }
         Dir.mkdir(recent_path)
-        hashes.each do |hname, dir|
-          merge(hname, [dir, File.join(path2, hname)], File.join(recent_path, hname), vnodes, division_count)
+        hashes.each do |hash_name, dir|
+          merge(hash_name, [dir, File.join(path2, hash_name)], File.join(recent_path, hash_name), vnodes, division_count)
         end
       end
 
@@ -32,7 +32,7 @@ module Roma
         StorageFiles.open(dir, vnodes, **opts)
       end
 
-      def merge(hname, dirs, recent_dir, vnodes, division_count)
+      def merge(hash_name, dirs, recent_dir, vnodes, division_count)
         storages = []
         dirs.each do |dir|
           @out.puts "Open #{dir}"
@@ -43,10 +43,10 @@ module Roma
         @out.puts "Open #{recent_dir}"
         recent = open_storage(recent_dir, vnodes, division_count: division_count, storage_class: storages[0].class)
         storages << recent
-        vnodes.each_with_index do |vn, i|
-          @out.print "#{hname}:#{i}/#{vnodes.length}\r"
+        vnodes.each_with_index do |vnode, i|
+          @out.print "#{hash_name}:#{i}/#{vnodes.length}\r"
           storages[0, 2].each do |storage|
-            dump = storage.dump(vn)
+            dump = storage.dump(vnode)
             recent.load(dump) if dump
           end
         end

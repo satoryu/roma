@@ -8,7 +8,7 @@ module Roma
       include ::Roma::CommandPlugin
       include ::Roma::Command::Definition
 
-      # mapcount_countup <key> <expt> <sub_keys_length>\r\n
+      # mapcount_countup <key> <expire_time> <sub_keys_length>\r\n
       # <sub_keys> \r\n
       #
       # (
@@ -21,7 +21,7 @@ module Roma
         countup(ctx, :json)
       end
 
-      # mapcount_countup_ms <key> <expt> <sub_keys_length>\r\n
+      # mapcount_countup_ms <key> <expire_time> <sub_keys_length>\r\n
       # <sub_keys> \r\n
       #
       # (
@@ -34,7 +34,7 @@ module Roma
         countup(ctx, :marshal)
       end
 
-      # mapcount_update <key> <expt> <sub_keys_length>\r\n
+      # mapcount_update <key> <expire_time> <sub_keys_length>\r\n
       # <sub_keys>\r\n
       #
       # (
@@ -46,7 +46,7 @@ module Roma
         update(ctx, :json)
       end
 
-      # mapcount_update_ms <key> <expt> <sub_keys_length>\r\n
+      # mapcount_update_ms <key> <expire_time> <sub_keys_length>\r\n
       # <sub_keys>\r\n
       #
       # (
@@ -101,11 +101,11 @@ module Roma
         end
 
         v["last_updated_date"] = Time.now.strftime(DATE_FORMAT)
-        expt = chg_time_expt(ctx.argv[2].to_i)
+        expire_time = chg_time_expt(ctx.argv[2].to_i)
 
         ret_str = return_str(v, stype)
         ret_msg = "VALUE #{ctx.params.key} 0 #{ret_str.length}\r\n#{ret_str}\r\nEND"
-        [0, expt, Marshal.dump(v), :write, ret_msg]
+        [0, expire_time, Marshal.dump(v), :write, ret_msg]
       end
 
       def update(ctx, stype)
@@ -132,10 +132,10 @@ module Roma
           end
         end
 
-        expt = chg_time_expt(ctx.argv[2].to_i)
+        expire_time = chg_time_expt(ctx.argv[2].to_i)
 
         ret_msg = "VALUE #{ctx.params.key} 0 #{ret.length}\r\n#{ret}\r\nEND"
-        [0, expt, Marshal.dump(v), :write, ret_msg]
+        [0, expire_time, Marshal.dump(v), :write, ret_msg]
       end
 
       def get(ctx, stype)

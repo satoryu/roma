@@ -43,7 +43,7 @@ module RomadTestHelper
     stats.address, stats.port = ap.split('_')
     stats.name = 'ROMA'
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
-    routing_data.routes.each_key { |vn| routing_data.routes[vn] = nodes.dup }
+    routing_data.routes.each_key { |vnode| routing_data.routes[vnode] = nodes.dup }
     set(stats: stats, log: Logger.new(nil), startup: true,
         routing_table: Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route')),
         storages: {})
@@ -447,30 +447,30 @@ class RomadRoutingSyncTest < Test::Unit::TestCase
     romad
     other = Roma::Routing::ChurnbasedRoutingTable.new(
       Marshal.load(Marshal.dump(@romad.routing_table.instance_variable_get(:@routing_data))), File.join(@dir, 'other.route'))
-    vn = other.routes.keys[3]
-    other.set_route(vn, 0, [OTHER_NID])
+    vnode = other.routes.keys[3]
+    other.set_route(vnode, 0, [OTHER_NID])
     sent = stub_send_cmd(
       'mklhash' => ->(_nid, cmd) { other.merkle_tree.get(cmd.split(' ')[1].chomp) },
-      'getroute' => ->(_nid, _cmd) { clk, nids = other.search_nodes_with_clk(vn); "#{clk} #{nids.join(' ')}" }
+      'getroute' => ->(_nid, _cmd) { clock, nids = other.search_nodes_with_clk(vnode); "#{clock} #{nids.join(' ')}" }
     )
     assert_equal :inconsistent, call(:routing_hash_comparison, OTHER_NID)
-    assert_equal [OTHER_NID], @romad.routing_table.search_nodes(vn)
-    assert_include sent, [OTHER_NID, "getroute #{vn}\r\n"]
+    assert_equal [OTHER_NID], @romad.routing_table.search_nodes(vnode)
+    assert_include sent, [OTHER_NID, "getroute #{vnode}\r\n"]
   ensure
     other&.close_log
   end
 
   def test_sync_routing_with_an_older_route
     romad
-    vn = @romad.routing_table.routes.keys[0]
-    @romad.routing_table.set_route(vn, 0, [NID])
+    vnode = @romad.routing_table.routes.keys[0]
+    @romad.routing_table.set_route(vnode, 0, [NID])
     # The other node's route is older than ours (clock 1); send it ours, with
     # the clock to give setroute.
     sent = stub_send_cmd('getroute' => "0 #{OTHER_NID}", 'setroute' => 'STORED')
     # The id of a vnode's leaf in the Merkle tree: '0' and the vnode's bits.
-    call(:sync_routing, OTHER_NID, "0#{(vn >> 29).to_s(2).rjust(3, '0')}")
-    assert_equal [NID], @romad.routing_table.search_nodes(vn)
-    assert_equal [OTHER_NID, "setroute #{vn} 0 #{NID}\r\n"], sent.last
+    call(:sync_routing, OTHER_NID, "0#{(vnode >> 29).to_s(2).rjust(3, '0')}")
+    assert_equal [NID], @romad.routing_table.search_nodes(vnode)
+    assert_equal [OTHER_NID, "setroute #{vnode} 0 #{NID}\r\n"], sent.last
   end
 
   def test_routing_hash_comparison_while_joining

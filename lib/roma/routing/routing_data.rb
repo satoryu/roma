@@ -78,14 +78,14 @@ module Roma
           routing_data.nodes << nid 
         }
         (2**divide_bits).times{|i|
-          vn=i<<(digest_bits-divide_bits)
+          vnode=i<<(digest_bits-divide_bits)
           clocks,len = bin.unpack('Nc')
-          routing_data.clocks[vn] = clocks
+          routing_data.clocks[vnode] = clocks
           bin = bin[5..-1]
           len.times{|i|
             idx, = bin.unpack('n')
-            routing_data.routes[vn] = [] unless routing_data.routes[vn]
-            routing_data.routes[vn] << routing_data.nodes[idx]
+            routing_data.routes[vnode] = [] unless routing_data.routes[vnode]
+            routing_data.routes[vnode] << routing_data.nodes[idx]
             bin = bin[2..-1]
           }
         }
@@ -122,10 +122,10 @@ module Roma
           ret += [nid.length,nid].pack('na*')
         }
         (2**divide_bits).times{|i|
-          vn=i<<(digest_bits-divide_bits)
+          vnode=i<<(digest_bits-divide_bits)
           # 5 bytes
-          ret += [clocks[vn],routes[vn].length].pack('Nc')
-          routes[vn].each{|nid|
+          ret += [clocks[vnode],routes[vnode].length].pack('Nc')
+          routes[vnode].each{|nid|
             # 2 bytes
             ret += [rev_hash[nid]].pack('n')
           }
@@ -190,8 +190,8 @@ module Roma
         2**@divide_bits-1<<(@digest_bits-@divide_bits)
       end
 
-      def next_vnode(vn)
-        n = (vn >> (@digest_bits-@divide_bits)) + 1
+      def next_vnode(vnode)
+        n = (vnode >> (@digest_bits-@divide_bits)) + 1
         n = 0 if n == (2**@divide_bits)
         n << (@digest_bits-@divide_bits)
       end
@@ -207,8 +207,8 @@ module Roma
       # Returns the losted vnode-id list.
       def get_lost_vnodes
         ret=[]
-        routes.each_pair{|vn,nids|
-          ret << vn if nids.length == 0
+        routes.each_pair{|vnode,nids|
+          ret << vnode if nids.length == 0
         }
         ret
       end
@@ -220,9 +220,9 @@ module Roma
         rnlm=RandomNodeListMaker.new(nodes,repethost)
 
         (2**divide_bits).times do |i|
-          vn=i<<(digest_bits-divide_bits)
-          ret.clocks[vn]=0
-          ret.routes[vn]=rnlm.list(redundancy)
+          vnode=i<<(digest_bits-divide_bits)
+          ret.clocks[vnode]=0
+          ret.routes[vnode]=rnlm.list(redundancy)
         end
 
         # vnode balanceing process
@@ -253,7 +253,7 @@ module Roma
         nodes.each{|nid|
           ret[nid] = Array.new(redundancy,0)
         }
-        routes.each_pair{|vn,nids|
+        routes.each_pair{|vnode,nids|
           nids.each_with_index{|nid,i|
             ret[nid][i] += 1
           }

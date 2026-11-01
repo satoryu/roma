@@ -78,18 +78,18 @@ module Roma
         send_data("#{@storages.keys.join ' '}\r\n")
       end
 
-      def createhash(hname, msg)
-        if @storages.key?(hname)
-          return "SERVER_ERROR #{hname} already exists."
+      def createhash(hash_name, msg)
+        if @storages.key?(hash_name)
+          return "SERVER_ERROR #{hash_name} already exists."
         end
         st = Roma.config.storage.engine_class.new
-        st.storage_path = "#{Roma.config.storage.path}/#{@stats.my_node_id}/#{hname}"
+        st.storage_path = "#{Roma.config.storage.path}/#{@stats.my_node_id}/#{hash_name}"
         st.vn_list = @routing_table.vnodes
         st.divnum = Roma.config.storage.division_count
         st.option = Roma.config.storage.option
-        @storages[hname] = st
-        @storages[hname].opendb
-        @log.info("createhash #{hname}")
+        @storages[hash_name] = st
+        @storages[hash_name].opendb
+        @log.info("createhash #{hash_name}")
         return msg
       rescue =>e
         @log.error("#{e} #{$@}")
@@ -97,26 +97,26 @@ module Roma
       end
       private :createhash
 
-      def deletehash(hname)
-        ret = umounthash(hname)
+      def deletehash(hash_name)
+        ret = umounthash(hash_name)
         return ret if ret != 'UNMOUNTED'
-        FileUtils.rm_rf "#{Roma.config.storage.path}/#{@stats.my_node_id}/#{hname}"
-        @log.info("deletehash #{hname}")
+        FileUtils.rm_rf "#{Roma.config.storage.path}/#{@stats.my_node_id}/#{hash_name}"
+        @log.info("deletehash #{hash_name}")
         return "DELETED"
       rescue =>e
         @log.error("#{e}")
       end
       private :deletehash
       
-      def umounthash(hname)
-        if @default_hash_name == hname
+      def umounthash(hash_name)
+        if @default_hash_name == hash_name
           return "SERVER_ERROR default hash can't unmount."
         end
-        unless @storages.key?(hname)
-          return "SERVER_ERROR #{hname} does not exists."
+        unless @storages.key?(hash_name)
+          return "SERVER_ERROR #{hash_name} does not exists."
         end
-        st = @storages[hname]
-        @storages.delete(hname)
+        st = @storages[hash_name]
+        @storages.delete(hash_name)
         st.closedb
         "UNMOUNTED"
       end

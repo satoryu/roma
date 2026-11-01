@@ -19,8 +19,8 @@ module Roma
       def change(node_id, redundancy)
         raise Error, "The redundancy should be 1 or more." if redundancy < 1
         routing_data = @client.routing_data(node_id)
-        routing_data.clocks.each_key { |vn| routing_data.clocks[vn] = 0 }
-        routing_data.routes.each_key { |vn| routing_data.routes[vn] = routing_data.routes[vn].first(redundancy) }
+        routing_data.clocks.each_key { |vnode| routing_data.clocks[vnode] = 0 }
+        routing_data.routes.each_key { |vnode| routing_data.routes[vnode] = routing_data.routes[vnode].first(redundancy) }
         routing_data.redundancy = redundancy
         routing_data.nodes.sort!
         @out.puts YAML.dump(routing_data)

@@ -541,55 +541,55 @@ module ListPluginTests
 
   def test_alist_spushv
 
-    st, nid, vn = create_storage_and_calc_vn('aa')
+    st, nid, vnode = create_storage_and_calc_vn('aa')
 
     # create a data ,it's a past time
     pt =Time.now.to_i
-    st.set(vn,'aa',0,0xffffffff,Marshal.dump([['11','22','33','44','55'],[pt,pt,pt,pt,pt]]))
+    st.set(vnode,'aa',0,0xffffffff,Marshal.dump([['11','22','33','44','55'],[pt,pt,pt,pt,pt]]))
 
     @rc.delete("aa")
     @rc.alist_push("aa","55")
     @rc.alist_push("aa","33")
     @rc.alist_push("aa","11")
 
-    push_a_vnode_stream(st, vn, nid)
+    push_a_vnode_stream(st, vnode, nid)
 
     assert_equal(["55", "33", "11", "22", "44"], @rc.alist_to_s("aa")[1])
 
     # create a data out of list
-    st.set(vn,'aa',0,0xffffffff,'val-aa')
-    push_a_vnode_stream(st, vn, nid)
+    st.set(vnode,'aa',0,0xffffffff,'val-aa')
+    push_a_vnode_stream(st, vnode, nid)
     # do not write a value
     assert_equal(["55", "33", "11", "22", "44"], @rc.alist_to_s("aa")[1])
 
     # increases to logical clock
     10.times{
-      st.set(vn,'aa',0,0xffffffff,'val-aa')
+      st.set(vnode,'aa',0,0xffffffff,'val-aa')
     }
-    push_a_vnode_stream(st, vn, nid)
+    push_a_vnode_stream(st, vnode, nid)
     # write over a value, cause increased a logical clock
     assert_equal('val-aa', @rc.get("aa",true))
   end
 
   def create_storage_and_calc_vn(k)
-    # calc vn
+    # calc vnode
     nid,d = @rc.routing_table.search_node("aa")
-    vn = @rc.routing_table.get_vnode_id(d)
+    vnode = @rc.routing_table.get_vnode_id(d)
 
     st = Roma::Storage::HashStorage.new
-    st.vn_list = [vn]
+    st.vn_list = [vnode]
     st.storage_path = 'storage_test'
     st.opendb
 
-    [st,nid,vn]
+    [st,nid,vnode]
   end
   private :create_storage_and_calc_vn
 
-  def push_a_vnode_stream(st, vn, nid)
+  def push_a_vnode_stream(st, vnode, nid)
     con = Roma::Messaging::ConPool.instance.get_connection(nid)
-    con.write("alist_spushv roma #{vn}\r\n")
+    con.write("alist_spushv roma #{vnode}\r\n")
     con.gets # READY
-    st.each_vn_dump(vn){|data|
+    st.each_vn_dump(vnode){|data|
       con.write(data)
     }
     con.write("\0"*20) # end of steram

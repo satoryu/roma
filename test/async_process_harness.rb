@@ -38,7 +38,7 @@ class AsyncProcessHarness
     @dir = Dir.mktmpdir('roma_async')
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
     # Choose the nodes of every vnode, instead of at random.
-    routing_data.routes.each_key { |vn| routing_data.routes[vn] = vnode_nodes.dup } if vnode_nodes
+    routing_data.routes.each_key { |vnode| routing_data.routes[vnode] = vnode_nodes.dup } if vnode_nodes
     @routing_table = Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route'))
     @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = routing_data.routes.keys
@@ -66,11 +66,11 @@ class AsyncProcessHarness
 
   # Stores +value+ under +key+ in the vnode the key belongs to, and returns
   # the vnode.
-  def store(key, value, expt: 0x7fffffff)
+  def store(key, value, expire_time: 0x7fffffff)
     d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-    vn = @routing_table.get_vnode_id(d)
-    @storage.set(vn, key, d, expt, value)
-    vn
+    vnode = @routing_table.get_vnode_id(d)
+    @storage.set(vnode, key, d, expire_time, value)
+    vnode
   end
 
   def async_send_cmd(nid, cmd, _tout = nil)

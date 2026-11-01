@@ -12,13 +12,13 @@ module Roma
       # With +value+, the data of the key is told. An expired or deleted key
       # is not there. Raises Error if the files can't be opened.
       def access(storage_path, key, value: false)
-        StorageFiles.each_hash(storage_path) do |hname, dir|
-          @out.puts "hash : #{hname}"
-          vn, last, clk, expt, val = get(dir, key)
-          next unless vn && expt != 0 && Time.now.to_i <= expt
+        StorageFiles.each_hash(storage_path) do |hash_name, dir|
+          @out.puts "hash : #{hash_name}"
+          vnode, last, clock, expire_time, val = get(dir, key)
+          next unless vnode && expire_time != 0 && Time.now.to_i <= expire_time
 
           if value
-            @out.puts "vnode: #{vn}", "last : #{Time.at(last)}", "clock: #{clk}", "expt : #{Time.at(expt)}",
+            @out.puts "vnode: #{vnode}", "last : #{Time.at(last)}", "clock: #{clock}", "expt : #{Time.at(expire_time)}",
                       "value: #{val}"
           else
             @out.puts 'exist'

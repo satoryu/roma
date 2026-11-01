@@ -345,25 +345,25 @@ module Roma
       st_option = storage.option
       Dir.glob("#{path}/*").each{|f|
         if File.directory?(f)
-          hname = File.basename(f)
+          hash_name = File.basename(f)
           st = st_class.new
-          st.storage_path = "#{path}/#{hname}"
+          st.storage_path = "#{path}/#{hash_name}"
           st.vn_list = @routing_table.vnodes
           st.st_class = st_class
           st.divnum = st_division_count
           st.option = st_option
-          @storages[hname] = st
+          @storages[hash_name] = st
         end
       }
       if @storages.length == 0
-        hname = 'roma'
+        hash_name = 'roma'
         st = st_class.new
-        st.storage_path = "#{path}/#{hname}"
+        st.storage_path = "#{path}/#{hash_name}"
         st.vn_list = @routing_table.vnodes
         st.st_class = st_class
         st.divnum = st_division_count
         st.option = st_option
-        @storages[hname] = st
+        @storages[hash_name] = st
       end
     end
 
@@ -660,17 +660,17 @@ module Roma
     end
 
     def sync_routing(nid,id)
-      vn = @routing_table.merkle_tree.to_vn(id)
-      @log.warn("vn=#{vn} inconsistent")
+      vnode = @routing_table.merkle_tree.to_vn(id)
+      @log.warn("vnode=#{vnode} inconsistent")
 
-      res = async_send_cmd(nid,"getroute #{vn}\r\n")
+      res = async_send_cmd(nid,"getroute #{vnode}\r\n")
       return if res == nil || res.start_with?("ERROR")
-      clk,*nids = res.split(' ')
-      clk = @routing_table.set_route(vn, clk.to_i, nids)
+      clock,*nids = res.split(' ')
+      clock = @routing_table.set_route(vnode, clock.to_i, nids)
 
-      if clk.is_a?(Integer) == false
-        clk,nids = @routing_table.search_nodes_with_clk(vn)
-        cmd = "setroute #{vn} #{clk-1}"
+      if clock.is_a?(Integer) == false
+        clock,nids = @routing_table.search_nodes_with_clk(vnode)
+        cmd = "setroute #{vnode} #{clock-1}"
         nids.each{|nid2| cmd << " #{nid2}" }
         async_send_cmd(nid,"#{cmd}\r\n")
       end

@@ -81,10 +81,10 @@ class PluginStorageForwardTest < Test::Unit::TestCase
 
   def test_cas
     @owner.request('set key1 0 0 5', 'value')
-    clk = @conn.request('gets key1')[/VALUE key1 0 5 (\d+)/, 1]
-    assert_equal "STORED\r\n", @conn.request("cas key1 0 0 3 #{clk}", 'new')
+    clock = @conn.request('gets key1')[/VALUE key1 0 5 (\d+)/, 1]
+    assert_equal "STORED\r\n", @conn.request("cas key1 0 0 3 #{clock}", 'new')
     assert_equal 'new', stored('key1')
-    assert_equal "EXISTS\r\n", @conn.request("cas key1 0 0 3 #{clk}", 'old')
+    assert_equal "EXISTS\r\n", @conn.request("cas key1 0 0 3 #{clock}", 'old')
   end
 
   def test_incr_decr
@@ -227,17 +227,17 @@ class PluginStorageWriteBehindTest < Test::Unit::TestCase
     @conn.request('set key1 0 0 1', '1')
     @conn.request('set key1 0 0 1', '2')
     @conn.request('incr key1 1')
-    clk = @conn.request('gets key1')[/VALUE key1 0 1 (\d+)/, 1]
-    @conn.request("cas key1 0 0 1 #{clk}", '5')
+    clock = @conn.request('gets key1')[/VALUE key1 0 1 (\d+)/, 1]
+    @conn.request("cas key1 0 0 1 #{clock}", '5')
     @conn.request('set_expt key1 100')
     @conn.request('delete key1')
     pushed = write_behind.map { |_hname, cmd, _key, value| [cmd, value] }
     # set_expt's value is the time the key expires.
     assert_in_delta Time.now.to_i + 100, pushed[8][1].to_i, 2
-    pushed[8][1] = 'expt'
+    pushed[8][1] = 'expire_time'
     # An expiry of 0 is stored as 0x7fffffff.
     assert_equal [[1, '1'], [2, '1'], [1, '2'], [6, '2'], [5, '3'], [8, '3'], [7, '5'],
-                  [10, '2147483647'], [9, 'expt'], [4, '5'], [3, '5']], pushed
+                  [10, '2147483647'], [9, 'expire_time'], [4, '5'], [3, '5']], pushed
   end
 
   # With cluster replication, every change is also queued for the replica
@@ -246,15 +246,15 @@ class PluginStorageWriteBehindTest < Test::Unit::TestCase
     @conn.instance_variable_get(:@romad).cluster_replication_writer.run_replication = true
     @conn.request('set key1 0 0 1', '1')
     @conn.request('incr key1 1')
-    clk = @conn.request('gets key1')[/VALUE key1 0 1 (\d+)/, 1]
-    @conn.request("cas key1 0 0 1 #{clk}", '5')
+    clock = @conn.request('gets key1')[/VALUE key1 0 1 (\d+)/, 1]
+    @conn.request("cas key1 0 0 1 #{clock}", '5')
     @conn.request('set_expt key1 100')
     @conn.request('delete key1')
     pushed = write_behind.map { |_hname, cmd, _key, _value| cmd }
     assert_in_delta Time.now.to_i + 100, pushed[3][/set_expt key1 (\d+)/, 1].to_i, 2
-    pushed[3] = pushed[3].sub(/ \d+/, ' expt')
+    pushed[3] = pushed[3].sub(/ \d+/, ' expire_time')
     assert_equal ["set key1 1 2147483647 1 \r\n1\r\n", "incr key1 1\r\n", "set key1 0 2147483647 1 \r\n5\r\n",
-                  "set_expt key1 expt\r\n", "delete key1\r\n"], pushed
+                  "set_expt key1 expire_time\r\n", "delete key1\r\n"], pushed
   end
 
   def test_cluster_replication_of_another_hash
@@ -262,8 +262,8 @@ class PluginStorageWriteBehindTest < Test::Unit::TestCase
     @conn.request("set key1\eother 0 0 1", '1')
     @conn.request("incr key1\eother 1")
     # gets replies the key without the hash name.
-    clk = @conn.request("gets key1\eother")[/VALUE key1 0 1 (\d+)/, 1]
-    assert_equal "STORED\r\n", @conn.request("cas key1\eother 0 0 1 #{clk}", '5')
+    clock = @conn.request("gets key1\eother")[/VALUE key1 0 1 (\d+)/, 1]
+    assert_equal "STORED\r\n", @conn.request("cas key1\eother 0 0 1 #{clock}", '5')
     assert_equal ["set key1\eother 1 2147483647 1 \r\n1\r\n", "incr key1\eother 1\r\n",
                   "set key1\eother 0 2147483647 1 \r\n5\r\n"],
                  write_behind.map { |_hname, cmd, _key, _value| cmd }

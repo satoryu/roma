@@ -35,16 +35,16 @@ module Roma
           @out.puts "#{vnodes.length} vnodes where data was lost."
           return if vnodes.empty?
         end
-        each_storage(storage_path, vnodes) do |hname, storage|
-          vnodes.each_with_index { |vn, idx| recover_vnode(routing_data, hname, storage, vn, "#{idx}/#{vnodes.length}") }
+        each_storage(storage_path, vnodes) do |hash_name, storage|
+          vnodes.each_with_index { |vnode, idx| recover_vnode(routing_data, hash_name, storage, vnode, "#{idx}/#{vnodes.length}") }
         end
       end
 
       # Recovers only the data of +keys+, to the nodes that have it now.
       def recover_keys(node_id, storage_path, keys)
         routing_data = @client.routing_data(node_id)
-        each_storage(storage_path, routing_data.routes.keys) do |hname, storage|
-          keys.each { |key| recover_key(routing_data, hname, storage, key) }
+        each_storage(storage_path, routing_data.routes.keys) do |hash_name, storage|
+          keys.each { |key| recover_key(routing_data, hash_name, storage, key) }
         end
       end
 
@@ -63,11 +63,11 @@ module Roma
       end
 
       def each_storage(path, vnodes)
-        StorageFiles.each_hash(path) do |hname, dir|
-          @out.puts "#{hname} #{dir}"
+        StorageFiles.each_hash(path) do |hash_name, dir|
+          @out.puts "#{hash_name} #{dir}"
           storage = open_storage(dir, vnodes)
           begin
-            yield hname, storage
+            yield hash_name, storage
           ensure
             storage.closedb
           end
@@ -79,22 +79,22 @@ module Roma
       end
 
       # A vnode without nodes is given to a node, which the others are told.
-      def recover_vnode(routing_data, hname, storage, vn, progress)
-        nids = routing_data.routes[vn]
+      def recover_vnode(routing_data, hash_name, storage, vnode, progress)
+        nids = routing_data.routes[vnode]
         assign = nids.nil? || nids.empty?
         if assign
           nids = [routing_data.nodes.sample(random: @random)]
-          @out.puts "#{progress} #{vn} assign to #{nids.inspect}"
+          @out.puts "#{progress} #{vnode} assign to #{nids.inspect}"
         else
-          @out.puts "#{progress} #{vn} was auto assigned at #{nids.inspect}"
+          @out.puts "#{progress} #{vnode} was auto assigned at #{nids.inspect}"
         end
         nids.each do |nid|
-          res = push(nid, hname, vn) { |con| storage.each_vn_dump(vn) { |data| write_data(con, clock_to_zero(data)) } }
-          raise Error, "Pushing vnode #{vn} to #{nid} failed: #{res}" unless res == 'STORED'
+          res = push(nid, hash_name, vnode) { |con| storage.each_vn_dump(vnode) { |data| write_data(con, clock_to_zero(data)) } }
+          raise Error, "Pushing vnode #{vnode} to #{nid} failed: #{res}" unless res == 'STORED'
         end
         return unless assign
 
-        cmd = "setroute #{vn} #{routing_data.clocks[vn]} #{nids[0]}"
+        cmd = "setroute #{vnode} #{routing_data.clocks[vnode]} #{nids[0]}"
         res = @client.request(nids[0], cmd)
         raise Error, "#{nids[0]} replied to #{cmd}: #{res}" unless res == 'STORED'
         (routing_data.nodes - nids).each do |nid|
@@ -104,15 +104,15 @@ module Roma
         end
       end
 
-      def recover_key(routing_data, hname, storage, key)
+      def recover_key(routing_data, hash_name, storage, key)
         data = storage.get_raw2(key)
         return unless data
         @out.puts "hit => #{key}"
-        vn = (Digest::SHA1.hexdigest(key).hex % (2**routing_data.digest_bits)) & routing_data.search_mask
-        _vn, last, _clk, expt, val = data
-        Array(routing_data.routes[vn]).each do |nid|
+        vnode = (Digest::SHA1.hexdigest(key).hex % (2**routing_data.digest_bits)) & routing_data.search_mask
+        _vn, last, _clk, expire_time, val = data
+        Array(routing_data.routes[vnode]).each do |nid|
           res = begin
-                  push(nid, hname, vn) { |con| write_data(con, pack(vn, last, 0, expt, key, val)) }
+                  push(nid, hash_name, vnode) { |con| write_data(con, pack(vnode, last, 0, expire_time, key, val)) }
                 rescue Error => e
                   e.message
                 end
@@ -122,9 +122,9 @@ module Roma
 
       # Sends the data written in the block by the push command, and returns
       # the reply, STORED or an error.
-      def push(nid, hname, vn)
+      def push(nid, hash_name, vnode)
         @client.connect(nid) do |con|
-          con.write("#{@pushv_cmd} #{hname} #{vn}\r\n")
+          con.write("#{@pushv_cmd} #{hash_name} #{vnode}\r\n")
           res = con.gets
           next res.to_s.chomp unless res == "READY\r\n"
           yield con
@@ -138,7 +138,7 @@ module Roma
         sleep @push_wait
       end
 
-      # The data is vn, last, clock, expt, the key length, the key, the value
+      # The data is vnode, last, clock, expire_time, the key length, the key, the value
       # length and the value. The clock is the third.
       def clock_to_zero(data)
         data = data.b
@@ -146,13 +146,13 @@ module Roma
         data
       end
 
-      def pack(vn, last, clk, expt, key, val)
+      def pack(vnode, last, clock, expire_time, key, val)
         key = key.b
         if val
           val = val.b
-          [vn, last, clk, expt, key.bytesize, key, val.bytesize, val].pack('NNNNNa*Na*')
+          [vnode, last, clock, expire_time, key.bytesize, key, val.bytesize, val].pack('NNNNNa*Na*')
         else
-          [vn, last, clk, expt, key.bytesize, key, 0].pack('NNNNNa*N')
+          [vnode, last, clock, expire_time, key.bytesize, key, 0].pack('NNNNNa*N')
         end
       end
     end

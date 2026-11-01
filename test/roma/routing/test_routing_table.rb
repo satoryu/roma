@@ -41,7 +41,7 @@ class RoutingTableTest < Test::Unit::TestCase
   def test_leave
     @rt.leave(B1)
     assert_equal [A1], @rt.nodes
-    assert_equal [[A1], [A1], [A1], []], VN.map { |vn| @rt.search_nodes(vn) }
+    assert_equal [[A1], [A1], [A1], []], VN.map { |vnode| @rt.search_nodes(vnode) }
     # [primary, [secondary], short, lost]
     assert_equal [3, [0], 3, 1], @rt.num_of_vn(A1)
   end

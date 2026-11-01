@@ -6,9 +6,9 @@ class VnodeCommandReceiverTest < Test::Unit::TestCase
 
   # A vnode stream as spushv receives it: each key and value, and 20 zero
   # bytes at the end. A nil value is a deleted mark, whose expiry is 0.
-  def stream(vn, pairs)
+  def stream(vnode, pairs)
     data = pairs.map do |k, v|
-      [vn, Time.now.to_i, 1, v ? 0x7fffffff : 0, k.bytesize, k, (v || '').bytesize, v || ''].pack("NNNNNa#{k.bytesize}Na*")
+      [vnode, Time.now.to_i, 1, v ? 0x7fffffff : 0, k.bytesize, k, (v || '').bytesize, v || ''].pack("NNNNNa#{k.bytesize}Na*")
     end
     data.join + "\0" * 20
   end

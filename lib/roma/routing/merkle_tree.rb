@@ -16,8 +16,8 @@ module Roma
         create_tree_instance('0')
       end
 
-      def set(vn,nodes)
-        id = '0' + (vn >> (@digest_bits-@divide_bits)).to_s(2).rjust(@divide_bits,'0')
+      def set(vnode,nodes)
+        id = '0' + (vnode >> (@digest_bits-@divide_bits)).to_s(2).rjust(@divide_bits,'0')
         @tree[id] = Digest::SHA1.hexdigest(nodes.to_s)
         update(parent(id))
       end

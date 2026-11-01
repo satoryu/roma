@@ -5,8 +5,8 @@ module Roma
 
     @@wb_queue = Queue.new
 
-    def self.push(hname, cmd, key, val)
-      @@wb_queue.push([hname, cmd, key, val])
+    def self.push(hash_name, cmd, key, val)
+      @@wb_queue.push([hash_name, cmd, key, val])
     end
 
     def start_wb_process
@@ -27,16 +27,16 @@ module Roma
       @cluster_replication_writer.close_all
     end
 
-    def wb_rotate(hname)
-      @wb_writer.rotate(hname)
+    def wb_rotate(hash_name)
+      @wb_writer.rotate(hash_name)
     end
 
-    def wb_get_path(hname)
-      @wb_writer.wb_get_path(hname)
+    def wb_get_path(hash_name)
+      @wb_writer.wb_get_path(hash_name)
     end
 
-    def wb_get_current_file_path(hname)
-      @wb_writer.get_current_file_path(hname)
+    def wb_get_current_file_path(hash_name)
+      @wb_writer.get_current_file_path(hash_name)
     end
 
     def wb_get_stat
@@ -46,7 +46,7 @@ module Roma
     def wb_process_loop
       loop {
         while dat = @@wb_queue.pop
-          # dat ====> [hname, cmd, key, value]
+          # dat ====> [hash_name, cmd, key, value]
           @cluster_replication_writer.transmit(dat[1], dat[2], dat[3]) unless dat[0]
           @wb_writer.write(dat[0], dat[1], dat[2], dat[3])
         end

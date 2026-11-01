@@ -94,12 +94,12 @@ module Roma
           send_data("CLIENT_ERROR\r\n")
           return
         end
-        clk,nids = @routing_table.search_nodes_with_clk(s[1].to_i)
-        if clk == nil
+        clock,nids = @routing_table.search_nodes_with_clk(s[1].to_i)
+        if clock == nil
           send_data("END\r\n")
           return
         end
-        res = "#{clk-1}"
+        res = "#{clock-1}"
         nids.each{ |nid| res << " #{nid}" }
         send_data("#{res}\r\n")
       end
@@ -117,7 +117,7 @@ module Roma
           t = Time.mktime(s[1][0..3], s[1][4..5], s[1][6..7], s[1][8..9], s[1][10..11], s[1][12..13])
         end
         nodes = @routing_table.search_lost_vnodes(t)
-        nodes.each{|vn| send_data("#{vn}\r\n") }
+        nodes.each{|vnode| send_data("#{vnode}\r\n") }
         send_data("END\r\n")
       rescue
         send_data("CLIENT_ERROR\r\n")
@@ -294,10 +294,10 @@ module Roma
         end
 
         d = Digest::SHA1.hexdigest(s[1]).hex % @routing_table.hash_space_size
-        vn = @routing_table.get_vnode_id(d)
-        nodes = @routing_table.search_nodes_for_write(vn)
+        vnode = @routing_table.get_vnode_id(d)
+        nodes = @routing_table.search_nodes_for_write(vnode)
         send_data(sprintf("d = %s 0x%x\r\n",d,d))
-        send_data(sprintf("vn = %s 0x%x\r\n",vn,vn))
+        send_data(sprintf("vn = %s 0x%x\r\n",vnode,vnode))
         send_data("nodes = #{nodes.inspect}\r\n")
         send_data("END\r\n")
       end

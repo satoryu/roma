@@ -9,8 +9,8 @@ class PluginMapTest < Test::Unit::TestCase
     @conn = PluginTestHarness.for(Roma::CommandPlugin::PluginMap).new
   end
 
-  def map_set(key, mapkey, value, expt = 0)
-    @conn.request("map_set #{key} #{mapkey} 0 #{expt} #{value.bytesize}", value)
+  def map_set(key, mapkey, value, expire_time = 0)
+    @conn.request("map_set #{key} #{mapkey} 0 #{expire_time} #{value.bytesize}", value)
   end
 
   def mk_data(n = 3)
