@@ -67,6 +67,9 @@ install one of the storage gems and set it in your config file.
 | Ruby Hash (default) | roma-storage (installed with ROMA) | `roma/storage/ruby_hash_storage` | `Roma::Storage::RubyHashStorage` |
 | DBM | [roma-storage-dbm](https://rubygems.org/gems/roma-storage-dbm) | `roma/storage/dbm` | `Roma::Storage::DbmStorage` |
 | SQLite3 | [roma-storage-sqlite3](https://rubygems.org/gems/roma-storage-sqlite3) | `roma/storage/sqlite3` | `Roma::Storage::SQLite3Storage` |
+| Groonga | [roma-storage-groonga](https://rubygems.org/gems/roma-storage-groonga) | `roma/storage/groonga` | `Roma::Storage::GroongaStorage` |
+
+roma-storage-groonga needs [Groonga](https://groonga.org/) 12.0.2 or later. Install it first, for example by `brew install groonga`.
 
 For example, to use SQLite3:
 
