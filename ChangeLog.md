@@ -28,6 +28,9 @@ The tools in `bin/` are subcommands of the new `roma` command now (`roma help` l
 
 The tools print errors on the standard error and exit with 1.
 
+### File names
+The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins require, stays as a deprecated alias of `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)
+
 ### Fixes
 * A romad that isn't a daemon stops by TERM and HUP [#39](https://github.com/satoryu/roma/pull/39)
 * romad stops by INT and TERM under load too [#43](https://github.com/satoryu/roma/pull/43)

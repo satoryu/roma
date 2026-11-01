@@ -1,7 +1,7 @@
 require 'fileutils'
 require 'roma/stats'
 require 'roma/command/util_command_receiver'
-require 'roma/command/command_definition'
+require 'roma/command/definition'
 
 module Roma
   module Command

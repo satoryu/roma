@@ -221,7 +221,7 @@ module Roma
         end
       end
 
-      class Config_status
+      class ConfigStatus
         attr_accessor :name, :value, :print, :default_value
         def initialize(hash, input, store_type = nil)
           @name = hash["name"]
@@ -498,7 +498,7 @@ module Roma
             if base.flag
               results[hash].value << target["choice"][input.to_i - 1] if !results[hash].value.include?(target["choice"][input.to_i - 1])
             else
-              results[hash] = Config_status.new(target, target["choice"][input.to_i - 1], target["store_type"])
+              results[hash] = ConfigStatus.new(target, target["choice"][input.to_i - 1], target["store_type"])
               base.flag = true
             end
 
@@ -506,10 +506,10 @@ module Roma
               results[hash].value = target["choice"][0..-2]
             end
           else
-            results[hash] = Config_status.new(target, target["choice"][input.to_i - 1])
+            results[hash] = ConfigStatus.new(target, target["choice"][input.to_i - 1])
           end
         else
-          results[hash] = Config_status.new(target, input)
+          results[hash] = ConfigStatus.new(target, input)
         end
 
         base.flag = false if hash == "menu"

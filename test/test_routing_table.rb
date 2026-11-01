@@ -1,6 +1,6 @@
 require 'test_helper'
 require 'tmpdir'
-require 'roma/routing/cb_rttable'
+require 'roma/routing/churnbased_routing_table'
 
 # Unit tests for the routing tables and the vnode selection used by join,
 # recover, release and balance. They build small routing data by hand, so

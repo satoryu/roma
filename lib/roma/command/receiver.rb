@@ -2,11 +2,11 @@ require 'roma/stats'
 require 'roma/version'
 require 'roma/event/handler'
 require 'roma/messaging/con_pool'
-require 'roma/command/bg_command_receiver'
-require 'roma/command/rt_command_receiver'
+require 'roma/command/background_command_receiver'
+require 'roma/command/routing_command_receiver'
 require 'roma/command/util_command_receiver'
-require 'roma/command/mh_command_receiver'
-require 'roma/command/sys_command_receiver'
+require 'roma/command/multi_hash_command_receiver'
+require 'roma/command/system_command_receiver'
 
 module Roma
   module Command

@@ -1,5 +1,5 @@
 require 'test_helper'
-require 'roma/command/command_definition'
+require 'roma/command/definition'
 require 'digest/sha1'
 require 'test/unit'
 
@@ -139,6 +139,12 @@ class DefineCommandTest < Test::Unit::TestCase
 
   def setup
     @obj = DefCmdTest.new
+  end
+
+  # Plugins require the old file.
+  def test_old_file_name
+    require 'roma/command/command_definition'
+    assert_true $LOADED_FEATURES.any? { |f| f.end_with?('roma/command/command_definition.rb') }
   end
 
   def teardown

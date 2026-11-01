@@ -1,6 +1,7 @@
 require 'test_helper'
 require 'tmpdir'
 require 'roma/logging/rlogger'
+require 'roma/logging/stderr_wrapper'
 
 class RLoggerTest < Test::Unit::TestCase
   RLogger = Roma::Logging::RLogger

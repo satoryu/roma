@@ -163,7 +163,7 @@ module Roma
                   desc: 'Only the keys in FILE, one in each line, or in the standard input with -'
     option :alist, type: :boolean, default: false, desc: 'Push the data of the list plugin by alist_spushv'
     def recoverlost(node_id, storage_path)
-      require 'roma/tools/recoverlost'
+      require 'roma/tools/recover_lost'
       given = %i(since all keys).select { |name| options[name] }
       raise Roma::Tools::Error, "--#{given.join(' and --')} can't be used together." if given.size > 1
 
@@ -197,7 +197,7 @@ module Roma
     option :divide, aliases: '-d', type: :numeric, default: 9, banner: 'BITS', desc: 'Dividing bit count'
     option :divnum, aliases: '-n', type: :numeric, default: 10, banner: 'NUM', desc: 'Number of the new divided files'
     def mkrecent(path1, path2, recent_path)
-      require 'roma/tools/mkrecent'
+      require 'roma/tools/mk_recent'
       Roma::Tools::MkRecent.new.make(path1, path2, recent_path, hash_bits: options[:hash],
                                      divide_bits: options[:divide], divnum: options[:divnum])
       puts 'Make recent data process has succeed.'
