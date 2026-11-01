@@ -1,6 +1,7 @@
 require 'pathname'
 require 'yaml'
 require 'fileutils'
+require 'roma/configuration'
 
 module Roma
   module Tools
@@ -8,7 +9,6 @@ module Roma
     class Mkconfig
       TREE_TOP = "menu"
       LIB_PATH = Pathname(__FILE__).dirname.parent.parent
-      CONFIG_TEMPLATE_PATH = File.expand_path(File.join(LIB_PATH, "roma/config.rb"))
       PLUGIN_DIR = File.expand_path(File.join(LIB_PATH, File.join("roma", "command_plugin")))
       BNUM_COEFFICIENT = 2 #reccomend1-4.
       DIVIDED_FILES = 10
@@ -337,28 +337,9 @@ module Roma
         @results = Hash::new
         @next_hash = TREE_TOP
 
-        begin
-          @defaults = load_config([:STORAGE_CLASS, :STORAGE_OPTION, :PLUGIN_FILES])
-        rescue LoadError
-          puts 'Not found config.rb file.'
-          return
-        rescue
-          puts $!.inspect
-          puts "Content of config.rb is wrong."
-          return
-        end
+        defaults = Roma::Configuration::Settings.new.to_h
+        @defaults = %w(storage.engine storage.option plugins).to_h { |key| [key, defaults[key]] }
         mkconfig(mode)
-      end
-
-      def load_config(targets)
-        require CONFIG_TEMPLATE_PATH
-        d_value = Hash.new
-        Config.constants.each do |cnst|
-          if targets.include?(cnst)
-            d_value[cnst] = Config.const_get(cnst)
-          end
-        end
-        return d_value
       end
 
       def mkconfig(mode)
@@ -516,90 +497,62 @@ module Roma
         return results
       end
 
-      #make config.rb based on input data
+      # Makes config.rb from the answers.
       def save_data(res)
+        results = @defaults.dup
         if res.key?("storage")
           case res["storage"].value
           when "Ruby Hash"
-            req = "ruby_hash_storage"
-            storage = "RubyHashStorage"
+            results["storage.engine"] = :ruby_hash
+            results["storage.option"] = ""
           when "Groonga"
-            req = "groonga"
-            storage = "GroongaStorage"
             bnum = Calculate.get_bnum(res)
             bnum = 5000000 if bnum < 5000000
             xmsiz = Calculate.get_xmsize_max(res)
+            results["storage.engine"] = :groonga
+            results["storage.option"] = "bnum=#{bnum}\#xmsiz=#{xmsiz}\#opts=d#dfunit=10"
           end
         end
+        results["plugins"] = res["plugin"].value if res.key?("plugin")
 
         if res.key?("language")
           fd = Calculate.get_fd(res)
           print "\r\nPlease set FileDescriptor bigger than #{fd}.\r\n\r\n" 
         end
 
-        body = ""
-        open(CONFIG_TEMPLATE_PATH, "r") do |f|
-          body = f.read
-        end
-
-        if req
-          body = ch_assign(body, "require", " ", "roma\/storage\/#{req}")
-          body = ch_assign(body, "STORAGE_CLASS", "Roma::Storage::#{storage}")
-
-          case req
-          when "ruby_hash_storage"
-            body = ch_assign(body, "STORAGE_OPTION","")
-          when "groonga"
-            body = ch_assign(body, "STORAGE_OPTION", "bnum=#{bnum}\#xmsiz=#{xmsiz}\#opts=d#dfunit=10")
-          end
-        end
-
-        if res.key?("plugin")
-          body = ch_assign(body, "PLUGIN_FILES", res["plugin"].value)
-        end
-
         open(@path, "w") do |f|
           f.flock(File::LOCK_EX)
-          f.puts body
+          f.puts config_body(results)
           f.truncate(f.tell)
           f.flock(File::LOCK_UN)
         end
 
         puts "Before"
-        Box.print_with_box(@defaults, @out)
-
-        # Not loaded, since the storage may not be installed here.
-        results = @defaults.dup
-        if req
-          results[:STORAGE_CLASS] = "Roma::Storage::#{storage}"
-          results[:STORAGE_OPTION] = req == "ruby_hash_storage" ? "" : "bnum=#{bnum}\#xmsiz=#{xmsiz}\#opts=d#dfunit=10"
-        end
-        results[:PLUGIN_FILES] = res["plugin"].value if res.key?("plugin")
+        Box.print_with_box(@defaults.transform_values(&:inspect), @out)
         print "\r\nAfter\r\n"
-        Box.print_with_box(results, @out)
+        Box.print_with_box(results.transform_values(&:inspect), @out)
         print "\r\nMkconfig is finish.\r\n"
-        print "\r\nIf you need, change directory path about LOG, RTTABLE, STORAGE, WB and other setting.\r\n\r\n"
+        print "\r\nIf you need, change the paths of the log, the routing table, the storage and write-behind, and the other settings.\r\n\r\n"
       end
 
-      # sep means separating right and left part(config.rb style)
-      def ch_assign(text, exp, sep = " = ", str)
-        sep = " = " if sep == "="
-        text = text.gsub(/(\s*#{exp}).*/) do |s|
-          name = $1
-          if str.class == String
-            if str =~ /::/ || str =~ /^\d+$/
-              # storage type
-             name + sep + str
-            else
-              # require & storage option
-             name + sep + str.inspect
-            end
-          else
-            # plugin
-            # "to_s" equal "inspect" in Ruby 1.9
-            name + sep + str.to_s.sub("\\", "")
-          end
+      # The config file with +settings+, which are the values by their paths
+      # such as "storage.engine".
+      def config_body(settings)
+        defaults = Roma::Configuration::Settings.new
+        lines = settings.map { |path, value| "  config.#{path} = #{value.inspect}" }
+        paths = %w(log.path routing.path storage.path write_behind.path).map do |path|
+          "  # config.#{path} = #{path.split('.').inject(defaults) { |group, name| group.public_send(name) }.inspect}"
         end
+        <<~CONFIG
+          # The config of romad, made by roma mkconfig. Run romad with it by
+          #   roma server ADDRESS --config #{File.basename(@path)}
+          # The other settings and their defaults are in roma/configuration.rb.
+          Roma.configure do |config|
+          #{lines.join("\n")}
+
+          #{paths.join("\n")}
+          end
+        CONFIG
       end
 
       def print(*args)

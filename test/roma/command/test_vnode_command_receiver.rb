@@ -63,7 +63,7 @@ class VnodeCommandReceiverTest < Test::Unit::TestCase
     assert_equal 'v', @conn.storages['newhash'].get(0, 'key1', 0)
   ensure
     @conn.storages['newhash']&.closedb
-    FileUtils.rm_rf("#{Roma::Config::STORAGE_PATH}/#{@conn.stats.ap_str}")
+    FileUtils.rm_rf("#{Roma.config.storage.path}/#{@conn.stats.ap_str}")
   end
 
   def test_reqpushv

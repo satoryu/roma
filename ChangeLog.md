@@ -29,6 +29,48 @@ These tools are removed, as they are not needed [#51](https://github.com/satoryu
 * `tribunus`, which finds the hosts by UDP multicast.
 * `roma_watcher`, which mails by sendmail. `roma check_nodes` exits with 1 when the nodes are wrong, so a monitoring tool can call it instead.
 
+### The config file
+The config file sets the settings in `Roma.configure`, instead of the constants of `Roma::Config` [#53](https://github.com/satoryu/roma/issues/53). The settings have defaults, and a wrong value stops romad with a message. romad doesn't read the old format, and tells so. `roma mkconfig` makes the new format.
+
+```ruby
+# Before
+require 'roma/storage/dbm'
+module Roma
+  module Config
+    STORAGE_CLASS = Roma::Storage::DbmStorage
+    LOG_LEVEL = :info
+  end
+end
+
+# After
+Roma.configure do |config|
+  config.storage.engine = :dbm
+  config.log.level = :info
+end
+```
+
+| Before | After |
+| --- | --- |
+| `DEFAULT_NAME`, `DEFAULT_PORT` | `name`, `port` |
+| `PLUGIN_FILES` | `plugins` |
+| `DEFAULT_LOST_ACTION`, `AUTO_RECOVER` | `routing.lost_action`, `routing.auto_recover` |
+| `ROUTING_FAIL_CNT_THRESHOLD`, `ROUTING_FAIL_CNT_GAP`, `ROUTING_EVENT_LIMIT_LINE` | `routing.fail_cnt_threshold`, `routing.fail_cnt_gap`, `routing.event_limit_line` |
+| `RTTABLE_PATH`, `RTTABLE_CLASS`, `RTTABLE_SUB_NID` | `routing.path`, `routing.table_class`, `routing.sub_nid` |
+| `LOG_PATH`, `LOG_LEVEL`, `LOG_SHIFT_AGE`, `LOG_SHIFT_SIZE`, `LOG_STREAM_SHOW_WAIT_PARAM` | `log.path`, `log.level`, `log.shift_age`, `log.shift_size`, `log.stream_show_wait_param` |
+| `CONNECTION_USE_EPOLL`, `CONNECTION_DESCRIPTOR_TABLE_SIZE` | `connection.use_epoll`, `connection.descriptor_table_size` |
+| `CONNECTION_CONTINUOUS_LIMIT`, `CONNECTION_EXPTIME`, `DNS_CACHING` | `connection.continuous_limit`, `connection.expire_time`, `connection.dns_caching` |
+| `CONNECTION_POOL_EXPTIME`, `CONNECTION_POOL_MAX` | `connection.pool.expire_time`, `connection.pool.max` |
+| `CONNECTION_EMPOOL_EXPTIME`, `CONNECTION_EMPOOL_MAX` | `connection.em_pool.expire_time`, `connection.em_pool.max` |
+| `STORAGE_CLASS` | `storage.engine`: `:ruby_hash`, `:dbm`, `:sqlite3`, `:groonga` or a class |
+| `STORAGE_PATH`, `STORAGE_DIVNUM`, `STORAGE_OPTION` | `storage.path`, `storage.divnum`, `storage.option` |
+| `STORAGE_EXCEPTION_ACTION`, `STORAGE_DELMARK_EXPTIME`, `STORAGE_CLEAN_UP_INTERVAL` | `storage.exception_action`, `storage.delmark_expire_time`, `storage.clean_up_interval` |
+| `DATACOPY_STREAM_COPY_WAIT_PARAM` | `data_copy.stream_copy_wait_param` |
+| `WRITEBEHIND_PATH`, `WRITEBEHIND_SHIFT_SIZE`, `WB_COMMAND_MAP` | `write_behind.path`, `write_behind.shift_size`, `write_behind.command_map` |
+| `REDUNDANT_ZREDUNDANT_SIZE` | `redundant.zredundant_size` |
+| `VERSION`, `STORAGE_DUMP_PATH` | removed |
+
+The `stats` command still shows the settings by the old names, such as `config.LOG_PATH`.
+
 ### File names
 The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins require, stays as a deprecated alias of `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)
 

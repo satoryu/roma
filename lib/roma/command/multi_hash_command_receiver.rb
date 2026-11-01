@@ -2,6 +2,7 @@ require 'fileutils'
 require 'roma/stats'
 require 'roma/command/util_command_receiver'
 require 'roma/command/definition'
+require 'roma/configuration'
 
 module Roma
   module Command
@@ -34,7 +35,7 @@ module Roma
                 "#{s[1]} already mounted.")
         end
         # check a directory existence
-        unless File.directory? "#{Config::STORAGE_PATH}/#{@stats.ap_str}/#{s[1]}"
+        unless File.directory? "#{Roma.config.storage.path}/#{@stats.ap_str}/#{s[1]}"
           raise(Roma::Command::Definition::ServerError,
                 "#{s[1]} does not find.")
         end
@@ -81,11 +82,11 @@ module Roma
         if @storages.key?(hname)
           return "SERVER_ERROR #{hname} already exists."
         end
-        st = Config::STORAGE_CLASS.new
-        st.storage_path = "#{Config::STORAGE_PATH}/#{@stats.ap_str}/#{hname}"
+        st = Roma.config.storage.engine_class.new
+        st.storage_path = "#{Roma.config.storage.path}/#{@stats.ap_str}/#{hname}"
         st.vn_list = @rttable.vnodes
-        st.divnum = Config::STORAGE_DIVNUM
-        st.option = Config::STORAGE_OPTION
+        st.divnum = Roma.config.storage.divnum
+        st.option = Roma.config.storage.option
         @storages[hname] = st
         @storages[hname].opendb
         @log.info("createhash #{hname}")
@@ -99,7 +100,7 @@ module Roma
       def deletehash(hname)
         ret = umounthash(hname)
         return ret if ret != 'UNMOUNTED'
-        FileUtils.rm_rf "#{Config::STORAGE_PATH}/#{@stats.ap_str}/#{hname}"
+        FileUtils.rm_rf "#{Roma.config.storage.path}/#{@stats.ap_str}/#{hname}"
         @log.info("deletehash #{hname}")
         return "DELETED"
       rescue =>e

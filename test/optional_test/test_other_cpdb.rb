@@ -1,6 +1,6 @@
 require 'test_helper'
 require 'roma/messaging/con_pool'
-require 'roma/config'
+require 'roma/configuration'
 require 'pathname'
 
 if ENV['OPTIONAL']

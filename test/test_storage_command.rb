@@ -1,7 +1,7 @@
 require 'test_helper'
 
 require 'roma/messaging/con_pool'
-require 'roma/config'
+require 'roma/configuration'
 require 'roma/command_plugin/plugin_storage'
 require 'plugin_test_harness'
 

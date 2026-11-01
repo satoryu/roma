@@ -1,5 +1,6 @@
 require 'roma/messaging/con_pool'
 require 'roma/async_process'
+require 'roma/configuration'
 
 module Roma
   module Command
@@ -90,8 +91,7 @@ module Roma
       rescue Storage::StorageException => e
         @log.error("#{e.inspect} #{$@}")
         close_connection
-        if Config.const_defined?(:STORAGE_EXCEPTION_ACTION) &&
-            Config::STORAGE_EXCEPTION_ACTION == :shutdown
+        if Roma.config.storage.exception_action == :shutdown
           @log.error("#{__method__}:Romad will be stop.")
           @stop_event_loop = true
         end

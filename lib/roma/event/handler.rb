@@ -8,6 +8,7 @@ require 'roma/logging/rlogger'
 require 'roma/stats'
 require 'roma/storage/basic_storage'
 require 'socket'
+require 'roma/configuration'
 
 module Roma
   module Event
@@ -201,8 +202,7 @@ module Roma
         @log.error("#{e.inspect} #{s} #{$@}")
         send_data("SERVER_ERROR #{e} in storage engine\r\n")
         close_connection_after_writing
-        if Config.const_defined?(:STORAGE_EXCEPTION_ACTION) &&
-            Config::STORAGE_EXCEPTION_ACTION == :shutdown
+        if Roma.config.storage.exception_action == :shutdown
           @log.error("Romad will stop")
           @stop_event_loop = true
         end

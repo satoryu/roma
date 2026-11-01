@@ -411,7 +411,7 @@ class CLITest < Test::Unit::TestCase
   def test_mkconfig
     _out, err, status = run_roma('mkconfig', stdin: "1\n\n2\n1\n\n\n")
     assert_true status.success?, err
-    assert_match(/^    STORAGE_CLASS = Roma::Storage::RubyHashStorage$/, File.read(File.join(@dir, 'config.rb')))
+    assert_match(/^  config.storage.engine = :ruby_hash$/, File.read(File.join(@dir, 'config.rb')))
   end
 
   data('short' => '-m', 'long' => '--with-menu', 'underscore' => '--with_menu')
@@ -423,7 +423,6 @@ class CLITest < Test::Unit::TestCase
   end
 
   # bin/roma runs the CLI and exits with its status.
-  # Without Roma::Config, which the tests load but the roma command doesn't.
   def test_command_to_nodes
     node = routing_node
     out, err, status = run_roma('multi_commander', node.nid, 'whoami')

@@ -1,6 +1,6 @@
 require 'test_helper'
 require 'roma/messaging/con_pool'
-require 'roma/config'
+require 'roma/configuration'
 
 class MultiHashTest < Test::Unit::TestCase
   self.test_order = :defined

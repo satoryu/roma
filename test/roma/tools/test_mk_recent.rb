@@ -4,7 +4,7 @@ require 'tool_test_helper'
 require 'mem_storage_helper'
 require 'roma/storage/ruby_hash_storage'
 require 'roma/tools/mk_recent'
-require 'roma/config'
+require 'roma/configuration'
 
 class MkRecentTest < Test::Unit::TestCase
   include ToolTestHelper

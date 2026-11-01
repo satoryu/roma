@@ -660,7 +660,7 @@ class AsyncProcessStorageTest < Test::Unit::TestCase
   end
 end
 
-# Reads the routing logs and romad's log, in Roma::Config::RTTABLE_PATH and
+# Reads the routing logs and romad's log, in Roma.config.routing.path and
 # LOG_PATH, named after this node.
 class AsyncProcessLogTest < Test::Unit::TestCase
   include AsyncProcessTestHelper
@@ -687,9 +687,9 @@ class AsyncProcessLogTest < Test::Unit::TestCase
   def test_get_routing_event
     # The storage files of the node are in a directory with the same name,
     # in the same directory by default.
-    @files << "#{Roma::Config::RTTABLE_PATH}/#{@h.stats.ap_str}"
+    @files << "#{Roma.config.routing.path}/#{@h.stats.ap_str}"
     FileUtils.mkdir_p(@files.last)
-    write("#{Roma::Config::RTTABLE_PATH}/#{@h.stats.ap_str}.route.1",
+    write("#{Roma.config.routing.path}/#{@h.stats.ap_str}.route.1",
           "2026-01-02T03:00:00.1 join hosta_1\n" \
           "2026-01-02T03:00:01.1 setroute 0 1 hosta_1\n" \
           "2026-01-02T03:00:02.1 leave hosta_1\n")
@@ -708,7 +708,7 @@ class AsyncProcessLogTest < Test::Unit::TestCase
     lines = (0...300).map do |i|
       "I, [#{(BASE + i).strftime('%Y-%m-%dT%H:%M:%S')}.000000 ##{i}]  INFO -- : message #{i}\n"
     end
-    write("#{Roma::Config::LOG_PATH}/#{@h.stats.ap_str}.log", lines.join)
+    write("#{Roma.config.log.path}/#{@h.stats.ap_str}.log", lines.join)
     lines.map(&:chomp)
   end
 

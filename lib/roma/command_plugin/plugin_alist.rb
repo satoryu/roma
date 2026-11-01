@@ -1,6 +1,7 @@
 require 'timeout'
 require 'roma/messaging/con_pool'
 require 'json'
+require 'roma/configuration'
 
 module Roma
   module CommandPlugin
@@ -1291,8 +1292,7 @@ module Roma
       rescue Storage::StorageException => e
         @log.error("#{e.inspect} #{$@}")
         close_connection
-        if Config.const_defined?(:STORAGE_EXCEPTION_ACTION) &&
-            Config::STORAGE_EXCEPTION_ACTION == :shutdown
+        if Roma.config.storage.exception_action == :shutdown
           @log.error("#{__method__}:Romad will stop")
           @stop_event_loop = true
         end

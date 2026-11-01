@@ -21,7 +21,7 @@ class GuiAndDebugPluginsTest < Test::Unit::TestCase
   end
 
   def test_get_routing_history
-    fname = "#{Roma::Config::RTTABLE_PATH}/#{@conn.stats.ap_str}.route.1"
+    fname = "#{Roma.config.routing.path}/#{@conn.stats.ap_str}.route.1"
     File.write(fname, "2026-01-01T00:00:00.1 join hosta_1\n2026-01-01T00:00:01.1 setroute 0 1 hostb_1 hosta_1\n")
     assert_equal "hosta_1\r\nhostb_1\r\nEND\r\n", @conn.request('get_routing_history')
   ensure
