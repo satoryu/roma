@@ -687,7 +687,7 @@ class AsyncProcessLogTest < Test::Unit::TestCase
   end
 
   def teardown
-    @files.each { |f| FileUtils.rm_f(f) }
+    @files.each { |f| FileUtils.rm_rf(f) }
     super
   end
 
@@ -697,6 +697,10 @@ class AsyncProcessLogTest < Test::Unit::TestCase
   end
 
   def test_get_routing_event
+    # The storage files of the node are in a directory with the same name,
+    # in the same directory by default.
+    @files << "#{Roma::Config::RTTABLE_PATH}/#{@h.stats.ap_str}"
+    FileUtils.mkdir_p(@files.last)
     write("#{Roma::Config::RTTABLE_PATH}/#{@h.stats.ap_str}.route.1",
           "2026-01-02T03:00:00.1 join hosta_1\n" \
           "2026-01-02T03:00:01.1 setroute 0 1 hosta_1\n" \
