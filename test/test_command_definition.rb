@@ -1,5 +1,5 @@
 require 'test_helper'
-require 'roma/command/command_definition'
+require 'roma/command/definition'
 require 'digest/sha1'
 require 'test/unit'
 

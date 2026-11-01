@@ -1,6 +1,6 @@
 require 'roma/async_process'
 require 'roma/messaging/con_pool'
-require 'roma/command/vn_command_receiver'
+require 'roma/command/vnode_command_receiver'
 
 module Roma
   module Command

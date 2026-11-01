@@ -2,8 +2,8 @@
 # File: handler.rb
 #
 require 'eventmachine'
-require 'roma/event/con_pool'
-require 'roma/event/jaro_winkler'
+require 'roma/event/em_con_pool'
+require 'roma/event/distance'
 require 'roma/logging/rlogger'
 require 'roma/stats'
 require 'roma/storage/basic_storage'

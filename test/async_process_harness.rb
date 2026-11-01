@@ -4,7 +4,7 @@ require 'fileutils'
 require 'roma/stats'
 require 'roma/async_process'
 require 'roma/messaging/con_pool'
-require 'roma/routing/cb_rttable'
+require 'roma/routing/churnbased_routing_table'
 require 'roma/storage/ruby_hash_storage'
 
 # Runs the background processes of romad (Roma::AsyncProcess) in-process.

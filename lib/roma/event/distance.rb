@@ -1,5 +1,5 @@
 #
-# File: jaro_winkler.rb
+# File: distance.rb
 #
 require "jaro_winkler"
 

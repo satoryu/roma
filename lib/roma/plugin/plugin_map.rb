@@ -1,5 +1,5 @@
 require 'roma/messaging/con_pool'
-require 'roma/command/command_definition'
+require 'roma/command/definition'
 
 module Roma
   module CommandPlugin

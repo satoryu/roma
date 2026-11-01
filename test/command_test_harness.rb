@@ -4,8 +4,8 @@ require 'fileutils'
 require 'stringio'
 require 'roma/stats'
 require 'roma/command/receiver'
-require 'roma/event/con_pool'
-require 'roma/routing/cb_rttable'
+require 'roma/event/em_con_pool'
+require 'roma/routing/churnbased_routing_table'
 require 'roma/storage/ruby_hash_storage'
 
 # Runs ROMA's own commands (stat, balse, set_*/rset_*, the routing, vnode,

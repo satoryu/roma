@@ -235,7 +235,7 @@ class CLITest < Test::Unit::TestCase
   end
 
   def test_mkrecent
-    require 'roma/tools/mkrecent'
+    require 'roma/tools/mk_recent'
     out = nil
     calls = spy_tool(Roma::Tools::MkRecent, :make) do
       out, = roma('mkrecent', 'a', 'b', 'recent', '-h', '16', '-d', '4', '-n', '5')
@@ -397,7 +397,7 @@ class CLITest < Test::Unit::TestCase
     spy = Object.new
     spy.define_singleton_method(:recover) { |*args, **opts| calls << [:recover, args, opts] }
     spy.define_singleton_method(:recover_keys) { |*args| calls << [:recover_keys, args] }
-    require 'roma/tools/recoverlost'
+    require 'roma/tools/recover_lost'
     Roma::Tools::RecoverLost.define_singleton_method(:new) { |**opts| calls << [:new, opts]; spy }
     yield
     calls
