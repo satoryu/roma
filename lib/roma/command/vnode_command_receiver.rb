@@ -125,7 +125,7 @@ module Roma
       def req_push_a_vnode(vn, src_nid, is_primary)
         con = Roma::Messaging::ConPool.instance.get_connection(src_nid)
         con.write("reqpushv #{vn} #{@nid} #{is_primary}\r\n")
-        res = con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n'
+        con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n'
         Roma::Messaging::ConPool.instance.return_connection(src_nid,con)
         # waiting for pushv
         count = 0

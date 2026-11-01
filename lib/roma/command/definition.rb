@@ -134,7 +134,7 @@ module Roma
 
               ret = instance_exec(ctx, &block)
               if ret.instance_of? Array
-                flg, expt, value, count, msg = ret
+                _flg, expt, value, count, msg = ret
                 ret = @storages[ctx.params.hash_name].set(ctx.params.vn, 
                                                           ctx.params.key,
                                                           ctx.params.digest,
@@ -247,7 +247,7 @@ module Roma
               
               ret = instance_exec(ctx, &block)
               if ret.instance_of? Array
-                flg, expt, value, count, msg = ret
+                _flg, expt, value, count, msg = ret
                 ret = @storages[ctx.params.hash_name].set(ctx.params.vn, 
                                                           ctx.params.key,
                                                           ctx.params.digest,
@@ -415,7 +415,7 @@ module Roma
           return send_data(buf)
         end
 
-        res = ''
+        res = +''
         begin
           res << buf
           s = buf.split(/ /)

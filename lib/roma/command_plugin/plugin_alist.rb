@@ -200,7 +200,7 @@ module Roma
       # END\r\n
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_gets(s)
-        hname, k, d, vn, nodes = calc_hash(s[1])
+        hname, k, _d, vn, nodes = calc_hash(s[1])
         return forward1(nodes[0], s) if nodes[0] != @nid
 
         ddata = @storages[hname].get(vn, k, 0)
@@ -248,7 +248,7 @@ module Roma
       # END\r\n
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_gets_with_time(s)
-        hname, k, d, vn, nodes = calc_hash(s[1])
+        hname, k, _d, vn, nodes = calc_hash(s[1])
         return forward1(nodes[0], s) if nodes[0] != @nid
 
         ddata = @storages[hname].get(vn, k, 0)
@@ -629,7 +629,7 @@ module Roma
       # END\r\n
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_join_with_time(s)
-        hname, k, d, vn, nodes = calc_hash(s[1])
+        hname, k, _d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
         return forward1(nodes[0], s, data) if nodes[0] != @nid
@@ -679,7 +679,7 @@ module Roma
       # END\r\n
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_join(s)
-        hname, k, d, vn, nodes = calc_hash(s[1])
+        hname, k, _d, vn, nodes = calc_hash(s[1])
         data = read_bytes(s[2].to_i)
         read_bytes(2)
         return forward1(nodes[0], s, data) if nodes[0] != @nid
@@ -722,7 +722,7 @@ module Roma
       # END\r\n
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_to_json(s)
-        hname, k, d, vn, nodes = calc_hash(s[1])
+        hname, k, _d, vn, nodes = calc_hash(s[1])
         return forward1(nodes[0], s) if nodes[0] != @nid
 
         ddata = @storages[hname].get(vn, k, 0)
@@ -1207,7 +1207,7 @@ module Roma
       # END\r\n
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_to_s(s)
-        hname, k, d, vn, nodes = calc_hash(s[1])
+        hname, k, _d, vn, nodes = calc_hash(s[1])
         return forward1(nodes[0], s) if nodes[0] != @nid
 
         ddata = @storages[hname].get(vn, k, 0)
@@ -1337,11 +1337,7 @@ module Roma
 
       def to_alist_value_for_write(hname, vn, k, d)
         ddata = @storages[hname].get(vn, k, d)
-        unless ddata
-          v = [[],[]]
-        else
-          v = to_alist_value(ddata)
-        end
+        ddata ? to_alist_value(ddata) : [[], []]
       end
 
       def to_alist_value(v)
@@ -1397,7 +1393,7 @@ module Roma
         
         @log.warn("forward #{rs} to #{nid}");
 
-        buf = ''
+        buf = +''
         rs.each{|ss| buf << "#{ss} " }
         buf << "forward\r\n"
         if data
@@ -1424,7 +1420,7 @@ module Roma
           return send_data(buf)
         end
         
-        res = ''
+        res = +''
         begin
           res << buf
           s = buf.split(/ /)
@@ -1456,7 +1452,7 @@ module Roma
 
         @log.warn("forward #{rs} to #{nid}");
 
-        buf = ''
+        buf = +''
         rs.each{|ss| buf << "#{ss} " }
         buf << "forward\r\n"
         if data

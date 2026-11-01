@@ -269,7 +269,7 @@ module Roma
           @nodes=nodes
           @host_idx={}
           nodes.each{|nid|
-            h,p=nid.split('_')
+            h, _p = nid.split('_')
             if @host_idx.key?(h)
               @host_idx[h] << nid
             else

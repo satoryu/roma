@@ -18,7 +18,7 @@ class MkRecentTest < Test::Unit::TestCase
   end
 
   def tool
-    tool = use_mem_storages(Roma::Tools::MkRecent.new(out: @out))
+    tool = Roma::Tools::MkRecent.new(out: @out)
     storages = @storages
     closed = @closed
     real = Roma::Tools::StorageFiles

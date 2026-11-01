@@ -22,7 +22,6 @@ module Roma
       attr_accessor :event
       attr_accessor :event_limit_line
       attr_accessor :logs
-      attr_accessor :enabled_failover
       attr_reader :version_of_nodes
       attr_reader :min_version
 

@@ -523,7 +523,7 @@ module Roma
             raise "Hotscale initialize failed.\n#{nid} is busy."
           end
           Roma::Messaging::ConPool.instance.return_connection(nid, con)
-        rescue =>e
+        rescue
           raise "Hotscale initialize failed.\n#{nid} unreachable connection."
         end
       }
