@@ -1,4 +1,4 @@
-require 'roma/storage/ruby_hash_storage'
+require 'roma/storage/hash'
 require 'roma/configuration'
 
 # The storages are on memory, instead of the files.
@@ -12,7 +12,7 @@ module MemStorageHelper
   # A storage in +dir+, with +data+ as {key => [value, clock, expt]}.
   def mem_storage(dir, data = {}, divnum: 2, vnodes: [0, 1 << 31])
     FileUtils.mkdir_p(dir)
-    storage = Roma::Storage::RubyHashStorage.new
+    storage = Roma::Storage::HashStorage.new
     storage.divnum = divnum
     storage.vn_list = vnodes
     storage.each_vn_dump_sleep = 0

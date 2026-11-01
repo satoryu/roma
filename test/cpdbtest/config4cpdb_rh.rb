@@ -1,3 +1,3 @@
 require_relative 'config4cpdb_base'
 
-Roma.configure { |config| config.storage.engine = :ruby_hash }
+Roma.configure { |config| config.storage.engine = :hash }

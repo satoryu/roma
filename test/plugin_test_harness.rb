@@ -1,7 +1,7 @@
 require 'digest/sha1'
 require 'logger'
 require 'stringio'
-require 'roma/storage/ruby_hash_storage'
+require 'roma/storage/hash'
 require 'roma/command/util_command_receiver'
 require 'roma/routing/routing_data'
 require 'roma_test_client'
@@ -10,7 +10,7 @@ require 'roma_test_client'
 #
 # It stands in for the event handler: commands are dispatched to ev_* methods,
 # replies are collected instead of sent, and data is stored in a
-# RubyHashStorage. Every key is routed to +nodes+ (this node first, unless
+# HashStorage. Every key is routed to +nodes+ (this node first, unless
 # given), and replication is recorded instead of sent to other nodes.
 #
 #   conn = PluginTestHarness.for(Roma::CommandPlugin::PluginMap).new
@@ -97,7 +97,7 @@ class PluginTestHarness
     @rttable = RoutingTable.new(nodes)
     @stats = Stats.new({}, 0, 0, 0, 0, nid)
     @log = Logger.new(nil)
-    @storage = Roma::Storage::RubyHashStorage.new
+    @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = [0]
     @storage.opendb
     @storages = { HASH_NAME => @storage }

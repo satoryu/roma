@@ -45,7 +45,7 @@ class MultiHashCommandReceiverTest < Test::Unit::TestCase
 
   def test_mounthash_and_umounthash
     @conn.request('rcreatehash hash1')
-    # RubyHashStorage keeps no files; make the directory a hash would have.
+    # HashStorage keeps no files; make the directory a hash would have.
     FileUtils.mkdir_p("#{@path}/hash1")
     assert_equal "UNMOUNTED\r\n", @conn.request('rumounthash hash1')
     assert_equal "roma\r\n", @conn.request('hashlist')

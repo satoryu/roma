@@ -2,7 +2,7 @@ require 'test_helper'
 require 'stringio'
 require 'tool_test_helper'
 require 'mem_storage_helper'
-require 'roma/storage/ruby_hash_storage'
+require 'roma/storage/hash'
 require 'roma/tools/mk_recent'
 require 'roma/configuration'
 
@@ -80,7 +80,7 @@ class MkRecentTest < Test::Unit::TestCase
 
   def test_different_storages
     mem_storage(File.join(@dir, 'a', 'roma'))
-    other = Class.new(Roma::Storage::RubyHashStorage)
+    other = Class.new(Roma::Storage::HashStorage)
     @storages[File.join(@dir, 'b', 'roma')] = other.new.tap do |st|
       st.divnum = 1
       st.vn_list = @vnodes

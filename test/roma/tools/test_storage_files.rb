@@ -1,6 +1,6 @@
 require 'test_helper'
 require 'tool_test_helper'
-require 'roma/storage/ruby_hash_storage'
+require 'roma/storage/hash'
 require 'roma/configuration'
 require 'roma/tools/storage_files'
 
@@ -43,7 +43,7 @@ class StorageFilesTest < Test::Unit::TestCase
   # With a storage of a test, which keeps the data on memory.
   def test_open
     storage = with_mem_storage { open_storage('0.mem', '1.mem', '0.cache.mem', '0.mem-journal') }
-    assert_equal [Roma::Storage::RubyHashStorage, 2, @dir],
+    assert_equal [Roma::Storage::HashStorage, 2, @dir],
                  [storage.class, storage.divnum, storage.instance_variable_get(:@storage_path)]
     assert_equal({ 0 => 0 }, storage.hdiv)
   end
@@ -55,15 +55,15 @@ class StorageFilesTest < Test::Unit::TestCase
 
   # New files, of the storage given.
   def test_open_new
-    storage = open_storage(divnum: 4, storage_class: Roma::Storage::RubyHashStorage)
-    assert_equal [Roma::Storage::RubyHashStorage, 4], [storage.class, storage.divnum]
+    storage = open_storage(divnum: 4, storage_class: Roma::Storage::HashStorage)
+    assert_equal [Roma::Storage::HashStorage, 4], [storage.class, storage.divnum]
   end
 
   def with_mem_storage
     saved = Roma::Tools::StorageFiles::STORAGES
     Roma::Tools::StorageFiles.send(:remove_const, :STORAGES)
     Roma::Tools::StorageFiles.const_set(:STORAGES,
-                                        saved.merge('mem' => ['roma/storage/ruby_hash_storage', :RubyHashStorage, 'roma-storage']))
+                                        saved.merge('mem' => ['roma/storage/hash', :HashStorage, 'roma-storage']))
     yield
   ensure
     Roma::Tools::StorageFiles.send(:remove_const, :STORAGES)

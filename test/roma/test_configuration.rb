@@ -19,7 +19,7 @@ class ConfigurationTest < Test::Unit::TestCase
     assert_equal 5, @config.connection.pool.max
     assert_equal 15, @config.connection.em_pool.max
     assert_equal 30, @config.connection.em_pool.expire_time
-    assert_equal :ruby_hash, @config.storage.engine
+    assert_equal :hash, @config.storage.engine
     assert_equal({}, @config.write_behind.command_map)
   end
 
@@ -64,8 +64,8 @@ class ConfigurationTest < Test::Unit::TestCase
   end
 
   def test_engine_class
-    require 'roma/storage/ruby_hash_storage'
-    assert_same Roma::Storage::RubyHashStorage, @config.storage.engine_class
+    require 'roma/storage/hash'
+    assert_same Roma::Storage::HashStorage, @config.storage.engine_class
     klass = Class.new
     @config.storage.engine = klass
     assert_same klass, @config.storage.engine_class
