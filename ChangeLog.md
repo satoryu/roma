@@ -5,7 +5,7 @@
 ### Ruby and dependencies
 * Ruby 3.4 or later; CI runs Ruby 4.0 on GitHub Actions [#1](https://github.com/satoryu/roma/pull/1)
 * Tokyo Cabinet is no longer supported: its tools and options are removed [#27](https://github.com/satoryu/roma/pull/27)
-* The file storages are the gems roma-storage-dbm and roma-storage-sqlite3 [#28](https://github.com/satoryu/roma/pull/28)
+* The file storages are the gems roma-storage-dbm and roma-storage-sqlite3 [#28](https://github.com/satoryu/roma/pull/28), and roma-storage-groonga [#41](https://github.com/satoryu/roma/pull/41)
 * roma-client and nkf are no longer needed [#33](https://github.com/satoryu/roma/pull/33)
 
 ### The roma command
@@ -30,6 +30,9 @@ The tools print errors on the standard error and exit with 1.
 
 ### Fixes
 * A romad that isn't a daemon stops by TERM and HUP [#39](https://github.com/satoryu/roma/pull/39)
+* romad stops by INT and TERM under load too [#43](https://github.com/satoryu/roma/pull/43)
+* A daemon closes its storages when it stops by INT, TERM or HUP, instead of exiting at once [#44](https://github.com/satoryu/roma/pull/44)
+* romad doesn't log "Is a directory" at start with a file storage [#42](https://github.com/satoryu/roma/pull/42)
 * The bundled config.rb had an old version, with which romad didn't boot [#28](https://github.com/satoryu/roma/pull/28)
 * Bugs found by the unit tests: zredundant retry, routing and system commands, plugins [#10](https://github.com/satoryu/roma/pull/10) [#12](https://github.com/satoryu/roma/pull/12) [#18](https://github.com/satoryu/roma/pull/18) [#20](https://github.com/satoryu/roma/pull/20) [#21](https://github.com/satoryu/roma/pull/21)
 

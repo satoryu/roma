@@ -17,7 +17,8 @@ module Roma
     end
 
     # Runs the block in a child process of a new session, and exits. The pid
-    # of the child is written to the standard error.
+    # of the child is written to the standard error. Until romad traps them
+    # to stop, INT, TERM and HUP make the child exit at once.
     def daemonize
       pid = Process.fork do
         Process.setsid
