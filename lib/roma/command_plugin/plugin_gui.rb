@@ -8,7 +8,7 @@ module Roma
 
       # get_routing_history
       def ev_get_routing_history(s)
-        routing_path  = get_config_stat["config.RTTABLE_PATH"]
+        routing_path  = get_config_stat["config.routing.path"]
         contents = String.new
         Dir.glob("#{routing_path}/*").each{|fname|
           contents << File.read(fname) if !FileTest::directory?(fname) && fname =~ /#{@stats.ap_str}\.route*/
@@ -53,7 +53,7 @@ module Roma
         else
           @rttable.logs.each_with_index{|log, index|
             send_data("#{log}\r\n")
-            sleep @stats.stream_show_wait_param if index % 10 == 0
+            sleep @stats.stream_show_wait if index % 10 == 0
           }
           send_data("END\r\n")
           @rttable.logs.clear

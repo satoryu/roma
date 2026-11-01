@@ -463,7 +463,7 @@ module Roma
           return send_data("usage:set_size_of_zredundant <n>\r\n")
         end
         res = broadcast_cmd("rset_size_of_zredundant #{s[1]}\r\n")
-        @stats.size_of_zredundant = s[1].to_i
+        @stats.compression_threshold = s[1].to_i
         res[@stats.ap_str] = "STORED"
         send_data("#{res}\r\n")
       end
@@ -473,7 +473,7 @@ module Roma
         if s.length != 2 || s[1].to_i == 0
           return send_data("usage:rset_size_of_zredundant <n>\r\n")
         end
-        @stats.size_of_zredundant = s[1].to_i
+        @stats.compression_threshold = s[1].to_i
         send_data("STORED\r\n")
       end
 
@@ -613,7 +613,7 @@ module Roma
       end
 
       def redundant(nodes, hname, k, d, clk, expt, v)
-        if @stats.size_of_zredundant > 0 && @stats.size_of_zredundant < v.length 
+        if @stats.compression_threshold > 0 && @stats.compression_threshold < v.length 
           return zredundant(nodes, hname, k, d, clk, expt, v)
         end
 

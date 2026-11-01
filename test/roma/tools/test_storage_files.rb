@@ -48,14 +48,14 @@ class StorageFilesTest < Test::Unit::TestCase
     assert_equal({ 0 => 0 }, storage.hdiv)
   end
 
-  def test_open_with_divnum
-    storage = with_mem_storage { open_storage('0.mem', divnum: 3) }
+  def test_open_with_division_count
+    storage = with_mem_storage { open_storage('0.mem', division_count: 3) }
     assert_equal 3, storage.divnum
   end
 
   # New files, of the storage given.
   def test_open_new
-    storage = open_storage(divnum: 4, storage_class: Roma::Storage::HashStorage)
+    storage = open_storage(division_count: 4, storage_class: Roma::Storage::HashStorage)
     assert_equal [Roma::Storage::HashStorage, 4], [storage.class, storage.divnum]
   end
 

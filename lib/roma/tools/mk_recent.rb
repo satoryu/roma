@@ -13,8 +13,8 @@ module Roma
       # Merges each hash under +path1+ with the one under +path2+, into
       # +recent_path+, which must not exist. The vnodes are made from
       # +hash_bits+ and +divide_bits+, as in the routing table, and the new
-      # files are divided into +divnum+. Raises Error if it fails.
-      def make(path1, path2, recent_path, hash_bits: 32, divide_bits: 9, divnum: 10)
+      # files are divided into +division_count+. Raises Error if it fails.
+      def make(path1, path2, recent_path, hash_bits: 32, divide_bits: 9, division_count: 10)
         raise Error, "#{recent_path} exists." if File.exist?(recent_path)
         raise Error, "The hash bits should be divide bits or more." if hash_bits < divide_bits
         vnodes = Array.new(2**divide_bits) { |i| i << (hash_bits - divide_bits) }
@@ -22,7 +22,7 @@ module Roma
         StorageFiles.each_hash(path1) { |hname, dir| hashes << [hname, dir] }
         Dir.mkdir(recent_path)
         hashes.each do |hname, dir|
-          merge(hname, [dir, File.join(path2, hname)], File.join(recent_path, hname), vnodes, divnum)
+          merge(hname, [dir, File.join(path2, hname)], File.join(recent_path, hname), vnodes, division_count)
         end
       end
 
@@ -32,7 +32,7 @@ module Roma
         StorageFiles.open(dir, vnodes, **opts)
       end
 
-      def merge(hname, dirs, recent_dir, vnodes, divnum)
+      def merge(hname, dirs, recent_dir, vnodes, division_count)
         storages = []
         dirs.each do |dir|
           @out.puts "Open #{dir}"
@@ -41,7 +41,7 @@ module Roma
         raise Error, "#{dirs.join(' and ')} have different storages." if storages.map(&:class).uniq.size > 1
 
         @out.puts "Open #{recent_dir}"
-        recent = open_storage(recent_dir, vnodes, divnum: divnum, storage_class: storages[0].class)
+        recent = open_storage(recent_dir, vnodes, division_count: division_count, storage_class: storages[0].class)
         storages << recent
         vnodes.each_with_index do |vn, i|
           @out.print "#{hname}:#{i}/#{vnodes.length}\r"

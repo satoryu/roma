@@ -10,10 +10,10 @@ module MemStorageHelper
   end
 
   # A storage in +dir+, with +data+ as {key => [value, clock, expt]}.
-  def mem_storage(dir, data = {}, divnum: 2, vnodes: [0, 1 << 31])
+  def mem_storage(dir, data = {}, division_count: 2, vnodes: [0, 1 << 31])
     FileUtils.mkdir_p(dir)
     storage = Roma::Storage::HashStorage.new
-    storage.divnum = divnum
+    storage.divnum = division_count
     storage.vn_list = vnodes
     storage.each_vn_dump_sleep = 0
     storage.opendb

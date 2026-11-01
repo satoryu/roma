@@ -98,7 +98,7 @@ module Roma
       # The files to keep, or 'daily', 'weekly' or 'monthly'.
       setting :shift_age, 10, type: [Integer, String]
       setting :shift_size, 1024 * 1024 * 10, type: Integer
-      setting :stream_show_wait_param, 0.001, type: Numeric
+      setting :stream_show_wait, 0.001, type: Numeric
     end
 
     class Pool < Group
@@ -108,7 +108,7 @@ module Roma
       setting :max, 5, type: Integer
     end
 
-    class EMPool < Group
+    class EventMachinePool < Group
       setting :expire_time, 30, type: Numeric
       setting :max, 15, type: Integer
     end
@@ -122,7 +122,7 @@ module Roma
       setting :expire_time, 0, type: Numeric
       setting :dns_caching, false, one_of: BOOLEAN
       group :pool, Pool
-      group :em_pool, EMPool
+      group :event_machine_pool, EventMachinePool
     end
 
     class Storage < Group
@@ -130,12 +130,13 @@ module Roma
       # storage class.
       setting :engine, :hash, type: [Symbol, Class], check: ->(v) { v.is_a?(Class) || v.match?(/\A[a-z][a-z0-9_]*\z/) }
       setting :path, '.', type: String
-      setting :divnum, 10, type: Integer, check: ->(v) { v.positive? }
+      # The files that a storage is divided into.
+      setting :division_count, 10, type: Integer, check: ->(v) { v.positive? }
       setting :option, '', type: [String, NilClass]
       # What to do when the storage fails.
       setting :exception_action, :no_action, one_of: %i(no_action shutdown)
       # Seconds to keep deleted and expired keys.
-      setting :delmark_expire_time, 60 * 60 * 24 * 5, type: Integer
+      setting :delete_mark_expire_time, 60 * 60 * 24 * 5, type: Integer
       setting :clean_up_interval, 60 * 5, type: Integer
 
       # The storage class of engine. A name such as :dbm requires
@@ -164,7 +165,7 @@ module Roma
     end
 
     class DataCopy < Group
-      setting :stream_copy_wait_param, 0.001, type: Numeric
+      setting :stream_copy_wait, 0.001, type: Numeric
     end
 
     class WriteBehind < Group
@@ -176,7 +177,7 @@ module Roma
 
     class Redundant < Group
       # The data bigger than this is compressed for the redundancy, or 0 for never.
-      setting :zredundant_size, 0, type: Integer
+      setting :compression_threshold, 0, type: Integer
     end
 
     class Settings < Group

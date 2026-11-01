@@ -23,9 +23,9 @@ class MkRecentTest < Test::Unit::TestCase
     closed = @closed
     real = Roma::Tools::StorageFiles
     # The new files are on memory too.
-    tool.define_singleton_method(:open_storage) do |dir, vnodes, divnum: nil, storage_class: nil|
+    tool.define_singleton_method(:open_storage) do |dir, vnodes, division_count: nil, storage_class: nil|
       next storages.fetch(dir) { raise Roma::Tools::Error, "#{dir} has no storage files." } unless storage_class
-      real.open(dir, vnodes, divnum: divnum, storage_class: storage_class).tap do |st|
+      real.open(dir, vnodes, division_count: division_count, storage_class: storage_class).tap do |st|
         st.define_singleton_method(:closedb) { closed << dir }
         storages[dir] = st
       end
@@ -45,7 +45,7 @@ class MkRecentTest < Test::Unit::TestCase
   def test_make
     mem_storage(File.join(@dir, 'a', 'roma'), { 'key1' => ['old', 1], 'key2' => ['a2', 5] })
     mem_storage(File.join(@dir, 'b', 'roma'), { 'key1' => ['new', 2], 'key3' => ['b3', 1] })
-    make(divnum: 3)
+    make(division_count: 3)
     recent = @storages.fetch(File.join(@recent, 'roma'))
     assert_equal 3, recent.divnum
     assert_equal [[2, 'new'], [5, 'a2'], [1, 'b3']], %w(key1 key2 key3).map { |k| get(recent, k) }

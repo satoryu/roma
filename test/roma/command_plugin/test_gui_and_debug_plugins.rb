@@ -43,7 +43,7 @@ class GuiAndDebugPluginsTest < Test::Unit::TestCase
     assert_equal "Not finished gathering\r\n", @conn.request('show_logs')
 
     @conn.stats.gui_run_gather_logs = false
-    @conn.stats.stream_show_wait_param = 0
+    @conn.stats.stream_show_wait = 0
     @conn.rttable.logs = %w(log1 log2)
     assert_equal "log1\r\nlog2\r\nEND\r\n", @conn.request('show_logs')
     # Shown once.

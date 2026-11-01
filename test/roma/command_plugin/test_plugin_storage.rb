@@ -199,9 +199,9 @@ class PluginStorageHashTest < Test::Unit::TestCase
     @conn.define_singleton_method(:broadcast_cmd) { |cmd| broadcasts << cmd; { OWNER_NID => 'STORED' } }
     assert_equal "#{{ OWNER_NID => 'STORED', NID => 'STORED' }}\r\n", @conn.request('set_size_of_zredundant 100')
     assert_equal ["rset_size_of_zredundant 100\r\n"], broadcasts
-    assert_equal 100, @conn.stats.size_of_zredundant
+    assert_equal 100, @conn.stats.compression_threshold
     assert_equal "STORED\r\n", @conn.request('rset_size_of_zredundant 200')
-    assert_equal 200, @conn.stats.size_of_zredundant
+    assert_equal 200, @conn.stats.compression_threshold
   end
 
   data('set' => 'set_size_of_zredundant', 'rset' => 'rset_size_of_zredundant')
@@ -309,7 +309,7 @@ class PluginStorageRedundantTest < Test::Unit::TestCase
   end
 
   def test_zredundant
-    @conn.stats.size_of_zredundant = 3
+    @conn.stats.compression_threshold = 3
     @conn.request('set key1 0 0 5', 'value')
     line, rest = @node.received.last
     assert_match(/\Arzset key1\eroma /, line)
@@ -319,7 +319,7 @@ class PluginStorageRedundantTest < Test::Unit::TestCase
   data('redundant' => [0, 'redundant'], 'zredundant' => [3, 'zredundant'])
   def test_failed(data)
     size, event = data
-    @conn.stats.size_of_zredundant = size
+    @conn.stats.compression_threshold = size
     @node.reply = "ERROR\r\n"
     @conn.request('set key1 0 0 5', 'value')
     # Retried later.

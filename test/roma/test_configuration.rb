@@ -17,8 +17,8 @@ class ConfigurationTest < Test::Unit::TestCase
     assert_equal :auto_assign, @config.routing.lost_action
     assert_equal :debug, @config.log.level
     assert_equal 5, @config.connection.pool.max
-    assert_equal 15, @config.connection.em_pool.max
-    assert_equal 30, @config.connection.em_pool.expire_time
+    assert_equal 15, @config.connection.event_machine_pool.max
+    assert_equal 30, @config.connection.event_machine_pool.expire_time
     assert_equal :hash, @config.storage.engine
     assert_equal({}, @config.write_behind.command_map)
   end
@@ -120,7 +120,7 @@ class ConfigurationTest < Test::Unit::TestCase
     assert_equal 12000, h['port']
     assert_equal :debug, h['log.level']
     assert_equal 5, h['connection.pool.max']
-    assert_equal 15, h['connection.em_pool.max']
+    assert_equal 15, h['connection.event_machine_pool.max']
   end
 
   # Roma.configure, Roma.load_config and Roma.reset_config change the

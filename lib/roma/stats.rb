@@ -36,13 +36,13 @@ module Roma
     attr_accessor :spushv_protection
 
     # proc param
-    attr_accessor :stream_copy_wait_param
-    attr_accessor :stream_show_wait_param
+    attr_accessor :stream_copy_wait
+    attr_accessor :stream_show_wait
     attr_accessor :dcnice
     attr_accessor :clean_up_interval
 
     # compressed redundant param
-    attr_accessor :size_of_zredundant
+    attr_accessor :compression_threshold
 
     # performance counter
     attr_accessor :write_count
@@ -97,8 +97,8 @@ module Roma
       @last_clean_up = Time.now
       @gui_last_snapshot = []
       @spushv_protection = false
-      @stream_copy_wait_param = 0.0001
-      @stream_show_wait_param = 0.001
+      @stream_copy_wait = 0.0001
+      @stream_show_wait = 0.001
       @dcnice = 3
       @clean_up_interval = 300
       @enabled_vnodes_balance = nil
@@ -108,7 +108,7 @@ module Roma
       @out_count = 0
       @out_message_count = 0
       @redundant_count = 0
-      @size_of_zredundant = 0
+      @compression_threshold = 0
       @hilatency_warn_time = 5.0
       @wb_command_map = {}
       @latency_log = false
@@ -150,11 +150,11 @@ module Roma
       ret['stats.last_clean_up'] = @last_clean_up
       ret['stats.gui_last_snapshot'] = @gui_last_snapshot
       ret['stats.spushv_protection'] = @spushv_protection
-      ret['stats.stream_copy_wait_param'] = @stream_copy_wait_param
-      ret['stats.stream_show_wait_param'] = @stream_show_wait_param
+      ret['stats.stream_copy_wait'] = @stream_copy_wait
+      ret['stats.stream_show_wait'] = @stream_show_wait
       ret['stats.dcnice'] = @dcnice
       ret['stats.clean_up_interval'] = @clean_up_interval
-      ret['stats.size_of_zredundant'] = @size_of_zredundant
+      ret['stats.compression_threshold'] = @compression_threshold
       ret['stats.write_count'] = @write_count
       ret['stats.read_count'] = @read_count
       ret['stats.delete_count'] = @delete_count
