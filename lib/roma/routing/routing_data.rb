@@ -226,7 +226,7 @@ module Roma
         end
 
         # vnode balanceing process
-        rlist = ret.get_balanced_vn_replacement_list(replication_in_host)
+        rlist = ret.get_balanced_vnode_replacement_list(replication_in_host)
         ret.balance!(rlist, replication_in_host) if rlist
 
         ret

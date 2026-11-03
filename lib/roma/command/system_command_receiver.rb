@@ -445,7 +445,7 @@ module Roma
         @log.info("ROMA forcedly start.")
         AsyncProcess::queue.clear
         @routing_table.enabled_failover = true
-        Command::Receiver::mk_evlist
+        Command::Receiver::make_event_list
         $roma.startup = false
         send_data("STARTED\r\n")
       end
@@ -533,7 +533,7 @@ module Roma
 
         #check support commands
         s.each_index {|idx|
-          if idx >= 3 && (!Event::Handler::ev_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
+          if idx >= 3 && (!Event::Handler::event_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
              return send_data("NOT SUPPORT [#{s[idx]}] command\r\n")
           end
         }
@@ -572,7 +572,7 @@ module Roma
         end
 
         s.each_index {|idx|
-          if idx >= 3 && (!Event::Handler::ev_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
+          if idx >= 3 && (!Event::Handler::event_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
              return send_data("NOT SUPPORT [#{s[idx]}] command\r\n")
           end
         }
@@ -603,7 +603,7 @@ module Roma
         end
         #check support commands
         s.each_index {|idx|
-          if idx >= 1 && (!Event::Handler::ev_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
+          if idx >= 1 && (!Event::Handler::event_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
              return send_data("NOT SUPPORT [#{s[idx]}] command\r\n")
           end
           if idx >= 1 && @stats.latency_check_cmd.include?(s[idx])
@@ -629,7 +629,7 @@ module Roma
           return send_data("CLIENT_ERROR number of arguments (0 for 2)\r\n")
         end
         s.each_index {|idx|
-          if idx >= 1 && (!Event::Handler::ev_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
+          if idx >= 1 && (!Event::Handler::event_list.include?(s[idx]) || Event::Handler::system_commands.include?(s[idx]))
              return send_data("NOT SUPPORT [#{s[idx]}] command\r\n")
           end
           if idx >= 1 && @stats.latency_check_cmd.include?(s[idx])

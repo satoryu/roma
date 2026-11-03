@@ -90,7 +90,7 @@ module RomaTestUtils
     command.push(
       romad_path, host,
       '-p', port,
-      '--verbose', '--disabled_cmd_protect',
+      '--verbose', '--disable-command-protection',
       '--config', "#{test_dir}/#{conf}"
     )
     command << '-d' if daemon

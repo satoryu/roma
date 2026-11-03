@@ -11,13 +11,12 @@ module Roma
     # command options
     attr_accessor :address, :port
     attr_accessor :daemon
-    attr_accessor :join_ap
+    attr_accessor :join_node_id
     attr_accessor :start_with_failover
     attr_accessor :name
     attr_accessor :verbose
-    attr_accessor :enabled_repetition_host_in_routing
-    alias :replication_in_host :enabled_repetition_host_in_routing
-    attr_accessor :disabled_cmd_protect
+    attr_accessor :replication_in_host
+    attr_accessor :command_protection_disabled
 
     # proc mode
     attr_accessor :enabled_vnodes_balance
@@ -137,7 +136,7 @@ module Roma
       ret['stats.daemon'] = @daemon
       ret['stats.name'] = @name
       ret['stats.verbose'] = @verbose
-      ret['stats.enabled_repetition_host_in_routing'] = replication_in_host
+      ret['stats.replication_in_host'] = replication_in_host
       ret['stats.run_recover'] = @run_recover
       ret['stats.run_sync_routing'] = @run_sync_routing
       ret['stats.run_iterate_storage'] = @run_iterate_storage

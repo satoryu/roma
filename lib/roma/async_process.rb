@@ -132,7 +132,7 @@ module Roma
           @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
         ensure
           @stats.run_join = false
-          @stats.join_ap = nil
+          @stats.join_node_id = nil
         end
       end
       t[:name] = __method__

@@ -50,7 +50,7 @@ module Roma
       end
       
       # Returns a replacement list for balanced routing.
-      def get_balanced_vn_replacement_list(replication_in_host = false)
+      def get_balanced_vnode_replacement_list(replication_in_host = false)
         routing_data = clone
         ret = []
         @redundancy.times do |idx| # primary, secondary1, ...

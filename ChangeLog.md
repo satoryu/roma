@@ -25,6 +25,8 @@ The tools in `bin/` are subcommands of the new `roma` command now, and the old c
 
 Some options are words too: `--hash`, `--divide` and `--redundant` of `roma route create` are `--digest-bits`, `--divide-bits` and `--redundancy` (`-h` is for the help, and `-d` and `-r` stay), the same in `roma storage merge`, and `--num` and `--rand` of `roma benchmark` are `--key-count` and `--random`.
 
+`--disabled_cmd_protect` of romad (`roma server`) is `--disable-command-protection`, and `--enabled_repeathost`, which was deprecated, is removed: use `--replication-in-host`. romad takes the options with underscores too, such as `--replication_in_host`. `stats.enabled_repetition_host_in_routing` of the `stats` command is `stats.replication_in_host`.
+
 The tools print errors on the standard error and exit with 1.
 
 These tools are removed, as they are not needed [#51](https://github.com/satoryu/roma/issues/51):

@@ -14,8 +14,8 @@ module Roma
   module Event
 
     class Handler < EventMachine::Connection
-      @@ev_list={}
-      def self.ev_list; @@ev_list; end
+      @@event_list={}
+      def self.event_list; @@event_list; end
       @@system_commands={}
       def self.system_commands; @@system_commands; end
 
@@ -127,11 +127,11 @@ module Roma
       protected
 
       def has_event?
-        @@ev_list.length!=0
+        @@event_list.length!=0
       end
 
       def add_event(c,m)
-        @@ev_list[c]=m
+        @@event_list[c]=m
       end
 
       def exit
@@ -159,17 +159,17 @@ module Roma
           @enter_time = Time.now
           s=s.chomp.split(/ /)
           # check whether comand was send or not? and check this command listed on ROMA?
-          if s[0] && @@ev_list.key?(s[0].downcase)
-            send(@@ev_list[s[0].downcase],s)
+          if s[0] && @@event_list.key?(s[0].downcase)
+            send(@@event_list[s[0].downcase],s)
             @lastcmd=s
             next if @@system_commands.key?(s[0].downcase)
           elsif s.length==0
             next
           elsif s[0]=='!!'
-            send(@@ev_list[@lastcmd[0].downcase],@lastcmd)
+            send(@@event_list[@lastcmd[0].downcase],@lastcmd)
             next if @@system_commands.key?(@lastcmd[0].downcase)
           else
-            distance, similar_cmd = Roma::Event::Distance.check_distance(s[0], @@ev_list)
+            distance, similar_cmd = Roma::Event::Distance.check_distance(s[0], @@event_list)
             if distance < 0.2
               send_data("\r\nERROR: '#{s[0]}' is not roma command.\r\nDid you mean this?\r\n\t#{similar_cmd}\r\n")
               next

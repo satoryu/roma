@@ -134,11 +134,11 @@ class AsyncProcessEventTest < Test::Unit::TestCase
        'recover' => [:asyncev_start_recover_process, :acquired_recover_process, :run_recover])
   def test_start_process(data)
     event, process, flag = data
-    @h.stats.join_ap = OTHER_NODE_ID if flag == :run_join
+    @h.stats.join_node_id = OTHER_NODE_ID if flag == :run_join
     @h.call(event, nil)
     assert_equal process, @h.calls.pop
     wait_until("#{flag} to be cleared") { !@h.stats.send(flag) }
-    assert_nil @h.stats.join_ap
+    assert_nil @h.stats.join_node_id
   end
 
   # Only one of join, balance and recover runs at a time.
@@ -321,7 +321,7 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
 
   def test_balance_process
     @h = Harness.new(nodes: [NODE_ID, 'hosta_1', 'hostb_1'], vnode_nodes: %w(hosta_1 hostb_1))
-    @h.stats.enabled_repetition_host_in_routing = true
+    @h.stats.replication_in_host = true
     @h.always_primary = true
     @h.call(:balance_process)
     # Takes vnodes until it is primary of its share: 8 vnodes / 3 nodes.
@@ -332,7 +332,7 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
   def test_acquired_recover_process
     # Every vnode has one node, though it should have two.
     @h = Harness.new(nodes: [NODE_ID, 'hosta_1'], vnode_nodes: ['hosta_1'])
-    @h.stats.enabled_repetition_host_in_routing = true
+    @h.stats.replication_in_host = true
     @h.call(:acquired_recover_process)
     @h.routing_table.each_vnode { |vnode, node_ids| assert_equal 2, node_ids.size, "vnode #{vnode}" }
     assert_equal 8, @h.requests.size
@@ -341,7 +341,7 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
 
   def test_acquired_recover_process_stops_at_an_error
     @h = Harness.new(nodes: [NODE_ID, 'hosta_1'], vnode_nodes: ['hosta_1'])
-    @h.stats.enabled_repetition_host_in_routing = true
+    @h.stats.replication_in_host = true
     @h.push_reply = false
     @h.call(:acquired_recover_process)
     assert_equal 1, @h.requests.size
@@ -497,7 +497,7 @@ class AsyncProcessReleaseTest < Test::Unit::TestCase
 
   def test_release_process
     @h = Harness.new(nodes: [NODE_ID, 'hosta_1', 'hostb_1'], vnode_nodes: [NODE_ID, 'hosta_1'])
-    @h.stats.enabled_repetition_host_in_routing = true
+    @h.stats.replication_in_host = true
     @h.call(:release_process)
     assert_false @h.routing_table.has_node?(NODE_ID)
     assert_equal 8, @h.moves.size
@@ -506,14 +506,14 @@ class AsyncProcessReleaseTest < Test::Unit::TestCase
 
   def test_release_process_without_enough_nodes
     @h = Harness.new(nodes: [NODE_ID, 'hosta_1'], vnode_nodes: [NODE_ID, 'hosta_1'])
-    @h.stats.enabled_repetition_host_in_routing = true
+    @h.stats.replication_in_host = true
     @h.call(:release_process)
     assert_equal [], @h.moves
   end
 
   def test_release_process_aborted
     @h = Harness.new(nodes: [NODE_ID, 'hosta_1', 'hostb_1'], vnode_nodes: [NODE_ID, 'hosta_1'])
-    @h.stats.enabled_repetition_host_in_routing = true
+    @h.stats.replication_in_host = true
     @h.move_reply = :abort
     # It would keep trying the vnode if it didn't stop.
     thread = Thread.new { @h.call(:release_process) }
