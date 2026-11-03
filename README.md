@@ -21,6 +21,7 @@ More information is [here](http://roma-kvs.org/ "ROMA").
 
 * Refer to [ROMA documentations](http://roma-kvs.org/ "ROMA")
 * [Routing](docs/routing.md): what the routing files define, how nodes route keys, and how to set it up
+* [Command plugins](docs/command_plugin.md): how romad runs plugin commands, and how to write your own
 
 ## Requirements
 * Ruby >= 3.4
