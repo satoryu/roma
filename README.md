@@ -51,8 +51,8 @@ Refer to [Commands](http://roma-kvs.org/commands.html "Commands") for more detai
 Run two processes by `roma server` as follows:  
 
 ```
-$ roma server localhost -p 10001 -d --replication_in_host
-$ roma server localhost -p 10002 -d --replication_in_host
+$ roma server localhost -p 10001 -d --replication-in-host
+$ roma server localhost -p 10002 -d --replication-in-host
 ```
 
 `romad` is the same as `roma server`, such as `romad localhost -p 10001 -d`. `roma server --help` shows the options.

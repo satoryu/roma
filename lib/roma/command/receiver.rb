@@ -26,10 +26,10 @@ module Roma
         @default_hash_name = 'roma'
       end
 
-      def self.mk_starting_evlist
-        Event::Handler.ev_list.clear
+      def self.make_starting_event_list
+        Event::Handler.event_list.clear
         each_system_commands{|m|
-          Event::Handler.ev_list[m.to_s[3..-1]] = m
+          Event::Handler.event_list[m.to_s[3..-1]] = m
           Event::Handler.system_commands[m.to_s[3..-1]] = nil
         }
       end
@@ -47,13 +47,13 @@ module Roma
         }
       end
 
-      def self.mk_evlist
+      def self.make_event_list
         each_system_commands{|m|
           Event::Handler.system_commands[m.to_s[3..-1]] = nil
         }
         Receiver::public_instance_methods.each{|m|
           if m.to_s.start_with?('ev_')
-            Event::Handler.ev_list[m.to_s[3..-1]] = m
+            Event::Handler.event_list[m.to_s[3..-1]] = m
           end
         }
       end

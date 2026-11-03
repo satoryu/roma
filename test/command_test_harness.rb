@@ -43,7 +43,7 @@ class CommandTestHarness
 
   # Commands that clients may send, and the system commands among them.
   # Some commands accept only clients' commands as arguments.
-  EV_LIST = { 'get' => :ev_get, 'set' => :ev_set, 'delete' => :ev_delete, 'balse' => :ev_balse }
+  EVENT_LIST = { 'get' => :ev_get, 'set' => :ev_set, 'delete' => :ev_delete, 'balse' => :ev_balse }
   SYSTEM_COMMANDS = { 'balse' => nil }
 
   # A logger that also remembers what the commands set on RLogger.
@@ -214,15 +214,15 @@ class CommandTestHarness
 
   def with_globals
     saved_romad = defined?($roma) ? $roma : nil
-    saved_ev_list = Roma::Event::Handler.ev_list.dup
+    saved_event_list = Roma::Event::Handler.event_list.dup
     saved_system_commands = Roma::Event::Handler.system_commands.dup
     $roma = @romad
-    Roma::Event::Handler.ev_list.replace(EV_LIST)
+    Roma::Event::Handler.event_list.replace(EVENT_LIST)
     Roma::Event::Handler.system_commands.replace(SYSTEM_COMMANDS)
     yield
   ensure
     $roma = saved_romad
-    Roma::Event::Handler.ev_list.replace(saved_ev_list)
+    Roma::Event::Handler.event_list.replace(saved_event_list)
     Roma::Event::Handler.system_commands.replace(saved_system_commands)
   end
 end

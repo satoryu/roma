@@ -17,7 +17,7 @@ module RomadTestHelper
   def setup
     @dir = Dir.mktmpdir('roma_romad')
     @nodes = []
-    @saved_ev_list = Roma::Event::Handler.ev_list.dup
+    @saved_event_list = Roma::Event::Handler.event_list.dup
     @saved_system_commands = Roma::Event::Handler.system_commands.dup
   end
 
@@ -26,7 +26,7 @@ module RomadTestHelper
     @nodes&.each(&:close)
     Roma::Messaging::ConPool.instance.close_all
     Roma::AsyncProcess.queue.clear
-    Roma::Event::Handler.ev_list.replace(@saved_ev_list)
+    Roma::Event::Handler.event_list.replace(@saved_event_list)
     Roma::Event::Handler.system_commands.replace(@saved_system_commands)
     FileUtils.rm_rf(@dir)
   end
@@ -114,27 +114,28 @@ class RomadOptionsTest < Test::Unit::TestCase
     assert_equal File.expand_path(@config), stats.config_path
     assert_false stats.daemon
     assert_false stats.verbose
-    assert_false stats.enabled_repetition_host_in_routing
-    assert_false stats.disabled_cmd_protect
-    assert_nil stats.join_ap
+    assert_false stats.replication_in_host
+    assert_false stats.command_protection_disabled
+    assert_nil stats.join_node_id
   end
 
   def test_options
     parse(['-d', '-p', '11300', '-n', 'cluster', '-j', 'roma1:11211',
-           '--verbose', '--replication_in_host', '--disabled_cmd_protect', 'roma0'])
+           '--verbose', '--replication-in-host', '--disable-command-protection', 'roma0'])
     assert_equal '11300', stats.port
     assert_equal 'cluster', stats.name
-    assert_equal 'roma1_11211', stats.join_ap
+    assert_equal 'roma1_11211', stats.join_node_id
     assert_true stats.daemon
     assert_true stats.verbose
-    assert_true stats.enabled_repetition_host_in_routing
-    assert_true stats.disabled_cmd_protect
+    assert_true stats.replication_in_host
+    assert_true stats.command_protection_disabled
   end
 
-  def test_enabled_repeathost_is_deprecated
-    out = capture_stdout { parse(['--enabled_repeathost', 'roma0']) }
-    assert_true stats.enabled_repetition_host_in_routing
-    assert_match(/deplicated/, out)
+  # OptionParser takes the underscores too, as romad 1.x had them.
+  def test_options_with_underscores
+    parse(['--replication_in_host', '--disable_command_protection', 'roma0'])
+    assert_true stats.replication_in_host
+    assert_true stats.command_protection_disabled
   end
 
   data('no address' => [],
@@ -304,7 +305,7 @@ class RomadInitializeTest < Test::Unit::TestCase
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [node.node_id])
     node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
     node.replies['join'] = "ADDED\r\n"
-    @romad.stats.join_ap = node.node_id
+    @romad.stats.join_node_id = node.node_id
     fname = routing_file
     call(:initialize_rttable)
     assert_equal [node.node_id, ap].sort, @romad.routing_table.nodes.sort
@@ -315,10 +316,10 @@ class RomadInitializeTest < Test::Unit::TestCase
 
   def test_initialize_rttable_join_errors
     node = fake_node
-    @romad.stats.join_ap = 'localhost_1'
+    @romad.stats.join_node_id = 'localhost_1'
     assert_raise_message(/No respons/) { call(:initialize_rttable_join) }
 
-    @romad.stats.join_ap = node.node_id
+    @romad.stats.join_node_id = node.node_id
     @romad.stats.name = 'other'
     assert_raise_message(/diffarent name/) { call(:initialize_rttable_join) }
 

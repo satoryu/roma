@@ -390,16 +390,16 @@ roma2$ roma server roma2 -p 11211 -d --config config.rb
 roma3$ roma server roma3 -p 11211 -d --config config.rb
 ```
 
-If the routing was made with `--replication-in-host`, give `--replication_in_host`
-to every node too. The nodes use it to choose where to move vnodes when nodes
+If the routing was made with `--replication-in-host`, give it to `roma server`
+of every node too. The nodes use it to choose where to move vnodes when nodes
 join, leave or recover.
 
 For a try on one machine:
 
 ```
 $ roma route create localhost_11211 localhost_11212 --replication-in-host
-$ roma server localhost -p 11211 -d --replication_in_host
-$ roma server localhost -p 11212 -d --replication_in_host
+$ roma server localhost -p 11211 -d --replication-in-host
+$ roma server localhost -p 11212 -d --replication-in-host
 ```
 
 ### Look at the routing table

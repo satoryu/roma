@@ -59,7 +59,7 @@ module Roma
       start_wb_process
       timer
 
-      if @stats.join_ap
+      if @stats.join_node_id
         AsyncProcess::queue.push(AsyncMessage.new('start_join_process'))
       end
 
@@ -213,8 +213,8 @@ module Roma
           @log.info("#{plugin.to_s} included")
       end
 
-      if @stats.disabled_cmd_protect
-        Command::Receiver::mk_evlist
+      if @stats.command_protection_disabled
+        Command::Receiver::make_event_list
       end
     end
 
@@ -239,10 +239,10 @@ module Roma
         }
       end
 
-      if @stats.join_ap
-        Command::Receiver::mk_evlist
+      if @stats.join_node_id
+        Command::Receiver::make_event_list
       else
-        Command::Receiver::mk_starting_evlist
+        Command::Receiver::make_starting_event_list
       end
     end
 
@@ -276,7 +276,7 @@ module Roma
         puts opts; exit
       }
 
-      opts.on("-j","--join [address:port]") { |v| @stats.join_ap = v }
+      opts.on("-j","--join [address:port]") { |v| @stats.join_node_id = v }
 
       opts.on("-p", "--port [PORT]") { |v| @stats.port = v }
 
@@ -289,21 +289,15 @@ module Roma
 
       opts.on("-n", "--name [name]") { |v| @stats.name = v }
 
-      ##
-      # "--enabled_repeathost" is deplicated. We will rename it to "--replication_in_host"
-      ##
-      @stats.enabled_repetition_host_in_routing = false
-      opts.on(nil,"--enabled_repeathost", "Allow redundancy to same host"){
-        @stats.enabled_repetition_host_in_routing = true
-        puts "Warning: \"--enabled_repeathost\" is deplicated. Please use \"--replication_in_host\""
-      }
-      opts.on(nil,"--replication_in_host", "Allow redundancy to same host"){
-        @stats.enabled_repetition_host_in_routing = true
+      # OptionParser takes --replication_in_host too.
+      @stats.replication_in_host = false
+      opts.on(nil,"--replication-in-host", "Allow redundancy to same host"){
+        @stats.replication_in_host = true
       }
 
-      @stats.disabled_cmd_protect = false
-      opts.on(nil,"--disabled_cmd_protect", "Command protection disable while starting"){
-        @stats.disabled_cmd_protect = true
+      @stats.command_protection_disabled = false
+      opts.on(nil,"--disable-command-protection", "Command protection disable while starting"){
+        @stats.command_protection_disabled = true
       }
 
       opts.on("--config [file path of the config.rb]"){ |v| @stats.config_path = File.expand_path(v) }
@@ -323,8 +317,8 @@ module Roma
         raise OptionParser::ParseError.new('Port number is not numeric.')
       end
 
-      @stats.join_ap.sub!(':','_') if @stats.join_ap
-      if @stats.join_ap && !(@stats.join_ap =~ /^.+_\d+$/)
+      @stats.join_node_id.sub!(':','_') if @stats.join_node_id
+      if @stats.join_node_id && !(@stats.join_node_id =~ /^.+_\d+$/)
         raise OptionParser::ParseError.new('[address:port] can not parse.')
       end
     rescue OptionParser::ParseError => e
@@ -369,7 +363,7 @@ module Roma
 
     def initialize_rttable
       routing = Roma.config.routing
-      if @stats.join_ap
+      if @stats.join_node_id
         initialize_rttable_join
       else
         fname = "#{routing.path}/#{@stats.my_node_id}.route"
@@ -411,21 +405,21 @@ module Roma
     end
 
     def initialize_rttable_join
-      name = async_send_cmd(@stats.join_ap,"whoami\r\n")
+      name = async_send_cmd(@stats.join_node_id,"whoami\r\n")
       unless name
-        raise "No respons from #{@stats.join_ap}."
+        raise "No respons from #{@stats.join_node_id}."
       end
 
       if name != @stats.name
-        raise "#{@stats.join_ap} has diffarent name.\n" +
-          "me = \"#{@stats.name}\"  #{@stats.join_ap} = \"#{name}\""
+        raise "#{@stats.join_node_id} has diffarent name.\n" +
+          "me = \"#{@stats.name}\"  #{@stats.join_node_id} = \"#{name}\""
       end
 
       fname = "#{Roma.config.routing.path}/#{@stats.my_node_id}.route"
-      if routing_data = get_routedump(@stats.join_ap)
+      if routing_data = get_routedump(@stats.join_node_id)
         routing_data.save(fname)
       else
-        raise "It failed in getting the routing table data from #{@stats.join_ap}."
+        raise "It failed in getting the routing table data from #{@stats.join_node_id}."
       end
 
       if routing_data.nodes.include?(@stats.my_node_id)
@@ -529,7 +523,7 @@ module Roma
           @log.info("all nodes started")
           AsyncProcess::queue.clear
           @routing_table.enabled_failover = true
-          Command::Receiver::mk_evlist
+          Command::Receiver::make_event_list
           @startup = false
         end
       elsif @routing_table.enabled_failover == false

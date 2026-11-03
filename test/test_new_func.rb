@@ -97,9 +97,8 @@ class NewFuncTest < Test::Unit::TestCase
     -p, --port [PORT]
         --verbose
     -n, --name [name]
-        --enabled_repeathost         Allow redundancy to same host
-        --replication_in_host        Allow redundancy to same host
-        --disabled_cmd_protect       Command protection disable while starting
+        --replication-in-host        Allow redundancy to same host
+        --disable-command-protection Command protection disable while starting
         --config [file path of the config.rb]
     -h, --help                       Show this message
     -v, --version                    Show version", res.chomp)
