@@ -541,5 +541,6 @@ To port a plugin:
 bare `rescue` in a command now catches them too. Rescue them before other
 errors, or let them go out of the block.
 
-The old paths and constant names in the first rows still work in 2.0 as
-deprecated aliases, but don't depend on them.
+The old paths and constant names in the table are removed in 2.0, with no
+aliases: a plugin that still uses one fails to load with a `LoadError` or a
+`NameError`.

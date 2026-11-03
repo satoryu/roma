@@ -28,9 +28,5 @@ module Roma
       end
 
     end
-
-    # Deprecated: the old name of PluginDebug.
-    PluginOperation = PluginDebug
-    deprecate_constant :PluginOperation
   end
 end

@@ -6,11 +6,6 @@ module Roma
       class ClientError < StandardError; end
       class ServerError < StandardError; end
 
-      # Deprecated: the old names of ClientError and ServerError.
-      ClientErrorException = ClientError
-      ServerErrorException = ServerError
-      deprecate_constant :ClientErrorException, :ServerErrorException
-
       def self.included(base)
         # include ClassMethods module into an eigen-class of a +base+
         base.extend ClassMethods
