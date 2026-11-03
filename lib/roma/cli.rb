@@ -45,12 +45,13 @@ module Roma
     option :value_size, aliases: '-v', type: :numeric, banner: 'BYTES', desc: 'Set random values of this size'
     option :duration, aliases: '-D', type: :numeric, banner: 'SEC', desc: 'Stop the random requests after this time'
     def benchmark(node_id, *node_ids)
-      require 'roma/tools/bench'
-      modes = { set: :set, get: :get, random: :rand }.filter_map { |name, mode| mode if options[name] }
-      modes << :rand if modes.empty?
-      Roma::Tools::Bench.new([node_id, *node_ids]).run(modes, num: options[:key_count], threads: options[:threads],
-                                                       value_size: options[:value_size],
-                                                       duration: options[:duration])
+      require 'roma/tools/benchmark'
+      modes = Roma::Tools::Benchmark::MODES.select { |mode| options[mode] }
+      modes << :random if modes.empty?
+      Roma::Tools::Benchmark.new([node_id, *node_ids]).run(modes, key_count: options[:key_count],
+                                                           threads: options[:threads],
+                                                           value_size: options[:value_size],
+                                                           duration: options[:duration])
     end
 
     desc 'route SUBCOMMAND', 'Make and change the routing tables'

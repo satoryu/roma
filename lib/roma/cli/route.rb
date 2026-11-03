@@ -15,24 +15,24 @@ module Roma
                           desc: 'Number of nodes that hold each data'
       option :replication_in_host, type: :boolean, default: false, desc: 'Permit a host to hold the same data twice'
       def create(node_id, *node_ids)
-        require 'roma/tools/mkroute'
-        Roma::Tools::Mkroute.new.create([node_id, *node_ids],
-                                        hash_bits: options[:digest_bits], divide_bits: options[:divide_bits],
+        require 'roma/tools/route_creator'
+        Roma::Tools::RouteCreator.new.create([node_id, *node_ids],
+                                        digest_bits: options[:digest_bits], divide_bits: options[:divide_bits],
                                         redundancy: options[:redundancy],
                                         replication_in_host: options[:replication_in_host])
       end
 
       desc 'snapshot NODE_ID', 'Put the routing logs of a node, but the last one, into NODE_ID.route'
       def snapshot(node_id)
-        require 'roma/tools/ssroute'
-        Roma::Tools::Ssroute.new.snapshot(node_id)
+        require 'roma/tools/route_snapshot'
+        Roma::Tools::RouteSnapshot.new.snapshot(node_id)
       end
 
       desc 'change-redundancy NUM NODE_ID',
            'Write the routing table of a node in YAML, with NUM nodes to hold each data'
       def change_redundancy(num, node_id)
-        require 'roma/tools/chg_redundancy'
-        Roma::Tools::ChgRedundancy.new.change(node_id, Integer(num, exception: false) || 0)
+        require 'roma/tools/redundancy_changer'
+        Roma::Tools::RedundancyChanger.new.change(node_id, Integer(num, exception: false) || 0)
       end
     end
   end

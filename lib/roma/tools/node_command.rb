@@ -4,7 +4,7 @@ require 'roma/tools/error'
 module Roma
   module Tools
     # Sends a command to a node, asking for what the command needs.
-    class Adm
+    class NodeCommand
       # The commands that store a value, which is sent in the next line.
       VALUE_COMMANDS = %w(
         set add replace append prepend cas
@@ -22,20 +22,20 @@ module Roma
         @client = client
       end
 
-      # Sends +cmd+ to the node +node_id+, and returns the lines of the reply.
+      # Sends +command+ to the node +node_id+, and returns the lines of the reply.
       # The value of a command that stores one is asked for unless +value+
       # is given, and a command that stops nodes is confirmed unless +yes+.
       # Raises Error if it is not confirmed, or the node doesn't reply.
-      def run(node_id, cmd, value: nil, yes: false)
-        name = cmd.split.first
+      def run(node_id, command, value: nil, yes: false)
+        name = command.split.first
         if HALT_COMMANDS.include?(name)
           confirm unless yes
           # The node asks twice for a shutdown.
-          cmd = "#{cmd}\r\nyes\r\nyes"
+          command = "#{command}\r\nyes\r\nyes"
         elsif VALUE_COMMANDS.include?(name)
-          cmd = "#{cmd}\r\n#{value || ask_value}"
+          command = "#{command}\r\n#{value || ask_value}"
         end
-        @client.command(node_id, cmd)
+        @client.command(node_id, command)
       end
 
       private

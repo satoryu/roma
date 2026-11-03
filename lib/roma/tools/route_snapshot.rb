@@ -5,7 +5,7 @@ module Roma
   module Tools
     # Puts the routing logs of a node, but the last one, into its routing
     # file <node-id>.route. The old files are kept with a trailing ~.
-    class Ssroute
+    class RouteSnapshot
       # +out+ is where messages go, and +dir+ is where the files are.
       def initialize(out: $stdout, dir: '.')
         @out = out

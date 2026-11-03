@@ -2,14 +2,14 @@ require 'test_helper'
 require 'stringio'
 require 'tool_test_helper'
 require 'roma/routing/routing_data'
-require 'roma/tools/chg_redundancy'
+require 'roma/tools/redundancy_changer'
 
-class ChgRedundancyTest < Test::Unit::TestCase
+class RedundancyChangerTest < Test::Unit::TestCase
   include ToolTestHelper
 
   def change(node_id, redundancy)
     out = StringIO.new
-    Roma::Tools::ChgRedundancy.new(out: out).change(node_id, redundancy)
+    Roma::Tools::RedundancyChanger.new(out: out).change(node_id, redundancy)
     YAML.unsafe_load(out.string)
   end
 

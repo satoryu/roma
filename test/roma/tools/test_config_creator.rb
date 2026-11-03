@@ -3,9 +3,9 @@ require 'open3'
 require 'rbconfig'
 require 'stringio'
 require 'tool_test_helper'
-require 'roma/tools/mkconfig'
+require 'roma/tools/config_creator'
 
-class MkconfigTest < Test::Unit::TestCase
+class ConfigCreatorTest < Test::Unit::TestCase
   include ToolTestHelper
 
   # Gives the lines, then the end of the input.
@@ -24,9 +24,9 @@ class MkconfigTest < Test::Unit::TestCase
     @path = File.join(@dir, 'config.rb')
   end
 
-  def mkconfig(*lines, mode: :no_menu)
+  def create_config(*lines, mode: :no_menu)
     out = StringIO.new
-    Roma::Tools::Mkconfig.new(input: Input.new(lines), out: out, path: @path).run(mode)
+    Roma::Tools::ConfigCreator.new(input: Input.new(lines), out: out, path: @path).run(mode)
     out.string
   end
 
@@ -37,7 +37,7 @@ class MkconfigTest < Test::Unit::TestCase
   # Ruby Hash, a wrong answer, the plugins by default, a Ruby client, and
   # the defaults for the machines.
   def test_hash
-    out = mkconfig('1', '', '0', '2', '1', '', '')
+    out = create_config('1', '', '0', '2', '1', '', '')
     assert_match(/Please set FileDescriptor bigger than 10\./, out)
     assert_match(/After\r\n.*storage.engine: :hash/m, out)
     assert_match(/^  config.storage.engine = :hash$/, config)
@@ -47,7 +47,7 @@ class MkconfigTest < Test::Unit::TestCase
 
   # romad can load the file. In another process, not to change Roma.config.
   def test_hash_config_loads
-    mkconfig('1', '', '2', '1', '', '')
+    create_config('1', '', '2', '1', '', '')
     script = 'require "roma/configuration"; Roma.load_config(ARGV[0]); print Roma.config.storage.engine_class'
     out, err, status = Open3.capture3(RbConfig.ruby, '-I', File.expand_path('../../../lib', __dir__),
                                       '-e', script, @path)
@@ -58,7 +58,7 @@ class MkconfigTest < Test::Unit::TestCase
   # Groonga asks the memory, the processes, the servers and the data, and
   # the options are calculated from them.
   def test_groonga
-    out = mkconfig('2', '1.5', '2', '1', '100000000', '', '2', '2', '3')
+    out = create_config('2', '1.5', '2', '1', '100000000', '', '2', '2', '3')
     # 100000000 * 2 * 2 / 1 / 10, and (1.5GB - 1GB) / 2 / 10
     option = 'bnum=40000000#xmsiz=26843545#opts=d#dfunit=10'
     assert_match(/^  config.storage.engine = :groonga$/, config)
@@ -72,36 +72,36 @@ class MkconfigTest < Test::Unit::TestCase
   # The bnum is at least 5000000, and the xmsiz is half of the memory if it
   # is less than what the OS takes.
   def test_groonga_minimum
-    mkconfig('2', '', '', '', '', '', '2', '3', '')
+    create_config('2', '', '', '', '', '', '2', '3', '')
     assert_match(/^  config.storage.option = "bnum=5000000#xmsiz=16106127#/, config)
   end
 
   def test_plugins
-    plugins = Roma::Tools::Mkconfig::Base.new['plugin']['choice']
+    plugins = Roma::Tools::ConfigCreator::Base.new['plugin']['choice']
     alist = plugins.index('plugin_alist.rb') + 1
-    out = mkconfig('1', '1', '1', alist.to_s, '2', '1', '', '')
+    out = create_config('1', '1', '1', alist.to_s, '2', '1', '', '')
     assert_match(/After\r\n.*plugins: \["plugin_storage.rb", "plugin_alist.rb"\]/m, out)
     assert_match(/^  config.plugins = \["plugin_storage.rb", "plugin_alist.rb"\]$/, config)
   end
 
   # Without plugin_storage.rb, it asks to add it.
   def test_plugin_storage_added
-    plugins = Roma::Tools::Mkconfig::Base.new['plugin']['choice']
+    plugins = Roma::Tools::ConfigCreator::Base.new['plugin']['choice']
     alist = plugins.index('plugin_alist.rb') + 1
-    mkconfig('1', alist.to_s, '2', '1', '1', '', '')
+    create_config('1', alist.to_s, '2', '1', '1', '', '')
     assert_match(/^  config.plugins = \["plugin_storage.rb", "plugin_alist.rb"\]$/, config)
   end
 
   def test_all_plugins
-    plugins = Roma::Tools::Mkconfig::Base.new['plugin']['choice']
-    mkconfig('1', plugins.size.to_s, '1', '', '')
+    plugins = Roma::Tools::ConfigCreator::Base.new['plugin']['choice']
+    create_config('1', plugins.size.to_s, '1', '', '')
     assert_match(/^  config.plugins = #{Regexp.escape(plugins[0..-2].to_s)}$/, config)
   end
 
   # Only what is chosen from the menu is set.
   def test_with_menu
-    plugins = Roma::Tools::Mkconfig::Base.new['plugin']['choice']
-    out = mkconfig('2', plugins.size.to_s, '4', mode: :with_menu)
+    plugins = Roma::Tools::ConfigCreator::Base.new['plugin']['choice']
+    out = create_config('2', plugins.size.to_s, '4', mode: :with_menu)
     assert_match(/Please select by number\./, out)
     assert_match(/^  config.plugins = #{Regexp.escape(plugins[0..-2].to_s)}$/, config)
     assert_match(/^  config.storage.engine = :hash$/, config)
@@ -109,16 +109,16 @@ class MkconfigTest < Test::Unit::TestCase
 
   data('exit' => 'exit', 'quit' => 'quit', 'balse' => 'balse', 'end of input' => nil)
   def test_quit(line)
-    out = mkconfig(*['1', line].compact)
+    out = create_config(*['1', line].compact)
     assert_match(/config.rb  were not created!/, out)
     assert_false File.exist?(@path)
   end
 
   def test_overwrite
     File.write(@path, 'old')
-    assert_match(/were not created!/, mkconfig('n', '1', '', '2', '1', '', ''))
+    assert_match(/were not created!/, create_config('n', '1', '', '2', '1', '', ''))
     assert_equal 'old', config
-    mkconfig('y', '1', '', '2', '1', '', '')
+    create_config('y', '1', '', '2', '1', '', '')
     assert_match(/:hash/, config)
   end
 end

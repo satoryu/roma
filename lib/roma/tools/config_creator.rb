@@ -6,7 +6,7 @@ require 'roma/configuration'
 module Roma
   module Tools
 
-    class Mkconfig
+    class ConfigCreator
       TREE_TOP = "menu"
       LIB_PATH = Pathname(__FILE__).dirname.parent.parent
       PLUGIN_DIR = File.expand_path(File.join(LIB_PATH, File.join("roma", "command_plugin")))
@@ -339,10 +339,10 @@ module Roma
 
         defaults = Roma::Configuration::Settings.new.to_h
         @defaults = %w(storage.engine storage.option plugins).to_h { |key| [key, defaults[key]] }
-        mkconfig(mode)
+        create(mode)
       end
 
-      def mkconfig(mode)
+      def create(mode)
         skip = skip_menu!(mode)
 
         while true
@@ -361,7 +361,7 @@ module Roma
           @base.print_question(@next_hash, @out)
           input = get_input(@base[@next_hash])
 
-          # if specific words(balse, exit, quit) was inputed, mkconfig.rb was finished.
+          # if specific words(balse, exit, quit) was inputed, roma config create was finished.
           if END_MSG.include?(input)
             puts "config.rb  were not created!"
             break
@@ -531,7 +531,7 @@ module Roma
         Box.print_with_box(@defaults.transform_values(&:inspect), @out)
         print "\r\nAfter\r\n"
         Box.print_with_box(results.transform_values(&:inspect), @out)
-        print "\r\nMkconfig is finish.\r\n"
+        print "\r\nconfig.rb has been made.\r\n"
         print "\r\nIf you need, change the paths of the log, the routing table, the storage and write-behind, and the other settings.\r\n\r\n"
       end
 
@@ -563,6 +563,6 @@ module Roma
         @out.puts(*args)
       end
 
-    end # Mkconfig
+    end # ConfigCreator
   end # module Tools
 end # module Roma

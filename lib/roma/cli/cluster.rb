@@ -9,8 +9,8 @@ module Roma
 
       desc 'command NODE_ID COMMAND...', 'Send a command to every node in the routing table of a node'
       def command(node_id, command, *args)
-        require 'roma/tools/multi_commander'
-        puts Roma::Tools::MultiCommander.new(node_id).send_cmd_all([command, *args].join(' '))
+        require 'roma/tools/cluster_command'
+        puts Roma::Tools::ClusterCommand.new(node_id).send_command_to_all([command, *args].join(' '))
       end
 
       desc 'check NODE_ID...', 'Check that the nodes answer and know the same nodes, or exit with 1'

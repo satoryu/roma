@@ -5,24 +5,24 @@ module Roma
   module Tools
     # Merges the storage files of two nodes into new files, where the newer
     # data of each key is kept.
-    class MkRecent
+    class StorageMerger
       def initialize(out: $stdout)
         @out = out
       end
 
       # Merges each hash under +path1+ with the one under +path2+, into
       # +recent_path+, which must not exist. The vnodes are made from
-      # +hash_bits+ and +divide_bits+, as in the routing table, and the new
+      # +digest_bits+ and +divide_bits+, as in the routing table, and the new
       # files are divided into +division_count+. Raises Error if it fails.
-      def make(path1, path2, recent_path, hash_bits: 32, divide_bits: 9, division_count: 10)
+      def merge(path1, path2, recent_path, digest_bits: 32, divide_bits: 9, division_count: 10)
         raise Error, "#{recent_path} exists." if File.exist?(recent_path)
-        raise Error, "The hash bits should be divide bits or more." if hash_bits < divide_bits
-        vnodes = Array.new(2**divide_bits) { |i| i << (hash_bits - divide_bits) }
+        raise Error, "The digest bits should be divide bits or more." if digest_bits < divide_bits
+        vnodes = Array.new(2**divide_bits) { |i| i << (digest_bits - divide_bits) }
         hashes = []
         StorageFiles.each_hash(path1) { |hash_name, dir| hashes << [hash_name, dir] }
         Dir.mkdir(recent_path)
         hashes.each do |hash_name, dir|
-          merge(hash_name, [dir, File.join(path2, hash_name)], File.join(recent_path, hash_name), vnodes, division_count)
+          merge_hash(hash_name, [dir, File.join(path2, hash_name)], File.join(recent_path, hash_name), vnodes, division_count)
         end
       end
 
@@ -32,7 +32,7 @@ module Roma
         StorageFiles.open(dir, vnodes, **opts)
       end
 
-      def merge(hash_name, dirs, recent_dir, vnodes, division_count)
+      def merge_hash(hash_name, dirs, recent_dir, vnodes, division_count)
         storages = []
         dirs.each do |dir|
           @out.puts "Open #{dir}"

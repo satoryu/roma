@@ -50,8 +50,8 @@ module Roma
       option :division_count, aliases: '-n', type: :numeric, default: 10, banner: 'NUM',
                               desc: 'Number of the new divided files'
       def merge(path1, path2, recent_path)
-        require 'roma/tools/mk_recent'
-        Roma::Tools::MkRecent.new.make(path1, path2, recent_path, hash_bits: options[:digest_bits],
+        require 'roma/tools/storage_merger'
+        Roma::Tools::StorageMerger.new.merge(path1, path2, recent_path, digest_bits: options[:digest_bits],
                                        divide_bits: options[:divide_bits],
                                        division_count: options[:division_count])
         puts 'Make recent data process has succeed.'

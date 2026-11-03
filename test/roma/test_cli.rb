@@ -113,7 +113,7 @@ class CLITest < Test::Unit::TestCase
   data('no nodes' => [%w(), /"roma route create" was called with no arguments/],
        'unknown option' => [%w(host1_1 host2_1 --unknown), /Unknown switches "--unknown"/],
        'not a number' => [%w(-d x host1_1 host2_1), /Expected numeric value for '--divide-bits'; got "x"/],
-       'invalid combination' => [%w(-r 3 host1_1 host2_1), /\AThe node-id number should be redundant number or more\.\n\z/])
+       'invalid combination' => [%w(-r 3 host1_1 host2_1), /\AThe number of the node IDs should be the redundancy or more\.\n\z/])
   def test_route_create_invalid_arguments(data)
     args, message = data
     out, err, status = roma('route', 'create', *args)
@@ -258,12 +258,12 @@ class CLITest < Test::Unit::TestCase
   end
 
   def test_storage_merge
-    require 'roma/tools/mk_recent'
+    require 'roma/tools/storage_merger'
     out = nil
-    calls = spy_tool(Roma::Tools::MkRecent, :make) do
+    calls = spy_tool(Roma::Tools::StorageMerger, :merge) do
       out, = roma('storage', 'merge', 'a', 'b', 'recent', '--digest-bits', '16', '-d', '4', '-n', '5')
     end
-    assert_equal [[:new, {}], [:make, %w(a b recent), { hash_bits: 16, divide_bits: 4, division_count: 5 }]], calls
+    assert_equal [[:new, {}], [:merge, %w(a b recent), { digest_bits: 16, divide_bits: 4, division_count: 5 }]], calls
     assert_equal "Make recent data process has succeed.\n", out
   end
 
@@ -295,15 +295,15 @@ class CLITest < Test::Unit::TestCase
     assert_equal "The nodes don't answer the same nodes.\n", err
   end
 
-  data('default' => [[], [:rand], {}],
+  data('default' => [[], [:random], {}],
        'set and get' => [%w(-g -s), %i(set get), {}],
-       'set and random' => [%w(--set --random), %i(set rand), {}],
-       'options' => [%w(-s -n 5 -t 2 -v 100 -D 3), [:set], { num: 5, threads: 2, value_size: 100, duration: 3 }])
+       'set and random' => [%w(--set --random), %i(set random), {}],
+       'options' => [%w(-s -n 5 -t 2 -v 100 -D 3), [:set], { key_count: 5, threads: 2, value_size: 100, duration: 3 }])
   def test_benchmark(data)
     args, modes, opts = data
-    require 'roma/tools/bench'
-    calls = spy_tool(Roma::Tools::Bench, :run) { roma('benchmark', 'host1_1', 'host2_1', *args) }
-    expected = { num: 10_000, threads: 1, value_size: nil, duration: nil }.merge(opts)
+    require 'roma/tools/benchmark'
+    calls = spy_tool(Roma::Tools::Benchmark, :run) { roma('benchmark', 'host1_1', 'host2_1', *args) }
+    expected = { key_count: 10_000, threads: 1, value_size: nil, duration: nil }.merge(opts)
     assert_equal [[:new, %w(host1_1 host2_1), {}], [:run, [modes], expected]], calls
   end
 
