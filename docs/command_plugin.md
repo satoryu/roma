@@ -9,6 +9,7 @@ your first one.
 - [Getting started](#getting-started)
 - [Writing commands](#writing-commands)
 - [Things to know](#things-to-know)
+- [Porting a plugin from ROMA 1.x](#porting-a-plugin-from-roma-1x)
 
 ## Concepts
 
@@ -504,3 +505,41 @@ require 'roma/command_plugin/plugin_debug'
 
 A plugin from a gem is used in the same way: install the gem, and require it
 from a file in the plugin directory.
+
+## Porting a plugin from ROMA 1.x
+
+ROMA 1.x required the files listed in `PLUGIN_FILES` of config.rb from
+`roma/plugin/` in `$LOAD_PATH`. ROMA 2.0 has neither the list nor that
+directory: a plugin is a file in the plugin directory of the node, and ROMA's
+own plugins are in `roma/command_plugin/`.
+
+To port a plugin:
+
+1. Put its file in the `command_plugins` directory of the node. 2.0 doesn't
+   read `Roma::Config`, so remove `PLUGIN_FILES` with the rest of the old
+   config file (see [ChangeLog.md](../ChangeLog.md)).
+2. Require `roma/command_plugin` at the top of the file, and
+   `roma/command/definition` if it uses the class macros.
+3. Rename what it uses, as in the table below.
+4. Run it with the test harness, as in [step 4](#4-test-the-plugin) of Getting
+   started.
+
+| ROMA 1.x | ROMA 2.0 |
+| --- | --- |
+| `require 'roma/plugin/plugin_*'` | `require 'roma/command_plugin/plugin_*'` |
+| `require 'roma/command/command_definition'` | `require 'roma/command/definition'` |
+| `PluginAshiatoList`, `PluginOperation`, `PluginMapCount` | `PluginAlist`, `PluginDebug`, `PluginMapcount` |
+| `PluginCommandAliases` | removed |
+| `ClientErrorException`, `ServerErrorException` | `ClientError`, `ServerError` |
+| `@rttable`, `@nid`, `@defhash` | `@routing_table`, `@my_node_id`, `@default_hash_name` |
+| `@rttable.hbits` | `@routing_table.hash_space_size` |
+| `@stats.ap_str`, `@stats.size_of_zredundant` | `@stats.my_node_id`, `@stats.compression_threshold` |
+| `ctx.params.vn` | `ctx.params.vnode` |
+| `ctx.stored.vn`, `clk`, `flg`, `expt` | `ctx.stored.vnode`, `clock`, `flags`, `expire_time` |
+
+`ClientError` and `ServerError` inherit `StandardError`, not `Exception`, so a
+bare `rescue` in a command now catches them too. Rescue them before other
+errors, or let them go out of the block.
+
+The old paths and constant names in the first rows still work in 2.0 as
+deprecated aliases, but don't depend on them.
