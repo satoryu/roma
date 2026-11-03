@@ -35,11 +35,35 @@ module Roma
         @clocks={}
       end
 
+      # The keys of the routing table in YAML, in this order.
+      KEYS = %w(digest_bits divide_bits redundancy nodes routes clocks).freeze
+
+      def to_h
+        KEYS.to_h { |key| [key, instance_variable_get("@#{key}")] }
+      end
+
+      # Raises KeyError if a key is missing.
+      def self.from_h(hash)
+        routing_data = new(hash.fetch('digest_bits'), hash.fetch('divide_bits'), hash.fetch('redundancy'))
+        routing_data.nodes = hash.fetch('nodes')
+        routing_data.routes = hash.fetch('routes')
+        routing_data.clocks = hash.fetch('clocks')
+        routing_data
+      end
+
+      # The routing table in YAML, as in the routing file. It has no tag of
+      # the Ruby class, so it is read without making any Ruby object.
+      def dump_yaml
+        YAML.dump(to_h)
+      end
+
+      def self.load_yaml(yaml)
+        from_h(YAML.safe_load(yaml))
+      end
+
       def save(fname)
         @nodes.sort!
-        open(fname,'wb'){|io|
-          io.write(YAML.dump(self))
-        }
+        File.write(fname, dump_yaml)
       end
 
       def self.load(fname)
@@ -49,11 +73,7 @@ module Roma
       end
 
       def self.load_snapshot(fname)
-        routing_data=nil
-        open(fname,'rb'){|io|
-          routing_data = YAML.unsafe_load(io.read)
-        }
-        routing_data
+        load_yaml(File.read(fname))
       end
 
       def self.snapshot(fname)

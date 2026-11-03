@@ -23,7 +23,7 @@ class RoutingDataTest < Test::Unit::TestCase
     routing_data=Roma::Routing::RoutingData.create(32,8,1,['roma0_3300'])
     routing_data.save(@fname)
     rd2=Roma::Routing::RoutingData.load(@fname)
-    assert_equal(YAML.dump(routing_data), YAML.dump(rd2))
+    assert_equal(routing_data.dump_yaml, rd2.dump_yaml)
   end
 
   def test_next_vnode
@@ -39,6 +39,29 @@ class RoutingDataTest < Test::Unit::TestCase
     decoded_routing_data.save(@fname)
     routing_text=File.open(@fname){|f| f.read }
     assert_not_match(/\!binary \|\-/, routing_text)
+  end
+
+  # The routing file is a plain YAML of a Hash, without the tag of the class.
+  def test_file_is_plain_yaml
+    Roma::Routing::RoutingData.create(32, 1, 1, ['roma0_3300']).save(@fname)
+    expected = { 'digest_bits' => 32, 'divide_bits' => 1, 'redundancy' => 1, 'nodes' => ['roma0_3300'],
+                 'routes' => { 0 => ['roma0_3300'], 0x80000000 => ['roma0_3300'] },
+                 'clocks' => { 0 => 0, 0x80000000 => 0 } }
+    assert_equal expected, YAML.safe_load_file(@fname)
+    assert_not_match(/!ruby/, File.read(@fname))
+  end
+
+  # A file with the tag of a Ruby class, as ROMA 1.x wrote, makes no object.
+  def test_load_yaml_rejects_ruby_objects
+    yaml = YAML.dump(Roma::Routing::RoutingData.create(32, 1, 1, ['roma0_3300']))
+    assert_raise(Psych::DisallowedClass) { Roma::Routing::RoutingData.load_yaml(yaml) }
+  end
+
+  def test_load_yaml_without_a_key
+    assert_raise_message(/key not found: "clocks"/) do
+      Roma::Routing::RoutingData.load_yaml(YAML.dump('digest_bits' => 32, 'divide_bits' => 1, 'redundancy' => 1,
+                                                     'nodes' => [], 'routes' => {}))
+    end
   end
 
   def test_create_nodes_from_v_idx

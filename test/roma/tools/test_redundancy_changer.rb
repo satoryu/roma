@@ -10,7 +10,7 @@ class RedundancyChangerTest < Test::Unit::TestCase
   def change(node_id, redundancy)
     out = StringIO.new
     Roma::Tools::RedundancyChanger.new(out: out).change(node_id, redundancy)
-    YAML.unsafe_load(out.string)
+    Roma::Routing::RoutingData.load_yaml(out.string)
   end
 
   def serve(redundancy)

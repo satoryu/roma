@@ -125,7 +125,7 @@ The file is the routing table in YAML. This is one made for two nodes with 8
 vnodes (`-d 3`):
 
 ```yaml
---- !ruby/object:Roma::Routing::RoutingData
+---
 digest_bits: 32
 divide_bits: 3
 redundancy: 2
@@ -153,8 +153,9 @@ vnode to its clock.
 
 A running node does not rewrite the routing file. It appends each change of its
 routing table to a **routing log** next to it: `<node-id>.route.1`,
-`<node-id>.route.2`, and so on. The logs have no `.yml`, since they are not YAML. A log goes on to the next number when it grows
-over about 1 MB. Each line is a time and one change:
+`<node-id>.route.2`, and so on. The logs have no `.yml`, since they are not
+YAML. A log goes on to the next number when it grows over about 1 MB. Each line
+is a time and one change:
 
 ```
 2026-11-02T00:33:55.233845 join localhost_11213
