@@ -172,18 +172,18 @@ class CLITest < Test::Unit::TestCase
     assert_match(message, err)
   end
 
-  def test_cluster_command
+  def test_cluster_send
     other = FakeNode.new
     @fake_nodes << other
     node = routing_node(other.node_id)
-    out, _err, status = roma('cluster', 'command', node.node_id, 'stats', 'run')
+    out, _err, status = roma('cluster', 'send', node.node_id, 'stats', 'run')
     assert_nil status
     assert_equal @routing_data.nodes.map { |node_id| "****** #{node_id}\r\nSTORED\r\n" }.join, out
     assert_equal ['stats run'], other.commands
   end
 
-  def test_cluster_command_error
-    out, err, status = roma('cluster', 'command', 'localhost_1', 'whoami')
+  def test_cluster_send_error
+    out, err, status = roma('cluster', 'send', 'localhost_1', 'whoami')
     assert_equal 1, status
     assert_equal '', out
     assert_match(/\Alocalhost_1: /, err)
@@ -193,40 +193,40 @@ class CLITest < Test::Unit::TestCase
     FakeNode.new.tap { |node| @fake_nodes << node }
   end
 
-  def test_node_command
+  def test_node_send
     node = fake_node
     # FakeNode answers the line of the value.
     node.replies['set'] = proc { '' }
-    out, _err, status = roma('node', 'command', 'set', 'key1', '0', '0', '5', '-p', node.node_id.split('_')[1], '-v', 'value')
+    out, _err, status = roma('node', 'send', 'set', 'key1', '0', '0', '5', '-p', node.node_id.split('_')[1], '-v', 'value')
     assert_nil status
     assert_equal "STORED\n", out
     assert_equal ['set key1 0 0 5', 'value'], node.commands
   end
 
-  def test_node_command_host
+  def test_node_send_host
     node = fake_node
-    out, _err, _status = roma('node', 'command', 'whoami', '--host', '127.0.0.1', '--port', node.node_id.split('_')[1])
+    out, _err, _status = roma('node', 'send', 'whoami', '--host', '127.0.0.1', '--port', node.node_id.split('_')[1])
     assert_equal "ROMA\n", out
   end
 
-  def test_node_command_balse
+  def test_node_send_balse
     node = fake_node
     node.replies['balse'] = "BYE\r\n"
-    out, _err, status = roma('node', 'command', 'balse', '-y', '-p', node.node_id.split('_')[1])
+    out, _err, status = roma('node', 'send', 'balse', '-y', '-p', node.node_id.split('_')[1])
     assert_nil status
     assert_equal "BYE\nSTORED\nSTORED\n", out
   end
 
   # The confirmation is read from the standard input.
-  def test_node_command_rejected
-    out, err, status = run_roma('node', 'command', 'balse', '-p', '1', stdin: "no\n")
+  def test_node_send_rejected
+    out, err, status = run_roma('node', 'send', 'balse', '-p', '1', stdin: "no\n")
     assert_equal 1, status.exitstatus
     assert_equal "Are you sure?(yes/no)\n", out
     assert_equal "The confirmation was rejected.\n", err
   end
 
-  def test_node_command_node_down
-    _out, err, status = roma('node', 'command', 'whoami', '-p', '1')
+  def test_node_send_node_down
+    _out, err, status = roma('node', 'send', 'whoami', '-p', '1')
     assert_equal 1, status
     assert_match(/\Alocalhost_1: /, err)
   end
@@ -448,7 +448,7 @@ class CLITest < Test::Unit::TestCase
   # bin/roma runs the CLI and exits with its status.
   def test_command_to_nodes
     node = routing_node
-    out, err, status = run_roma('cluster', 'command', node.node_id, 'whoami')
+    out, err, status = run_roma('cluster', 'send', node.node_id, 'whoami')
     assert_true status.success?, err
     assert_equal "****** #{node.node_id}\r\nROMA\r\n", out
   end

@@ -16,11 +16,11 @@ The tools in `bin/` are subcommands of the new `roma` command now, and the old c
 | --- | --- |
 | `romad` | `roma server` (`romad` stays as its alias) [#39](https://github.com/satoryu/roma/pull/39) |
 | `mkroute`, `ssroute`, `log_merger`, `mkconfig` | `roma route create`, `roma route snapshot`, `roma log merge`, `roma config create` [#24](https://github.com/satoryu/roma/pull/24) [#25](https://github.com/satoryu/roma/pull/25) [#26](https://github.com/satoryu/roma/pull/26) |
-| `chg_redundancy`, `multi_commander` | `roma route change-redundancy NUM NODE_ID`, `roma cluster command` [#29](https://github.com/satoryu/roma/pull/29) |
+| `chg_redundancy`, `multi_commander` | `roma route change-redundancy NUM NODE_ID`, `roma cluster send` [#29](https://github.com/satoryu/roma/pull/29) |
 | `recoverlost`, `recoverlost_alist`, `recoverlost_alist_all`, `recoverlost_alist_keys` | `roma storage recover-lost [--since TIME] [--all] [--keys FILE] [--alist]` [#30](https://github.com/satoryu/roma/pull/30) |
-| `roma-adm` | `roma node command` [#31](https://github.com/satoryu/roma/pull/31) |
+| `roma-adm` | `roma node send` [#31](https://github.com/satoryu/roma/pull/31) |
 | `key_list`, `key_access`, `mkrecent` | `roma storage keys`, `roma storage key`, `roma storage merge` [#32](https://github.com/satoryu/roma/pull/32) |
-| `sample_watcher*` | `roma cluster check`, `roma cluster command` [#35](https://github.com/satoryu/roma/pull/35) |
+| `sample_watcher*` | `roma cluster check`, `roma cluster send` [#35](https://github.com/satoryu/roma/pull/35) |
 | `simple_bench`, `data_accumulation` | `roma benchmark` [#36](https://github.com/satoryu/roma/pull/36) |
 
 Some options are words too: `--hash`, `--divide` and `--redundant` of `roma route create` are `--digest-bits`, `--divide-bits` and `--redundancy` (`-h` is for the help, and `-d` and `-r` stay), the same in `roma storage merge`, and `--num` and `--rand` of `roma benchmark` are `--key-count` and `--random`.
