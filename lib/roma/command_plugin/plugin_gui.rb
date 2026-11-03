@@ -1,3 +1,4 @@
+require 'roma/command_plugin'
 require 'json'
 
 module Roma

@@ -57,7 +57,7 @@ end
 | Before | After |
 | --- | --- |
 | `DEFAULT_NAME`, `DEFAULT_PORT` | `name`, `port` |
-| `PLUGIN_FILES` | `plugins` |
+| `PLUGIN_FILES` | removed: see [Command plugins](#command-plugins) |
 | `DEFAULT_LOST_ACTION`, `AUTO_RECOVER` | `routing.lost_action`, `routing.auto_recover` |
 | `ROUTING_FAIL_CNT_THRESHOLD`, `ROUTING_FAIL_CNT_GAP`, `ROUTING_EVENT_LIMIT_LINE` | `routing.failure_count_threshold`, `routing.failure_count_gap`, `routing.event_limit_line` |
 | `RTTABLE_PATH`, `RTTABLE_CLASS`, `RTTABLE_SUB_NID` | `routing.path`, `routing.table_class`, `routing.node_id_substitutions` |
@@ -104,7 +104,16 @@ The plugins are in `roma/command_plugin/`, after their namespace `Roma::CommandP
 | `Roma::CommandPlugin::PluginMapCount` | `Roma::CommandPlugin::PluginMapcount` |
 | `Roma::Command::Definition::ClientErrorException`, `ServerErrorException` | `ClientError`, `ServerError`, which inherit `StandardError` |
 
-`PLUGIN_FILES` in config.rb doesn't change. romad finds the files in `roma/command_plugin/`, then in `roma/plugin/` for other plugins. The old files and names stay as deprecated aliases.
+The old files and names stay as deprecated aliases.
+
+### Command plugins
+romad loads the command plugins by a convention, instead of a list in the config file. `PLUGIN_FILES` is removed, and there is no setting to list the plugins. See [Command plugins](docs/command_plugin.md).
+
+* The plugins of ROMA for data, `plugin_storage.rb`, `plugin_alist.rb`, `plugin_map.rb`, `plugin_mapcount.rb` and `plugin_gui.rb`, are always loaded.
+* `plugin_debug.rb` and `plugin_test.rb` are not, since `eval` of plugin_debug runs any Ruby code. To use one, put a file that requires it, such as `require 'roma/command_plugin/plugin_debug'`, in the plugin directory.
+* romad requires the `*.rb` files in `./command_plugins`, by their names, after ROMA's plugins. `config.command_plugin_path` sets another directory. The `stats` command shows it as `config.command_plugin_path` (`config.plugins` before).
+* `plugin_cmd_aliases.rb`, which had no commands, is removed.
+* `roma config create` doesn't ask for the plugins.
 
 ### Fixes
 * A romad that isn't a daemon stops by TERM and HUP [#39](https://github.com/satoryu/roma/pull/39)

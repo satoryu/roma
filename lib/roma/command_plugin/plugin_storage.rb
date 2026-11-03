@@ -1,3 +1,4 @@
+require 'roma/command_plugin'
 require 'zlib'
 require 'digest/sha1'
 require 'roma/async_process'

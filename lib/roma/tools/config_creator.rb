@@ -1,4 +1,3 @@
-require 'pathname'
 require 'yaml'
 require 'fileutils'
 require 'roma/configuration'
@@ -8,8 +7,6 @@ module Roma
 
     class ConfigCreator
       TREE_TOP = "menu"
-      LIB_PATH = Pathname(__FILE__).dirname.parent.parent
-      PLUGIN_DIR = File.expand_path(File.join(LIB_PATH, File.join("roma", "command_plugin")))
       BNUM_COEFFICIENT = 2 #reccomend1-4.
       DIVIDED_FILES = 10
       REDUNDANCY = 2
@@ -23,10 +20,9 @@ module Roma
       END_MSG = ["exit", "quit", "balse"]
 
       class Base
-        attr_accessor :all, :flag
+        attr_accessor :all
 
         def initialize
-          @flag = false
           @all = YAML.load <<-YAML
           menu:
             name:
@@ -34,12 +30,10 @@ module Roma
             message: Please select by number.
             choice:
               - Select storage
-              - Select plugin
               - Calculate File Descriptor
               - Save
             next:
               - storage
-              - plugin
               - language
               - save
 
@@ -80,49 +74,6 @@ module Roma
             default: 10000
             next: menu
 
-          plugin:
-            name: selected_plugin
-            path_name: plugin
-            message: Please select which plugin will you use.(plugin_storage.rb is essential unless you make alternative plugin.)
-            choice:
-              #{
-                list = load_path(PLUGIN_DIR) << "Select all plugins"
-                list.delete("plugin_storage.rb")
-                list.unshift("plugin_storage.rb")
-                list
-              }
-            default: 1
-            next:
-              #{
-                r = Array.new
-                load_path(PLUGIN_DIR).count.times{ r << "continue" }
-                r << "menu"
-                r
-              }
-            store_type: Array
-          continue:
-            name:
-            path_name: 
-            message: Will you use other plugin?
-            choice:
-              - Select more
-              - No more
-            default: 2
-            next:
-              - plugin
-              - check_plugin
-          check_plugin:
-            name:
-            path_name: 
-            message: ROMA requires plugin_storage.rb or substitute plugin.Will you continue without plugin_storage.rb?
-            choice:
-              - Add plugin_storage.rb
-              - Not necessary
-            default: 2
-            next:
-              - add_plugin
-              - menu
-
           language:
             name: client_language
             path_name:
@@ -160,18 +111,6 @@ module Roma
 
         def [](s)
           all[s]
-        end
-
-        def load_path(path)
-          ret = Array.new
-          files = Dir::entries(path)
-          files.delete("plugin_stub.rb") if files.include?("plugin_stub.rb")
-
-          files.each do |file|
-            ret << file if File::ftype(File.join(path, file)) == "file"
-          end
-
-          ret
         end
 
         def print_question(key, out)
@@ -223,13 +162,9 @@ module Roma
 
       class ConfigStatus
         attr_accessor :name, :value, :print, :default_value
-        def initialize(hash, input, store_type = nil)
+        def initialize(hash, input)
           @name = hash["name"]
           @value = input
-          if store_type == "Array"
-            @value = Array.new
-            @value << input
-          end
           @print = true
         end
       end
@@ -338,7 +273,7 @@ module Roma
         @next_hash = TREE_TOP
 
         defaults = Roma::Configuration::Settings.new.to_h
-        @defaults = %w(storage.engine storage.option plugins).to_h { |key| [key, defaults[key]] }
+        @defaults = %w(storage.engine storage.option).to_h { |key| [key, defaults[key]] }
         create(mode)
       end
 
@@ -348,12 +283,7 @@ module Roma
         while true
           clear_screen
 
-          if @next_hash == "add_plugin"
-            @results["plugin"].value.unshift("plugin_storage.rb") unless @results["plugin"].value.include?("plugin_storage.rb")
-            @next_hash = "menu"
-          end
-
-          skip.call if @next_hash == "menu" || @next_hash == "server" || @next_hash == "fd_server" || @next_hash == "check_plugin"
+          skip.call if @next_hash == "menu" || @next_hash == "server" || @next_hash == "fd_server"
           break if end?(@base[@next_hash])
           puts "if you doesn't input anything, default value is set."
           Box.print_with_box(@defaults, @out)
@@ -385,8 +315,6 @@ module Roma
               @next_hash = @base["server"]["next"]
             elsif @next_hash == "fd_server" && @results["server"]
               @next_hash = "fd_client"
-            elsif @next_hash == "check_plugin" && @results["plugin"].value.include?("plugin_storage.rb")
-              @next_hash = "menu"
             end
           end
         end
@@ -401,9 +329,6 @@ module Roma
             @next_hash = @base["server"]["next"]
           elsif @next_hash == "fd_server" && @results["server"]
             @next_hash = "fd_client"
-          elsif @next_hash == "check_plugin" && @results["plugin"].value.include?("plugin_storage.rb")
-            @next_hash = "language"
-            i += 1
           end
         end
       end
@@ -444,24 +369,18 @@ module Roma
           return true
         end
 
-        if hash["next"] == "continue"
-          if (input == "y" || input == "n")
+        if hash.key?('choice')
+          if hash['choice'].count >= input.to_i && input.to_i > 0
             return true
           end
         else
-          if hash.key?('choice')
-            if hash['choice'].count >= input.to_i && input.to_i > 0
+          if hash["float_flg"]
+            if 0 < input.to_f
               return true
             end
           else
-            if hash["float_flg"]
-              if 0 < input.to_f
-                return true
-              end
-            else  
-              if 0 < input.to_i
-                return true
-              end
+            if 0 < input.to_i
+              return true
             end
           end
         end
@@ -475,25 +394,11 @@ module Roma
         return results if !target["name"]
 
         if target.key?("choice")
-          if target["store_type"] == "Array"
-            if base.flag
-              results[hash].value << target["choice"][input.to_i - 1] if !results[hash].value.include?(target["choice"][input.to_i - 1])
-            else
-              results[hash] = ConfigStatus.new(target, target["choice"][input.to_i - 1], target["store_type"])
-              base.flag = true
-            end
-
-            if input.to_i == target["choice"].count
-              results[hash].value = target["choice"][0..-2]
-            end
-          else
-            results[hash] = ConfigStatus.new(target, target["choice"][input.to_i - 1])
-          end
+          results[hash] = ConfigStatus.new(target, target["choice"][input.to_i - 1])
         else
           results[hash] = ConfigStatus.new(target, input)
         end
 
-        base.flag = false if hash == "menu"
         return results
       end
 
@@ -513,7 +418,6 @@ module Roma
             results["storage.option"] = "bnum=#{bnum}\#xmsiz=#{xmsiz}\#opts=d#dfunit=10"
           end
         end
-        results["plugins"] = res["plugin"].value if res.key?("plugin")
 
         if res.key?("language")
           fd = Calculate.get_fd(res)
@@ -532,7 +436,7 @@ module Roma
         print "\r\nAfter\r\n"
         Box.print_with_box(results.transform_values(&:inspect), @out)
         print "\r\nconfig.rb has been made.\r\n"
-        print "\r\nIf you need, change the paths of the log, the routing table, the storage and write-behind, and the other settings.\r\n\r\n"
+        print "\r\nIf you need, change the paths of the log, the routing table, the storage, write-behind and the command plugins, and the other settings.\r\n\r\n"
       end
 
       # The config file with +settings+, which are the values by their paths
@@ -540,7 +444,7 @@ module Roma
       def config_body(settings)
         defaults = Roma::Configuration::Settings.new
         lines = settings.map { |path, value| "  config.#{path} = #{value.inspect}" }
-        paths = %w(log.path routing.path storage.path write_behind.path).map do |path|
+        paths = %w(log.path routing.path storage.path write_behind.path command_plugin_path).map do |path|
           "  # config.#{path} = #{path.split('.').inject(defaults) { |group, name| group.public_send(name) }.inspect}"
         end
         <<~CONFIG

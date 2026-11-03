@@ -1,3 +1,4 @@
+require 'roma/command_plugin'
 
 module Roma
   module CommandPlugin

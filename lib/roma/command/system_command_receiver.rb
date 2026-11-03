@@ -1370,7 +1370,7 @@ module Roma
         ret['config.storage.delete_mark_expire_time'] = config.storage.delete_mark_expire_time
         ret['config.storage.exception_action'] = config.storage.exception_action
         ret['config.data_copy.stream_copy_wait'] = config.data_copy.stream_copy_wait
-        ret['config.plugins'] = config.plugins.inspect
+        ret['config.command_plugin_path'] = File.expand_path(config.command_plugin_path)
         ret['config.write_behind.path'] = File.expand_path(config.write_behind.path)
         ret['config.write_behind.shift_size'] = config.write_behind.shift_size
         ret['config.connection.descriptor_table_size'] = config.connection.descriptor_table_size

@@ -17,7 +17,6 @@ class DeprecatedNamesTest < Test::Unit::TestCase
   end
 
   data('plugin_alist' => ['plugin_alist', :PluginAshiatoList, :PluginAlist],
-       'plugin_cmd_aliases' => ['plugin_cmd_aliases', :PluginCommandAliases, :PluginCmdAliases],
        'plugin_debug' => ['plugin_debug', :PluginOperation, :PluginDebug],
        'plugin_mapcount' => ['plugin_mapcount', :PluginMapCount, :PluginMapcount])
   def test_plugin(data)

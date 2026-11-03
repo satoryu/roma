@@ -101,7 +101,6 @@ The config file sets the settings in `Roma.configure`. Each one has a default, s
 Roma.configure do |config|
   config.name = 'ROMA'
   config.port = 12000
-  config.plugins = %w(plugin_storage.rb plugin_alist.rb)
 
   config.log.path = '/var/log/roma'
   config.log.level = :info
@@ -113,6 +112,8 @@ end
 ```
 
 The settings and their defaults are in [lib/roma/configuration.rb](lib/roma/configuration.rb). Without `--config`, romad runs with the defaults.
+
+The command plugins need no settings: romad loads ROMA's plugins for data, and the `*.rb` files in `./command_plugins`. See [Command plugins](docs/command_plugin.md).
 
 ### Tools
 The `roma` command has the tools to run ROMA, such as `roma route create`, `roma node send` and `roma storage recover-lost`. `roma help` lists the commands and the groups of them, `roma help GROUP` lists the commands of a group, such as `roma help route`, and `--help` after a command tells about it, such as `roma route create --help`.

@@ -33,32 +33,38 @@ runs `ev_get`.
 ### Command plugins
 
 A **command plugin** is a Ruby module that defines such methods. romad adds the
-modules you choose to `Roma::Command::Receiver`, so their methods become
-commands.
+plugin modules to `Roma::Command::Receiver`, so their methods become commands.
+
+Plugins follow a convention instead of settings: romad loads every `*.rb` file
+in the `command_plugins` directory of the current directory. There is no list
+of plugins to keep in config.rb.
 
 ROMA's own commands for data are plugins too. They are in
-[lib/roma/command_plugin/](../lib/roma/command_plugin/):
+[lib/roma/command_plugin/](../lib/roma/command_plugin/), and romad always loads
+the ones marked **bundled**:
 
-| File | Module | Commands |
-| --- | --- | --- |
-| `plugin_storage.rb` | `PluginStorage` | `get`, `set`, `delete`, `incr` and the other memcached commands |
-| `plugin_alist.rb` | `PluginAlist` | `alist_*`: a list in a value |
-| `plugin_map.rb` | `PluginMap` | `map_*`: a hash in a value |
-| `plugin_mapcount.rb` | `PluginMapcount` | `mapcount_*`: counters in a value |
-| `plugin_gui.rb` | `PluginGui` | commands for the GUI tools |
-| `plugin_debug.rb` | `PluginDebug` | `eval` and other commands for debugging |
-| `plugin_test.rb` | `PluginTest` | `echo`, a minimal sample |
+| File | Module | Commands | Bundled |
+| --- | --- | --- | --- |
+| `plugin_storage.rb` | `PluginStorage` | `get`, `set`, `delete`, `incr` and the other memcached commands | yes |
+| `plugin_alist.rb` | `PluginAlist` | `alist_*`: a list in a value | yes |
+| `plugin_map.rb` | `PluginMap` | `map_*`: a hash in a value | yes |
+| `plugin_mapcount.rb` | `PluginMapcount` | `mapcount_*`: counters in a value | yes |
+| `plugin_gui.rb` | `PluginGui` | commands for the GUI tools | yes |
+| `plugin_debug.rb` | `PluginDebug` | `eval` and other commands for debugging | no |
+| `plugin_test.rb` | `PluginTest` | `echo`, a minimal sample | no |
 
-`plugin_storage.rb` is the only plugin romad loads by default. Keep it when you
-choose other plugins, or the node has no `get` and `set`.
+`plugin_debug.rb` is not bundled, since `eval` runs any Ruby code that a client
+sends. See [Using a plugin that is not bundled](#using-a-plugin-that-is-not-bundled)
+to load it.
 
 ## How it works
 
 ```mermaid
 flowchart TD
-    config["config.rb<br>config.plugins = %w(plugin_storage.rb plugin_hello.rb)"]
-    config -->|"require roma/command_plugin/plugin_hello.rb"| file["plugin file"]
-    file -->|"include Roma::CommandPlugin<br>registers the module"| list["Roma::CommandPlugin.plugins"]
+    bundled["bundled plugins<br>roma/command_plugin/plugin_storage.rb ..."]
+    dir["command_plugins/*.rb<br>command_plugins/plugin_hello.rb"]
+    bundled -->|"require"| list
+    dir -->|"require, by file name"| list["Roma::CommandPlugin.plugins<br>(include Roma::CommandPlugin registers a module)"]
     list -->|"include each module"| receiver["Roma::Command::Receiver"]
     receiver -->|"public ev_* methods"| events["event list<br>hello → ev_hello"]
     request["request line<br>hello ROMA"] --> events
@@ -70,15 +76,26 @@ flowchart TD
 When romad starts, it does these steps in `Romad#initialize_plugin`
 ([lib/roma/romad.rb](../lib/roma/romad.rb)):
 
-1. For each file name in `config.plugins`, it requires
-   `roma/command_plugin/<file>` from `$LOAD_PATH`. If no such file is there, it
-   requires `roma/plugin/<file>` instead.
-2. Each plugin module includes `Roma::CommandPlugin`. Its `included` hook adds
+1. It requires the bundled plugins, `Roma::CommandPlugin::BUNDLED` in
+   [lib/roma/command_plugin.rb](../lib/roma/command_plugin.rb).
+2. It requires the `*.rb` files in the plugin directory, in the order of their
+   names. Files in its subdirectories are not required, so they can hold code
+   that the plugins require. If the directory doesn't exist, there are no such
+   plugins.
+3. Each plugin module includes `Roma::CommandPlugin`. Its `included` hook adds
    the module to `Roma::CommandPlugin.plugins`.
-3. romad includes every module in that list into `Roma::Command::Receiver`.
+4. romad includes every module in that list into `Roma::Command::Receiver`, in
+   the order they were added.
 
-A plugin file is just a Ruby file. It can be anywhere in `$LOAD_PATH`, as long
-as it is in a `roma/command_plugin/` directory.
+The plugin directory is `./command_plugins`, relative to the directory where
+romad starts, as the other paths of romad are. When romad starts in another
+directory, such as from systemd, set another one in config.rb:
+
+```ruby
+Roma.configure do |config|
+  config.command_plugin_path = '/etc/roma/command_plugins'
+end
+```
 
 ### Dispatching
 
@@ -138,23 +155,22 @@ and tests it. It needs ROMA installed or checked out.
 
 ### 1. Write the plugin
 
-Make a directory for your plugin, with the file in `lib/roma/command_plugin/`:
+Make a directory to run a node in, and put the plugin in its
+`command_plugins` directory:
 
 ```
 hello/
-├── config.rb
-├── lib/
-│   └── roma/
-│       └── command_plugin/
-│           └── plugin_hello.rb
+├── command_plugins/
+│   └── plugin_hello.rb
 └── test_plugin_hello.rb
 ```
 
-`test_plugin_hello.rb` comes in [step 5](#5-test-the-plugin).
+`test_plugin_hello.rb` comes in [step 4](#4-test-the-plugin).
 
-`lib/roma/command_plugin/plugin_hello.rb`:
+`command_plugins/plugin_hello.rb`:
 
 ```ruby
+require 'roma/command_plugin'
 require 'roma/command/definition'
 
 module Roma
@@ -203,39 +219,28 @@ end
   the node of the key, read the stored data and pass it to the block. See
   [Writing commands](#writing-commands).
 
-### 2. Choose the plugin in config.rb
+### 2. Start a node
 
-`config.rb`:
-
-```ruby
-Roma.configure do |config|
-  config.plugins = %w(plugin_storage.rb plugin_hello.rb)
-end
-```
-
-### 3. Start a node
-
-Make a routing table for one node with no replicas, and start romad. `RUBYLIB`
-adds your `lib` directory to `$LOAD_PATH`, so that romad finds
-`roma/command_plugin/plugin_hello.rb`.
+Make a routing table for one node with no replicas, and start romad in the same
+directory. It needs no config.rb: romad finds the plugin in `command_plugins`.
 
 ```sh
 cd hello
 roma route create localhost_11211 -r 1
-RUBYLIB=./lib roma server localhost -p 11211 -d --config config.rb
+roma server localhost -p 11211 -d
 ```
 
 The log, `localhost_11211.log`, shows that the plugin is loaded:
 
 ```
-INFO -- : roma/command_plugin/plugin_hello.rb loaded
+INFO -- : /path/to/hello/command_plugins/plugin_hello.rb loaded
 INFO -- : Roma::CommandPlugin::PluginHello included
 ```
 
 Wait for `all nodes started` in the log, up to 10 seconds. Until then, the node
 doesn't take plugin commands (see [Startup protection](#startup-protection)).
 
-### 4. Try the commands
+### 3. Try the commands
 
 Connect with telnet or nc:
 
@@ -263,7 +268,7 @@ quit
 
 To stop the node, send `balse` and then `yes`.
 
-### 5. Test the plugin
+### 4. Test the plugin
 
 The ROMA repository has a test harness,
 [test/plugin_test_harness.rb](../test/plugin_test_harness.rb). It runs plugin
@@ -275,7 +280,7 @@ hash storage, and records replication instead of sending it to other nodes.
 require 'test/unit'
 require 'plugin_test_harness'
 require 'roma/command_plugin/plugin_storage'
-require 'roma/command_plugin/plugin_hello'
+require_relative 'command_plugins/plugin_hello'
 
 class PluginHelloTest < Test::Unit::TestCase
   def setup
@@ -304,10 +309,10 @@ end
 ```
 
 Run it from a checkout of the ROMA repository next to `hello/`, with the harness
-and your plugin in the load path:
+in the load path:
 
 ```sh
-bundle exec ruby -Ilib -Itest -I../hello/lib ../hello/test_plugin_hello.rb
+bundle exec ruby -Ilib -Itest ../hello/test_plugin_hello.rb
 ```
 
 The harness is a part of ROMA's tests, not a public API. The plugins' tests in
@@ -471,17 +476,13 @@ another server stops the whole node until it ends.
 - A command name is lowercase, since the handler makes the first word lowercase
   before looking it up. It has no spaces.
 - All the plugins and the receiver share one class. If two plugins define the
-  same `ev_` method, the one included later wins without any warning. Give your
-  commands and helper methods a prefix, as `map_*` and `alist_*` do.
+  same `ev_` method, the one included later wins without any warning. The
+  plugins in the plugin directory are included after the bundled ones, and
+  among them, by the order of the file names. Give your commands and helper
+  methods a prefix, as `map_*` and `alist_*` do.
 - Only public methods are commands. Put helper methods under `private`.
 - An `r<cmd>` method is taken by `def_command_with_relay`. Don't define
   `ev_r<cmd>` yourself for such a command.
-
-### Write commands need plugin_storage.rb
-
-The `write` macros send the new value to the other nodes with `redundant`, a
-method of `PluginStorage`. Load `plugin_storage.rb` with any plugin that uses
-them, as romad does by default.
 
 ### Write behind
 
@@ -490,11 +491,16 @@ the command name, such as `{ set: 1, delete: 2 }`. The `write` macros follow it
 for plugin commands too: `<cmd>` logs the new value, and `<cmd>__prev` logs the
 value before it.
 
-### Where to put a plugin
+### Using a plugin that is not bundled
 
-romad requires `roma/command_plugin/<file>` from `$LOAD_PATH`, so these all
-work:
+A file in the plugin directory can require a plugin from anywhere. To use
+`plugin_debug.rb` on a node, for example, put this file in its
+`command_plugins` directory:
 
-- `RUBYLIB=<dir>` or `ruby -I<dir>`, as in [Getting started](#getting-started).
-- A gem with the file in `lib/roma/command_plugin/`, installed with romad.
-- A file in ROMA's own [lib/roma/command_plugin/](../lib/roma/command_plugin/).
+```ruby
+# command_plugins/plugin_debug.rb
+require 'roma/command_plugin/plugin_debug'
+```
+
+A plugin from a gem is used in the same way: install the gem, and require it
+from a file in the plugin directory.

@@ -201,9 +201,7 @@ module Roma
     end
 
     def initialize_plugin
-      Roma.config.plugins.each do|f|
-        path = plugin_path(f)
-        require path
+      Roma::CommandPlugin.require_all(Roma.config.command_plugin_path).each do |path|
         @log.info("#{path} loaded")
       end
       Roma::CommandPlugin.plugins.each do|plugin|
@@ -216,13 +214,6 @@ module Roma
       if @stats.command_protection_disabled
         Command::Receiver::make_event_list
       end
-    end
-
-    # The plugins of ROMA are in roma/command_plugin. Other plugins may be in
-    # roma/plugin, where they were before.
-    def plugin_path(file)
-      path = "roma/command_plugin/#{file}"
-      $LOAD_PATH.resolve_feature_path(path) ? path : "roma/plugin/#{file}"
     end
 
     def initialize_handler
