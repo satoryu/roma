@@ -114,7 +114,7 @@ end
 The settings and their defaults are in [lib/roma/configuration.rb](lib/roma/configuration.rb). Without `--config`, romad runs with the defaults.
 
 ### Tools
-The `roma` command has the tools to run ROMA, such as `roma route create`, `roma node command` and `roma storage recover-lost`. `roma help` lists the commands and the groups of them, `roma help GROUP` lists the commands of a group, such as `roma help route`, and `--help` after a command tells about it, such as `roma route create --help`.
+The `roma` command has the tools to run ROMA, such as `roma route create`, `roma node send` and `roma storage recover-lost`. `roma help` lists the commands and the groups of them, `roma help GROUP` lists the commands of a group, such as `roma help route`, and `--help` after a command tells about it, such as `roma route create --help`.
 
 ## Usage
 Like memcached, you can connect to ROMA with telnet. Connect to the ROMA process that you ran above.

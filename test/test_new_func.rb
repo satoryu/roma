@@ -85,7 +85,7 @@ class NewFuncTest < Test::Unit::TestCase
   end
 
   def test_adm_tool_sendcmd
-    res = `#{bin_dir}/roma node command whoami -p 11211`
+    res = `#{bin_dir}/roma node send whoami -p 11211`
     assert_equal("ROMA\n", res)
   end
 

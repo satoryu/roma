@@ -272,7 +272,7 @@ as `leave <node-id>`, and tell each other.
 
 Removing a node from a vnode leaves the vnode with fewer nodes than the
 redundancy. Such vnodes are **short**. The data is still there, but with fewer
-copies. `roma node command recover` copies the short vnodes to other nodes until each
+copies. `roma node send recover` copies the short vnodes to other nodes until each
 has the full redundancy again. With `routing.auto_recover`, ROMA does it by
 itself.
 
@@ -407,7 +407,7 @@ $ roma server localhost -p 11212 -d --replication-in-host
 `stats routing` on any node shows its routing table:
 
 ```
-$ roma node command -p 11211 "stats routing"
+$ roma node send -p 11211 "stats routing"
 routing.redundant 2
 routing.nodes.length 2
 routing.nodes ["localhost_11211", "localhost_11212"]
@@ -430,10 +430,10 @@ routing.lost_vnodes 0
 
 Other commands:
 
-- `roma node command -p 11211 nodelist` lists the nodes.
+- `roma node send -p 11211 nodelist` lists the nodes.
 - `roma cluster check roma1_11211 roma2_11211 roma3_11211` checks that the nodes
   answer and have the same nodes, and exits with 1 otherwise.
-- `roma node command -p 11211 "routingdump yaml"` prints the routing table in the format
+- `roma node send -p 11211 "routingdump yaml"` prints the routing table in the format
   of the routing file.
 
 ### Add a node
@@ -454,7 +454,7 @@ fewer primaries than its share takes vnodes, and the others answer that they
 are not unbalanced:
 
 ```
-$ roma node command -p 11211 balance
+$ roma node send -p 11211 balance
 {"localhost_11212" => "STARTED", "localhost_11211" => "SERVER_ERROR Not unbalance or othre process is already running."}
 ```
 
@@ -463,7 +463,7 @@ $ roma node command -p 11211 balance
 Release the node first, so that its vnodes go to other nodes with their data:
 
 ```
-$ roma node command --host roma4 -p 11211 release
+$ roma node send --host roma4 -p 11211 release
 STARTED
 ```
 
@@ -480,7 +480,7 @@ When a node fails, check `routing.short_vnodes`, and copy the short vnodes to
 the other nodes:
 
 ```
-$ roma node command -p 11211 recover
+$ roma node send -p 11211 recover
 {"localhost_11212" => "STARTED", "localhost_11211" => "STARTED"}
 ```
 
@@ -489,14 +489,14 @@ machine back, start its node with `--join`, as for a new node. Move its old
 routing file and logs away first: they are of the time before it failed, and
 the node would replay the old logs at its next restart.
 
-If vnodes were lost, `roma node command -p 11211 history_of_lost` lists them, and
+If vnodes were lost, `roma node send -p 11211 history_of_lost` lists them, and
 `roma storage recover-lost` pushes their data back from the storage files of the failed
 node.
 
 ### Stop and restart the cluster
 
 ```
-$ roma node command -p 11211 balse
+$ roma node send -p 11211 balse
 ```
 
 stops every node. Each node keeps its routing file and logs, and starts with
@@ -537,7 +537,7 @@ use among themselves. For example, this makes clients in 192.168.1.0/24 get
 config.routing.node_id_substitutions = { '192.168.1.0/24' => { regexp: 'roma1', replace: '192.168.1.11' } }
 ```
 
-`roma node command -p 11211 add_rttable_sub_nid 192.168.1.0/24 roma1 192.168.1.11` adds
+`roma node send -p 11211 add_rttable_sub_nid 192.168.1.0/24 roma1 192.168.1.11` adds
 one to the running nodes.
 
 ## Troubleshooting

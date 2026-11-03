@@ -7,8 +7,11 @@ module Roma
       extend Common
       check_unknown_options!
 
-      desc 'command NODE_ID COMMAND...', 'Send a command to every node in the routing table of a node'
-      def command(node_id, command, *args)
+      # The method of send is send_command, since send is Object#send.
+      map 'send' => :send_command
+
+      desc 'send NODE_ID COMMAND...', 'Send a command to every node in the routing table of a node'
+      def send_command(node_id, command, *args)
         require 'roma/tools/cluster_command'
         puts Roma::Tools::ClusterCommand.new(node_id).send_command_to_all([command, *args].join(' '))
       end
