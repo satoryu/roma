@@ -155,7 +155,7 @@ class CLITest < Test::Unit::TestCase
     node = routing_node('localhost_1', redundancy: 2)
     out, _err, status = roma('route', 'change-redundancy', '1', node.node_id)
     assert_nil status
-    routing_data = YAML.unsafe_load(out)
+    routing_data = Roma::Routing::RoutingData.load_yaml(out)
     assert_equal 1, routing_data.redundancy
     assert_equal [1], routing_data.routes.values.map(&:size).uniq
   end

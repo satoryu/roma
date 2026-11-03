@@ -1,7 +1,6 @@
 require 'roma/logging/rlogger'
 require 'roma/routing/routing_data'
 require 'roma/routing/merkle_tree'
-require 'yaml'
 require 'json'
 
 module Roma
@@ -120,7 +119,7 @@ module Roma
       end
 
       def dump_yaml
-        YAML.dump(@routing_data)
+        @routing_data.dump_yaml
       end
 
       def dump_json

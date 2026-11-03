@@ -1,4 +1,3 @@
-require 'yaml'
 require 'roma/tools/admin_client'
 require 'roma/tools/error'
 
@@ -23,7 +22,7 @@ module Roma
         routing_data.routes.each_key { |vnode| routing_data.routes[vnode] = routing_data.routes[vnode].first(redundancy) }
         routing_data.redundancy = redundancy
         routing_data.nodes.sort!
-        @out.puts YAML.dump(routing_data)
+        @out.puts routing_data.dump_yaml
       end
     end
   end

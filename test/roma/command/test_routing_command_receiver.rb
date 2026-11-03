@@ -77,7 +77,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
   def test_routingdump_yaml
     dump = @conn.request('routingdump yaml')
     assert_true dump.end_with?("\r\nEND\r\n")
-    routing_data = YAML.unsafe_load(dump.delete_suffix("\r\nEND\r\n"))
+    routing_data = Roma::Routing::RoutingData.load_yaml(dump.delete_suffix("\r\nEND\r\n"))
     assert_equal @routing_table.routes, routing_data.routes
   end
 
