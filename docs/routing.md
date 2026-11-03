@@ -119,7 +119,7 @@ flowchart LR
 The **routing file** is where a node keeps its routing table across restarts.
 Each node has its own file, named `<node-id>.route`, in the directory of the
 `routing.path` setting (the current directory by default). A node reads it when
-it starts, so it must exist before the first start. `roma mkroute` makes it.
+it starts, so it must exist before the first start. `roma route create` makes it.
 
 The file is the routing table in YAML. This is one made for two nodes with 8
 vnodes (`-d 3`):
@@ -181,7 +181,7 @@ flowchart LR
 routing file and its logs together: the file alone is the table from when the
 logs began.
 
-`roma ssroute NODE_ID` folds the logs, except the last one, into the routing
+`roma route snapshot NODE_ID` folds the logs, except the last one, into the routing
 file. It keeps the old files with a trailing `~`. Run it when the logs become
 many.
 
@@ -272,7 +272,7 @@ as `leave <node-id>`, and tell each other.
 
 Removing a node from a vnode leaves the vnode with fewer nodes than the
 redundancy. Such vnodes are **short**. The data is still there, but with fewer
-copies. `roma adm recover` copies the short vnodes to other nodes until each
+copies. `roma node command recover` copies the short vnodes to other nodes until each
 has the full redundancy again. With `routing.auto_recover`, ROMA does it by
 itself.
 
@@ -281,7 +281,7 @@ decides what happens then:
 
 - `:auto_assign` (default): the vnode gets the nodes of the next vnode that has
   any, so the keys of the vnode can be written again. The old data is gone
-  unless you put it back by `roma recoverlost`.
+  unless you put it back by `roma storage recover-lost`.
 - `:shutdown`: every node stops, so that no one reads a wrong empty value.
 - `:no_action`: the vnode stays without nodes, and requests for its keys fail.
 
@@ -342,11 +342,11 @@ sequenceDiagram
 
 ### Make the routing files
 
-`roma mkroute` takes the node IDs of the cluster and writes a routing file for
+`roma route create` takes the node IDs of the cluster and writes a routing file for
 each, `<node-id>.route`, into the current directory:
 
 ```
-$ roma mkroute roma1_11211 roma2_11211 roma3_11211
+$ roma route create roma1_11211 roma2_11211 roma3_11211
 nodes => ["roma1_11211", "roma2_11211", "roma3_11211"]
 Routing table has created.
 ```
@@ -357,9 +357,9 @@ even, but not always exact. Every file holds the same table.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `-h`, `--hash BITS` | 32 | Digest bits |
-| `-d`, `--divide BITS` | 9 | Divide bits: there are 2^BITS vnodes |
-| `-r`, `--redundant NUM` | 2 | Redundancy: nodes that hold each vnode |
+| `--digest-bits BITS` | 32 | Digest bits |
+| `-d`, `--divide-bits BITS` | 9 | Divide bits: there are 2^BITS vnodes |
+| `-r`, `--redundancy NUM` | 2 | Redundancy: nodes that hold each vnode |
 | `--replication-in-host` | off | Permit a host to hold the same vnode twice |
 
 How to choose them:
@@ -374,7 +374,7 @@ How to choose them:
   `--replication-in-host`, not more than the number of hosts.
 - **Digest bits**: keep the default. They must be the divide bits or more.
 - **`--replication-in-host`**: use it only when several nodes of the cluster are
-  on one host. Without it, `mkroute` does not put two nodes of a host in the
+  on one host. Without it, `roma route create` does not put two nodes of a host in the
   same vnode, so a cluster on one host gets vnodes with **one node only** and
   no redundancy, without any error.
 
@@ -397,7 +397,7 @@ join, leave or recover.
 For a try on one machine:
 
 ```
-$ roma mkroute localhost_11211 localhost_11212 --replication-in-host
+$ roma route create localhost_11211 localhost_11212 --replication-in-host
 $ roma server localhost -p 11211 -d --replication_in_host
 $ roma server localhost -p 11212 -d --replication_in_host
 ```
@@ -407,7 +407,7 @@ $ roma server localhost -p 11212 -d --replication_in_host
 `stats routing` on any node shows its routing table:
 
 ```
-$ roma adm -p 11211 "stats routing"
+$ roma node command -p 11211 "stats routing"
 routing.redundant 2
 routing.nodes.length 2
 routing.nodes ["localhost_11211", "localhost_11212"]
@@ -430,10 +430,10 @@ routing.lost_vnodes 0
 
 Other commands:
 
-- `roma adm -p 11211 nodelist` lists the nodes.
-- `roma check_nodes roma1_11211 roma2_11211 roma3_11211` checks that the nodes
+- `roma node command -p 11211 nodelist` lists the nodes.
+- `roma cluster check roma1_11211 roma2_11211 roma3_11211` checks that the nodes
   answer and have the same nodes, and exits with 1 otherwise.
-- `roma adm -p 11211 "routingdump yaml"` prints the routing table in the format
+- `roma node command -p 11211 "routingdump yaml"` prints the routing table in the format
   of the routing file.
 
 ### Add a node
@@ -454,7 +454,7 @@ fewer primaries than its share takes vnodes, and the others answer that they
 are not unbalanced:
 
 ```
-$ roma adm -p 11211 balance
+$ roma node command -p 11211 balance
 {"localhost_11212" => "STARTED", "localhost_11211" => "SERVER_ERROR Not unbalance or othre process is already running."}
 ```
 
@@ -463,7 +463,7 @@ $ roma adm -p 11211 balance
 Release the node first, so that its vnodes go to other nodes with their data:
 
 ```
-$ roma adm --host roma4 -p 11211 release
+$ roma node command --host roma4 -p 11211 release
 STARTED
 ```
 
@@ -480,7 +480,7 @@ When a node fails, check `routing.short_vnodes`, and copy the short vnodes to
 the other nodes:
 
 ```
-$ roma adm -p 11211 recover
+$ roma node command -p 11211 recover
 {"localhost_11212" => "STARTED", "localhost_11211" => "STARTED"}
 ```
 
@@ -489,14 +489,14 @@ machine back, start its node with `--join`, as for a new node. Move its old
 routing file and logs away first: they are of the time before it failed, and
 the node would replay the old logs at its next restart.
 
-If vnodes were lost, `roma adm -p 11211 history_of_lost` lists them, and
-`roma recoverlost` pushes their data back from the storage files of the failed
+If vnodes were lost, `roma node command -p 11211 history_of_lost` lists them, and
+`roma storage recover-lost` pushes their data back from the storage files of the failed
 node.
 
 ### Stop and restart the cluster
 
 ```
-$ roma adm -p 11211 balse
+$ roma node command -p 11211 balse
 ```
 
 stops every node. Each node keeps its routing file and logs, and starts with
@@ -505,7 +505,7 @@ and port.
 
 ### Change the redundancy
 
-`roma chg_redundancy NUM NODE_ID` prints the routing table of a running node
+`roma route change-redundancy NUM NODE_ID` prints the routing table of a running node
 with another redundancy, in the format of the routing file. A lower redundancy
 drops the last nodes of each vnode, and every clock starts over from 0.
 
@@ -537,20 +537,20 @@ use among themselves. For example, this makes clients in 192.168.1.0/24 get
 config.routing.node_id_substitutions = { '192.168.1.0/24' => { regexp: 'roma1', replace: '192.168.1.11' } }
 ```
 
-`roma adm -p 11211 add_rttable_sub_nid 192.168.1.0/24 roma1 192.168.1.11` adds
+`roma node command -p 11211 add_rttable_sub_nid 192.168.1.0/24 roma1 192.168.1.11` adds
 one to the running nodes.
 
 ## Troubleshooting
 
 **`<path>/<node-id>.route not found.`** The node has no routing file. Make it by
-`roma mkroute`, or start the node with `--join`. Check that the address and port
+`roma route create`, or start the node with `--join`. Check that the address and port
 of `roma server` match the node ID, and that the file is in `routing.path`.
 
 **The node keeps logging "I'm waiting for booting the ... instance."** A node in
 the routing table is not running. Start it, or, if it is gone for good, check
 that the node list is what you expect.
 
-**`routing.short_vnodes` is not 0 right after mkroute.** The routing was made for
+**`routing.short_vnodes` is not 0 right after `roma route create`.** The routing was made for
 one host without `--replication-in-host`, or with a redundancy higher than the
 number of hosts. Make it again.
 

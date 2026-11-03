@@ -41,7 +41,7 @@ ROMA is required to make the routing files before starting up.
 The routing file is stored the routing information of each processes.
 
 ```
-$ roma mkroute localhost_10001 localhost_10002 --replication-in-host
+$ roma route create localhost_10001 localhost_10002 --replication-in-host
 ```
 
 If succeeded, two new files which named localhost_10001.route and localhost_10002.route created in the current directory. See [Routing](docs/routing.md) for what they define.  
@@ -78,7 +78,7 @@ For example, to use SQLite3:
 
 ```
 $ gem install roma-storage-sqlite3
-$ roma mkconfig
+$ roma config create
 ```
 
 Then edit the generated `config.rb`:
@@ -114,7 +114,7 @@ end
 The settings and their defaults are in [lib/roma/configuration.rb](lib/roma/configuration.rb). Without `--config`, romad runs with the defaults.
 
 ### Tools
-The `roma` command has the tools to run ROMA, such as `roma mkroute`, `roma adm` and `roma recoverlost`. `roma help` lists them, and `roma help COMMAND` tells about one.
+The `roma` command has the tools to run ROMA, such as `roma route create`, `roma node command` and `roma storage recover-lost`. `roma help` lists the commands and the groups of them, `roma help GROUP` lists the commands of a group, such as `roma help route`, and `--help` after a command tells about it, such as `roma route create --help`.
 
 ## Usage
 Like memcached, you can connect to ROMA with telnet. Connect to the ROMA process that you ran above.

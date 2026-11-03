@@ -544,7 +544,7 @@ module Roma
           "  # config.#{path} = #{path.split('.').inject(defaults) { |group, name| group.public_send(name) }.inspect}"
         end
         <<~CONFIG
-          # The config of romad, made by roma mkconfig. Run romad with it by
+          # The config of romad, made by roma config create. Run romad with it by
           #   roma server ADDRESS --config #{File.basename(@path)}
           # The other settings and their defaults are in roma/configuration.rb.
           Roma.configure do |config|

@@ -10,28 +10,30 @@
 * roma-storage 0.2 or later, where the storage on memory is `Roma::Storage::HashStorage` in `roma/storage/hash` (`RubyHashStorage` before)
 
 ### The roma command
-The tools in `bin/` are subcommands of the new `roma` command now (`roma help` lists them), and the old commands are removed ([#8](https://github.com/satoryu/roma/issues/8)).
+The tools in `bin/` are subcommands of the new `roma` command now, and the old commands are removed ([#8](https://github.com/satoryu/roma/issues/8)). Most of them are in groups by what they work with, such as `roma route create` ([#60](https://github.com/satoryu/roma/issues/60)). `roma help` lists the commands and the groups, and `roma help route` lists the commands of the group.
 
 | Before | After |
 | --- | --- |
 | `romad` | `roma server` (`romad` stays as its alias) [#39](https://github.com/satoryu/roma/pull/39) |
-| `mkroute`, `ssroute`, `log_merger`, `mkconfig` | `roma mkroute`, `roma ssroute`, `roma log_merger`, `roma mkconfig` [#24](https://github.com/satoryu/roma/pull/24) [#25](https://github.com/satoryu/roma/pull/25) [#26](https://github.com/satoryu/roma/pull/26) |
-| `chg_redundancy`, `multi_commander` | `roma chg_redundancy NUM NODE_ID`, `roma multi_commander` [#29](https://github.com/satoryu/roma/pull/29) |
-| `recoverlost`, `recoverlost_alist`, `recoverlost_alist_all`, `recoverlost_alist_keys` | `roma recoverlost [--since TIME] [--all] [--keys FILE] [--alist]` [#30](https://github.com/satoryu/roma/pull/30) |
-| `roma-adm` | `roma adm` [#31](https://github.com/satoryu/roma/pull/31) |
-| `key_list`, `key_access`, `mkrecent` | `roma key_list`, `roma key_access`, `roma mkrecent` [#32](https://github.com/satoryu/roma/pull/32) |
-| `sample_watcher*` | `roma check_nodes`, `roma multi_commander` [#35](https://github.com/satoryu/roma/pull/35) |
-| `simple_bench`, `data_accumulation` | `roma bench` [#36](https://github.com/satoryu/roma/pull/36) |
+| `mkroute`, `ssroute`, `log_merger`, `mkconfig` | `roma route create`, `roma route snapshot`, `roma log merge`, `roma config create` [#24](https://github.com/satoryu/roma/pull/24) [#25](https://github.com/satoryu/roma/pull/25) [#26](https://github.com/satoryu/roma/pull/26) |
+| `chg_redundancy`, `multi_commander` | `roma route change-redundancy NUM NODE_ID`, `roma cluster command` [#29](https://github.com/satoryu/roma/pull/29) |
+| `recoverlost`, `recoverlost_alist`, `recoverlost_alist_all`, `recoverlost_alist_keys` | `roma storage recover-lost [--since TIME] [--all] [--keys FILE] [--alist]` [#30](https://github.com/satoryu/roma/pull/30) |
+| `roma-adm` | `roma node command` [#31](https://github.com/satoryu/roma/pull/31) |
+| `key_list`, `key_access`, `mkrecent` | `roma storage keys`, `roma storage key`, `roma storage merge` [#32](https://github.com/satoryu/roma/pull/32) |
+| `sample_watcher*` | `roma cluster check`, `roma cluster command` [#35](https://github.com/satoryu/roma/pull/35) |
+| `simple_bench`, `data_accumulation` | `roma benchmark` [#36](https://github.com/satoryu/roma/pull/36) |
+
+Some options are words too: `--hash`, `--divide` and `--redundant` of `roma route create` are `--digest-bits`, `--divide-bits` and `--redundancy` (`-h` is for the help, and `-d` and `-r` stay), the same in `roma storage merge`, and `--num` and `--rand` of `roma benchmark` are `--key-count` and `--random`.
 
 The tools print errors on the standard error and exit with 1.
 
 These tools are removed, as they are not needed [#51](https://github.com/satoryu/roma/issues/51):
-* `consistency_test`, `safecopy_test`, `safecopy_integration_test` and `test-scenario`, which are checks for developers of ROMA. `roma bench` puts load on the nodes.
+* `consistency_test`, `safecopy_test`, `safecopy_integration_test` and `test-scenario`, which are checks for developers of ROMA. `roma benchmark` puts load on the nodes.
 * `tribunus`, which finds the hosts by UDP multicast.
-* `roma_watcher`, which mails by sendmail. `roma check_nodes` exits with 1 when the nodes are wrong, so a monitoring tool can call it instead.
+* `roma_watcher`, which mails by sendmail. `roma cluster check` exits with 1 when the nodes are wrong, so a monitoring tool can call it instead.
 
 ### The config file
-The config file sets the settings in `Roma.configure`, instead of the constants of `Roma::Config` [#53](https://github.com/satoryu/roma/issues/53). The settings have defaults, and a wrong value stops romad with a message. romad doesn't read the old format, and tells so. `roma mkconfig` makes the new format.
+The config file sets the settings in `Roma.configure`, instead of the constants of `Roma::Config` [#53](https://github.com/satoryu/roma/issues/53). The settings have defaults, and a wrong value stops romad with a message. romad doesn't read the old format, and tells so. `roma config create` makes the new format.
 
 ```ruby
 # Before
@@ -70,10 +72,10 @@ end
 | `REDUNDANT_ZREDUNDANT_SIZE` | `redundant.compression_threshold` |
 | `VERSION`, `STORAGE_DUMP_PATH` | removed |
 
-The `stats` command shows the settings by these names, such as `config.log.path` (`config.LOG_PATH` before). `stats.stream_copy_wait_param`, `stats.stream_show_wait_param` and `stats.size_of_zredundant` are `stats.stream_copy_wait`, `stats.stream_show_wait` and `stats.compression_threshold` [#60](https://github.com/satoryu/roma/issues/60). The option `--divnum` of `roma mkrecent` is `--division-count` (`-n` stays).
+The `stats` command shows the settings by these names, such as `config.log.path` (`config.LOG_PATH` before). `stats.stream_copy_wait_param`, `stats.stream_show_wait_param` and `stats.size_of_zredundant` are `stats.stream_copy_wait`, `stats.stream_show_wait` and `stats.compression_threshold` [#60](https://github.com/satoryu/roma/issues/60). The option `--divnum` of `roma storage merge` is `--division-count` (`-n` stays).
 
 ### Routing names
-The abbreviated names of the routing are words now [#60](https://github.com/satoryu/roma/issues/60). ROMA 2.0 doesn't read a routing file of 1.x: make it again by `roma mkroute`.
+The abbreviated names of the routing are words now [#60](https://github.com/satoryu/roma/issues/60). ROMA 2.0 doesn't read a routing file of 1.x: make it again by `roma route create`.
 
 | Before | After |
 | --- | --- |

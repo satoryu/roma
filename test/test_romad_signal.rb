@@ -13,7 +13,7 @@ class RomadSignalTest < Test::Unit::TestCase
 
   def setup
     FileUtils.rm_rf(DEFAULT_NODES.map { |node| "#{Roma.config.storage.path}/#{node}" })
-    system("#{ruby_path} #{roma_path} mkroute #{DEFAULT_NODES.join(' ')} -d 3 --replication_in_host >> #{SHELL_LOG} 2>&1")
+    system("#{ruby_path} #{roma_path} route create #{DEFAULT_NODES.join(' ')} -d 3 --replication_in_host >> #{SHELL_LOG} 2>&1")
     @pids = []
   end
 

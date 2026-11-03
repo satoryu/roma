@@ -26,7 +26,7 @@ class RecoverLostTest < Test::Unit::TestCase
     @storage.vn_list = @routing_data.routes.keys
     @storage.each_vn_dump_sleep = 0
     @storage.opendb
-    # A directory of a hash, as recoverlost finds in the storage path.
+    # A directory of a hash, as roma storage recover-lost finds in the storage path.
     FileUtils.mkdir_p(File.join(@dir, 'roma'))
     @out = StringIO.new
   end
