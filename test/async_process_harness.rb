@@ -39,7 +39,7 @@ class AsyncProcessHarness
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
     # Choose the nodes of every vnode, instead of at random.
     routing_data.routes.each_key { |vnode| routing_data.routes[vnode] = vnode_nodes.dup } if vnode_nodes
-    @routing_table = Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route'))
+    @routing_table = Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route.yml'))
     @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = routing_data.routes.keys
     @storage.storage_path = @dir

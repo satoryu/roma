@@ -3,7 +3,7 @@ require 'roma/tools/error'
 
 module Roma
   module Tools
-    # Makes the routing table and writes it into <node-id>.route for each node.
+    # Makes the routing table and writes it into <node-id>.route.yml for each node.
     class RouteCreator
       # +out+ is where messages go, and +dir+ is where the files are written.
       def initialize(out: $stdout, dir: '.')
@@ -26,7 +26,7 @@ module Roma
         end
 
         routing_data = Roma::Routing::RoutingData.create(digest_bits, divide_bits, redundancy, nodes, replication_in_host)
-        nodes.each { |node_id| routing_data.save(File.join(@dir, "#{node_id}.route")) }
+        nodes.each { |node_id| routing_data.save(File.join(@dir, Roma::Routing::RoutingData.file_name(node_id))) }
         @out.puts "nodes => #{nodes}"
         @out.puts "Routing table has created."
       end

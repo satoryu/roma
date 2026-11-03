@@ -44,7 +44,7 @@ The routing file is stored the routing information of each processes.
 $ roma route create localhost_10001 localhost_10002 --replication-in-host
 ```
 
-If succeeded, two new files which named localhost_10001.route and localhost_10002.route created in the current directory. See [Routing](docs/routing.md) for what they define.  
+If succeeded, two new files which named localhost_10001.route.yml and localhost_10002.route.yml created in the current directory. See [Routing](docs/routing.md) for what they define.  
 Refer to [Commands](http://roma-kvs.org/commands.html "Commands") for more detail information about Shell Commands.  
 
 ### Start up ROMA

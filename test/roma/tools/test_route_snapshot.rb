@@ -9,12 +9,12 @@ class RouteSnapshotTest < Test::Unit::TestCase
 
   def setup
     super
-    @fname = File.join(@dir, 'host1_1.route')
+    @fname = File.join(@dir, 'host1_1.route.yml')
     Roma::Routing::RoutingData.create(32, 3, 1, ['host1_1']).save(@fname)
   end
 
   def write_log(n, line)
-    File.write("#{@fname}.#{n}", "2026-01-01T00:00:00.1 #{line}\n")
+    File.write(File.join(@dir, "host1_1.route.#{n}"), "2026-01-01T00:00:00.1 #{line}\n")
   end
 
   def snapshot(node_id)
@@ -28,7 +28,7 @@ class RouteSnapshotTest < Test::Unit::TestCase
     write_log(2, 'join host3_1')
     assert_equal "succeed\n", snapshot('host1:1')
     assert_equal %w(host1_1 host2_1), Roma::Routing::RoutingData.load_snapshot(@fname).nodes
-    assert_equal %w(host1_1.route host1_1.route.1~ host1_1.route.2 host1_1.route~), Dir.children(@dir).sort
+    assert_equal %w(host1_1.route.1~ host1_1.route.2 host1_1.route.yml host1_1.route.yml~), Dir.children(@dir).sort
   end
 
   # The last log is still being written.

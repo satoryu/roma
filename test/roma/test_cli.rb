@@ -39,7 +39,7 @@ class CLITest < Test::Unit::TestCase
   end
 
   def load_route(node_id)
-    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{node_id}.route"))
+    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{node_id}.route.yml"))
   end
 
   def test_commands
@@ -125,7 +125,7 @@ class CLITest < Test::Unit::TestCase
 
   def test_route_snapshot
     routing_data = Roma::Routing::RoutingData.create(32, 3, 1, ['host1_1'])
-    routing_data.save(File.join(@dir, 'host1_1.route'))
+    routing_data.save(File.join(@dir, 'host1_1.route.yml'))
     2.times { |i| File.write(File.join(@dir, "host1_1.route.#{i + 1}"), "2026-01-01T00:00:00.1 join host#{i + 2}_1\n") }
     out, _err, status = roma('route', 'snapshot', 'host1_1')
     assert_nil status
@@ -457,7 +457,7 @@ class CLITest < Test::Unit::TestCase
     out, _err, status = run_roma('route', 'create', '-d', '3', 'host1_1', 'host2_1')
     assert_true status.success?
     assert_match(/Routing table has created/, out)
-    assert_equal %w(host1_1.route host2_1.route), Dir.children(@dir).sort
+    assert_equal %w(host1_1.route.yml host2_1.route.yml), Dir.children(@dir).sort
     _out, err, status = run_roma('route', 'create')
     assert_equal 1, status.exitstatus
     assert_match(/called with no arguments/, err)
