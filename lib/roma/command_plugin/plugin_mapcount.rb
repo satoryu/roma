@@ -182,9 +182,5 @@ module Roma
 
       PLUGIN_MAPCOUNT_VERSION = "1.0.1"
     end # PluginMapcount
-
-    # Deprecated: the old name of PluginMapcount.
-    PluginMapCount = PluginMapcount
-    deprecate_constant :PluginMapCount
   end # CommandPlugin
 end # Roma

@@ -91,7 +91,7 @@ A client that reads the routing table by `routingdump` (in Marshal or YAML) need
 The internal names are words, too, such as `@routing_table`, `node_id`, `vnode`, `clock`, `expire_time` and `hash_name` (`@rttable`, `nid`, `vn`, `clk`, `expt` and `hname` before). A plugin uses `params.vnode`, `data.clock` and `data.expire_time` of `Roma::Command::Definition`. `stats.routing_trans_timeout` is `stats.routing_transaction_timeout`. The protocol commands keep their names.
 
 ### File names
-The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins require, stays as a deprecated alias of `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)
+The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins required, is `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)
 
 The plugins are in `roma/command_plugin/`, after their namespace `Roma::CommandPlugin`, and named after their files [#49](https://github.com/satoryu/roma/pull/49):
 
@@ -99,12 +99,11 @@ The plugins are in `roma/command_plugin/`, after their namespace `Roma::CommandP
 | --- | --- |
 | `roma/plugin/plugin_*.rb` | `roma/command_plugin/plugin_*.rb` |
 | `Roma::CommandPlugin::PluginAshiatoList` | `Roma::CommandPlugin::PluginAlist` |
-| `Roma::CommandPlugin::PluginCommandAliases` | `Roma::CommandPlugin::PluginCmdAliases` |
 | `Roma::CommandPlugin::PluginOperation` | `Roma::CommandPlugin::PluginDebug` |
 | `Roma::CommandPlugin::PluginMapCount` | `Roma::CommandPlugin::PluginMapcount` |
 | `Roma::Command::Definition::ClientErrorException`, `ServerErrorException` | `ClientError`, `ServerError`, which inherit `StandardError` |
 
-The old files and names stay as deprecated aliases.
+The old files and names are removed, with no aliases. [Porting a plugin from ROMA 1.x](docs/command_plugin.md#porting-a-plugin-from-roma-1x) lists what a 1.x plugin needs to change.
 
 ### Command plugins
 romad loads the command plugins by a convention, instead of a list in the config file. `PLUGIN_FILES` is removed, and there is no setting to list the plugins. See [Command plugins](docs/command_plugin.md).

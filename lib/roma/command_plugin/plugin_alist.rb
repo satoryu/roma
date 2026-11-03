@@ -1469,9 +1469,5 @@ module Roma
       end
 
     end #  PluginAlist
-
-    # Deprecated: the old name of PluginAlist.
-    PluginAshiatoList = PluginAlist
-    deprecate_constant :PluginAshiatoList
   end # CommandPlugin
 end # Roma
