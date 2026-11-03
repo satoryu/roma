@@ -45,7 +45,7 @@ module RomadTestHelper
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
     routing_data.routes.each_key { |vnode| routing_data.routes[vnode] = nodes.dup }
     set(stats: stats, log: Logger.new(nil), startup: true,
-        routing_table: Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route')),
+        routing_table: Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route.yml')),
         storages: {})
     @romad
   end
@@ -211,8 +211,8 @@ class RomadInitializeTest < Test::Unit::TestCase
   # The routing file of this node, and its log, which the routing table
   # writes next to it.
   def routing_file
-    fname = "#{Roma.config.routing.path}/#{ap}.route"
-    @files.push(fname, "#{fname}.1")
+    fname = "#{Roma.config.routing.path}/#{ap}.route.yml"
+    @files.push(fname, "#{Roma.config.routing.path}/#{ap}.route.1")
     fname
   end
 
@@ -447,7 +447,7 @@ class RomadRoutingSyncTest < Test::Unit::TestCase
   def test_routing_hash_comparison_inconsistent
     romad
     other = Roma::Routing::ChurnbasedRoutingTable.new(
-      Marshal.load(Marshal.dump(@romad.routing_table.instance_variable_get(:@routing_data))), File.join(@dir, 'other.route'))
+      Marshal.load(Marshal.dump(@romad.routing_table.instance_variable_get(:@routing_data))), File.join(@dir, 'other.route.yml'))
     vnode = other.routes.keys[3]
     other.set_route(vnode, 0, [OTHER_NODE_ID])
     sent = stub_send_cmd(

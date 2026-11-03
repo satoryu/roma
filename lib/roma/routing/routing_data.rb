@@ -15,6 +15,17 @@ module Roma
       attr_accessor :routes
       attr_accessor :clocks
 
+      # The routing file of a node, such as roma0_3300.route.yml.
+      def self.file_name(node_id)
+        "#{node_id}.route.yml"
+      end
+
+      # The logs of the routing file +fname+ are this and a number, such as
+      # roma0_3300.route.1, since they are not YAML.
+      def self.log_prefix(fname)
+        fname.delete_suffix('.yml')
+      end
+
       def initialize(digest_bits,divide_bits,redundancy)
         @digest_bits=digest_bits
         @divide_bits=divide_bits
@@ -233,14 +244,15 @@ module Roma
       end
 
       # Returns the log file list by old ordered.
-      # +fname+:: Prefix of a log file.(ex.roma0_3300.route)
+      # +fname+:: The routing file.(ex.roma0_3300.route.yml)
       # One of the following example:
       #   [[1, "roma0_3300.route.1"], [2, "roma0_3300.route.2"]]
       def get_file_list(fname)
+        prefix=RoutingData.log_prefix(fname)
         l={}
-        files=Dir.glob("#{fname}*")
+        files=Dir.glob("#{prefix}.*")
         files.each{ |file|
-          if /#{fname}\.(\d+)$/=~file
+          if /\A#{Regexp.escape(prefix)}\.(\d+)\z/=~file
             l[$1.to_i]=$&
           end
         }

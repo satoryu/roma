@@ -14,7 +14,7 @@ class RouteCreatorTest < Test::Unit::TestCase
   end
 
   def load_route(node_id)
-    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{node_id}.route"))
+    Roma::Routing::RoutingData.load_snapshot(File.join(@dir, "#{node_id}.route.yml"))
   end
 
   def test_create

@@ -117,7 +117,7 @@ flowchart LR
 ## The routing file
 
 The **routing file** is where a node keeps its routing table across restarts.
-Each node has its own file, named `<node-id>.route`, in the directory of the
+Each node has its own file, named `<node-id>.route.yml`, in the directory of the
 `routing.path` setting (the current directory by default). A node reads it when
 it starts, so it must exist before the first start. `roma route create` makes it.
 
@@ -153,7 +153,7 @@ vnode to its clock.
 
 A running node does not rewrite the routing file. It appends each change of its
 routing table to a **routing log** next to it: `<node-id>.route.1`,
-`<node-id>.route.2`, and so on. A log goes on to the next number when it grows
+`<node-id>.route.2`, and so on. The logs have no `.yml`, since they are not YAML. A log goes on to the next number when it grows
 over about 1 MB. Each line is a time and one change:
 
 ```
@@ -172,7 +172,7 @@ order, so it starts with the routing table it had when it stopped.
 
 ```mermaid
 flowchart LR
-    file["roma1_11211.route<br>the table when the logs began"] --> replay
+    file["roma1_11211.route.yml<br>the table when the logs began"] --> replay
     log1["roma1_11211.route.1"] --> replay
     log2["roma1_11211.route.2"] --> replay
     replay(["read and replay in order"]) --> table["routing table<br>in memory"]
@@ -343,7 +343,7 @@ sequenceDiagram
 ### Make the routing files
 
 `roma route create` takes the node IDs of the cluster and writes a routing file for
-each, `<node-id>.route`, into the current directory:
+each, `<node-id>.route.yml`, into the current directory:
 
 ```
 $ roma route create roma1_11211 roma2_11211 roma3_11211
@@ -542,7 +542,7 @@ one to the running nodes.
 
 ## Troubleshooting
 
-**`<path>/<node-id>.route not found.`** The node has no routing file. Make it by
+**`<path>/<node-id>.route.yml not found.`** The node has no routing file. Make it by
 `roma route create`, or start the node with `--join`. Check that the address and port
 of `roma server` match the node ID, and that the file is in `routing.path`.
 

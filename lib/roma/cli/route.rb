@@ -7,7 +7,7 @@ module Roma
       extend Common
       check_unknown_options!
 
-      desc 'create NODE_ID...', 'Make the routing table and write it into NODE_ID.route for each node'
+      desc 'create NODE_ID...', 'Make the routing table and write it into NODE_ID.route.yml for each node'
       option :digest_bits, type: :numeric, default: 32, banner: 'BITS', desc: 'Digest bit count'
       option :divide_bits, aliases: '-d', type: :numeric, default: 9, banner: 'BITS',
                            desc: 'Dividing bit count, which makes 2^BITS virtual nodes'
@@ -22,7 +22,7 @@ module Roma
                                         replication_in_host: options[:replication_in_host])
       end
 
-      desc 'snapshot NODE_ID', 'Put the routing logs of a node, but the last one, into NODE_ID.route'
+      desc 'snapshot NODE_ID', 'Put the routing logs of a node, but the last one, into NODE_ID.route.yml'
       def snapshot(node_id)
         require 'roma/tools/route_snapshot'
         Roma::Tools::RouteSnapshot.new.snapshot(node_id)

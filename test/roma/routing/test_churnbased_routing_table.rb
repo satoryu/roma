@@ -8,7 +8,7 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
 
   def setup
     @dir = Dir.mktmpdir('roma_rttable')
-    @fname = File.join(@dir, 'test.route')
+    @fname = File.join(@dir, 'test.route.yml')
   end
 
   def teardown
@@ -21,7 +21,7 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
   end
 
   def log_lines
-    File.readlines("#{@fname}.1").map { |l| l.split(' ', 2)[1].chomp }
+    File.readlines(File.join(@dir, 'test.route.1')).map { |l| l.split(' ', 2)[1].chomp }
   end
 
   def test_set_route

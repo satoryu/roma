@@ -9,7 +9,8 @@ class RoutingDataTest < Test::Unit::TestCase
   self.test_order = :defined
   def setup
     @dir = Dir.mktmpdir('roma_routing_data')
-    @fname = File.join(@dir, 'routing_data.test.route')
+    @fname = File.join(@dir, 'routing_data.test.route.yml')
+    @log_prefix = File.join(@dir, 'routing_data.test.route')
   end
 
   def teardown
@@ -148,7 +149,7 @@ class RoutingDataTest < Test::Unit::TestCase
   # The routing table writes its changes to logs next to the file:
   # <file>.1, <file>.2 and so on. Lines starting with # are comments.
   def write_log(n, *lines)
-    File.write("#{@fname}.#{n}", lines.map { |l| l.start_with?('#') ? "#{l}\n" : "2026-01-01T00:00:00.1 #{l}\n" }.join)
+    File.write("#{@log_prefix}.#{n}", lines.map { |l| l.start_with?('#') ? "#{l}\n" : "2026-01-01T00:00:00.1 #{l}\n" }.join)
   end
 
   def test_load_with_logs
@@ -176,8 +177,24 @@ class RoutingDataTest < Test::Unit::TestCase
     assert_true Roma::Routing::RoutingData.snapshot(@fname)
     assert_equal ['roma0_3300', 'roma1_3300'], Roma::Routing::RoutingData.load_snapshot(@fname).nodes
     assert_true File.exist?("#{@fname}~")
-    assert_true File.exist?("#{@fname}.1~")
-    assert_true File.exist?("#{@fname}.2")
+    assert_true File.exist?("#{@log_prefix}.1~")
+    assert_true File.exist?("#{@log_prefix}.2")
+  end
+
+  # The routing file is YAML, and its logs are not.
+  def test_file_name_and_log_prefix
+    assert_equal 'roma0_3300.route.yml', Roma::Routing::RoutingData.file_name('roma0_3300')
+    assert_equal '/var/roma/roma0_3300.route', Roma::Routing::RoutingData.log_prefix('/var/roma/roma0_3300.route.yml')
+  end
+
+  # A backup of a log, such as roma0_3300.route.1~, is not a log.
+  def test_get_file_list
+    write_log(2, 'join roma1_3300')
+    write_log(10, 'join roma2_3300')
+    File.write("#{@log_prefix}.1~", '')
+    File.write("#{@fname}~", '')
+    assert_equal [[2, "#{@log_prefix}.2"], [10, "#{@log_prefix}.10"]],
+                 Roma::Routing::RoutingData.new(32, 3, 1).get_file_list(@fname)
   end
 
   def test_snapshot_without_enough_logs

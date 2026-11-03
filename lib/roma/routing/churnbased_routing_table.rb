@@ -86,13 +86,14 @@ module Roma
 
       def open_log
         log_list=@routing_data.get_file_list(@fname)
+        prefix=RoutingData.log_prefix(@fname)
         if log_list.length==0
-          @log_name="#{@fname}.1"
+          @log_name="#{prefix}.1"
         else
-          if File::stat("#{@fname}.#{log_list.last[0]}").size == 0
-            @log_name="#{@fname}.#{log_list.last[0]}"
+          if File::stat("#{prefix}.#{log_list.last[0]}").size == 0
+            @log_name="#{prefix}.#{log_list.last[0]}"
           else
-            @log_name="#{@fname}.#{log_list.last[0]+1}"
+            @log_name="#{prefix}.#{log_list.last[0]+1}"
           end
         end
         @log_fd=File.open(@log_name,"a")

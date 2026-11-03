@@ -366,7 +366,7 @@ module Roma
       if @stats.join_node_id
         initialize_rttable_join
       else
-        fname = "#{routing.path}/#{@stats.my_node_id}.route"
+        fname = File.join(routing.path, Roma::Routing::RoutingData.file_name(@stats.my_node_id))
         raise "#{fname} not found." unless File::exist?(fname)
         routing_data = Roma::Routing::RoutingData::load(fname)
         raise "It failed in loading the routing table data." unless routing_data
@@ -415,7 +415,7 @@ module Roma
           "me = \"#{@stats.name}\"  #{@stats.join_node_id} = \"#{name}\""
       end
 
-      fname = "#{Roma.config.routing.path}/#{@stats.my_node_id}.route"
+      fname = File.join(Roma.config.routing.path, Roma::Routing::RoutingData.file_name(@stats.my_node_id))
       if routing_data = get_routedump(@stats.join_node_id)
         routing_data.save(fname)
       else
