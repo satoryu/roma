@@ -2,14 +2,14 @@ require 'test_helper'
 require 'stringio'
 require 'fake_node'
 require 'tool_test_helper'
-require 'roma/tools/adm'
+require 'roma/tools/node_command'
 
-class AdmTest < Test::Unit::TestCase
+class NodeCommandTest < Test::Unit::TestCase
   include ToolTestHelper
 
   def run_adm(cmd, input: '', **opts)
     @out = StringIO.new
-    Roma::Tools::Adm.new(input: StringIO.new(input), out: @out).run(@node.node_id, cmd, **opts)
+    Roma::Tools::NodeCommand.new(input: StringIO.new(input), out: @out).run(@node.node_id, cmd, **opts)
   end
 
   def setup

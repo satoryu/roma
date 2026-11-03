@@ -13,8 +13,8 @@ module Roma
       option :value, aliases: '-v', desc: 'The value of a command that stores one, instead of asking for it'
       option :yes, aliases: '-y', type: :boolean, default: false, desc: 'Stop nodes by balse or shutdown without asking'
       def command(command, *args)
-        require 'roma/tools/adm'
-        puts Roma::Tools::Adm.new.run("#{options[:host]}_#{options[:port]}", [command, *args].join(' '),
+        require 'roma/tools/node_command'
+        puts Roma::Tools::NodeCommand.new.run("#{options[:host]}_#{options[:port]}", [command, *args].join(' '),
                                       value: options[:value], yes: options[:yes])
       end
     end

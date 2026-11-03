@@ -3,10 +3,10 @@ require 'stringio'
 require 'tool_test_helper'
 require 'mem_storage_helper'
 require 'roma/storage/hash'
-require 'roma/tools/mk_recent'
+require 'roma/tools/storage_merger'
 require 'roma/configuration'
 
-class MkRecentTest < Test::Unit::TestCase
+class StorageMergerTest < Test::Unit::TestCase
   include ToolTestHelper
   include MemStorageHelper
 
@@ -18,7 +18,7 @@ class MkRecentTest < Test::Unit::TestCase
   end
 
   def tool
-    tool = Roma::Tools::MkRecent.new(out: @out)
+    tool = Roma::Tools::StorageMerger.new(out: @out)
     storages = @storages
     closed = @closed
     real = Roma::Tools::StorageFiles
@@ -34,7 +34,7 @@ class MkRecentTest < Test::Unit::TestCase
   end
 
   def make(**opts)
-    tool.make(File.join(@dir, 'a'), File.join(@dir, 'b'), @recent, hash_bits: 32, divide_bits: 1, **opts)
+    tool.merge(File.join(@dir, 'a'), File.join(@dir, 'b'), @recent, digest_bits: 32, divide_bits: 1, **opts)
   end
 
   def get(storage, key)
@@ -59,8 +59,8 @@ class MkRecentTest < Test::Unit::TestCase
   end
 
   def test_divide_bits_too_many
-    assert_raise_message('The hash bits should be divide bits or more.') do
-      tool.make('a', 'b', @recent, hash_bits: 8, divide_bits: 9)
+    assert_raise_message('The digest bits should be divide bits or more.') do
+      tool.merge('a', 'b', @recent, digest_bits: 8, divide_bits: 9)
     end
     assert_false File.exist?(@recent)
   end

@@ -4,7 +4,7 @@ module Roma
   module Tools
     # Sends set, get and delete requests to nodes, and writes how many and
     # how fast every +interval+ seconds.
-    class Bench
+    class Benchmark
       # Counts the requests and their times.
       class Stats
         def initialize
@@ -56,7 +56,7 @@ module Roma
         end
       end
 
-      MODES = %i(set get rand).freeze
+      MODES = %i(set get random).freeze
 
       # +client+ makes a client for each thread. Requests that fail are
       # written to +out+.
@@ -74,16 +74,16 @@ module Roma
       end
 
       # Runs +modes+ in order in each of +threads+: :set sets key_0 ... and
-      # :get gets them, +num+ keys, and :rand sends random requests on +num+
-      # keys until +duration+ seconds pass, or forever. A value is random
+      # :get gets them, +key_count+ keys, and :random sends random requests on
+      # +key_count+ keys until +duration+ seconds pass, or forever. A value is random
       # letters of +value_size+ if it is given.
-      def run(modes, num: 10_000, threads: 1, value_size: nil, duration: nil)
+      def run(modes, key_count: 10_000, threads: 1, value_size: nil, duration: nil)
         @stats.reporting(@out, @interval) do
           workers = Array.new(threads) do |i|
             @out.puts "Start thread #{i}"
             Thread.new do
               client = @client.call
-              modes.each { |mode| send("run_#{mode}", client, num, value_size, duration) }
+              modes.each { |mode| send("run_#{mode}", client, key_count, value_size, duration) }
             ensure
               client&.close
             end
@@ -98,41 +98,41 @@ module Roma
         value_size ? Array.new(value_size) { rand(97..122).chr }.join : "value_#{i}"
       end
 
-      def run_set(client, num, value_size, _duration)
+      def run_set(client, key_count, value_size, _duration)
         @out.puts 'set_sequence'
-        num.times do |i|
-          request(client, "set k=#{i}") { |c| c.set("key_#{i}", value(i, value_size)) == 'STORED' }
-          @out.puts "=====#{i * 100 / num}%(#{i}keys) has finished.=====" if i > 0 && i % 100_000 == 0
+        key_count.times do |i|
+          request("set k=#{i}") { client.set("key_#{i}", value(i, value_size)) == 'STORED' }
+          @out.puts "=====#{i * 100 / key_count}%(#{i}keys) has finished.=====" if i > 0 && i % 100_000 == 0
         end
       end
 
       # The values are checked unless they are random.
-      def run_get(client, num, value_size, _duration)
+      def run_get(client, key_count, value_size, _duration)
         @out.puts 'get_sequence'
-        num.times do |i|
-          request(client, "get k=#{i}") do |c|
-            got = c.get("key_#{i}")
+        key_count.times do |i|
+          request("get k=#{i}") do
+            got = client.get("key_#{i}")
             value_size ? !got.nil? : got == "value_#{i}"
           end
         end
       end
 
-      def run_rand(client, num, value_size, duration)
+      def run_random(client, key_count, value_size, duration)
         @out.puts 'random_request_sender'
         stop = duration && Process.clock_gettime(Process::CLOCK_MONOTONIC) + duration
         until @stop || (stop && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= stop)
-          i = rand(num)
+          i = rand(key_count)
           case rand(3)
-          when 0 then request(client, "set k=#{i}") { |c| c.set(i.to_s, value(i, value_size)) == 'STORED' }
-          when 1 then request(client, "get k=#{i}") { |c| c.get(i.to_s); true }
-          else request(client, "del k=#{i}") { |c| %w(DELETED NOT_FOUND).include?(c.delete(i.to_s)) }
+          when 0 then request("set k=#{i}") { client.set(i.to_s, value(i, value_size)) == 'STORED' }
+          when 1 then request("get k=#{i}") { client.get(i.to_s); true }
+          else request("del k=#{i}") { %w(DELETED NOT_FOUND).include?(client.delete(i.to_s)) }
           end
         end
       end
 
       # The block returns false for a wrong reply.
-      def request(client, label)
-        ok = @stats.measure { yield client }
+      def request(label)
+        ok = @stats.measure { yield }
         @out.puts "#{label} failed" unless ok
       rescue Error => e
         @out.puts "#{label} #{e.message}"

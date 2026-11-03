@@ -4,7 +4,7 @@ require 'roma/routing/routing_data'
 require 'yaml'
 
 if ENV['OPTIONAL']
-  class MkrouteRichTest < Test::Unit::TestCase
+  class RichRoutingTest < Test::Unit::TestCase
     self.test_order = :defined
     def setup
     end

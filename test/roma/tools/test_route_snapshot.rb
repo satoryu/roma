@@ -2,9 +2,9 @@ require 'test_helper'
 require 'stringio'
 require 'tool_test_helper'
 require 'roma/routing/routing_data'
-require 'roma/tools/ssroute'
+require 'roma/tools/route_snapshot'
 
-class SsrouteTest < Test::Unit::TestCase
+class RouteSnapshotTest < Test::Unit::TestCase
   include ToolTestHelper
 
   def setup
@@ -19,7 +19,7 @@ class SsrouteTest < Test::Unit::TestCase
 
   def snapshot(node_id)
     out = StringIO.new
-    Roma::Tools::Ssroute.new(out: out, dir: @dir).snapshot(node_id)
+    Roma::Tools::RouteSnapshot.new(out: out, dir: @dir).snapshot(node_id)
     out.string
   end
 

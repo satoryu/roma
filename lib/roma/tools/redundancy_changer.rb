@@ -6,7 +6,7 @@ module Roma
   module Tools
     # Makes a routing table with another redundancy from the one of a node,
     # and writes it in YAML, the format of the routing files.
-    class ChgRedundancy
+    class RedundancyChanger
       # +out+ is where the routing table goes.
       def initialize(out: $stdout, client: AdminClient.new)
         @out = out
