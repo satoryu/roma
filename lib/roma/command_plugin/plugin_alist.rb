@@ -1,3 +1,4 @@
+require 'roma/command_plugin'
 require 'timeout'
 require 'roma/messaging/con_pool'
 require 'json'

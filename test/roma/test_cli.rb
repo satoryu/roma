@@ -432,14 +432,14 @@ class CLITest < Test::Unit::TestCase
 
   # It reads the answers from the standard input.
   def test_config_create
-    _out, err, status = run_roma('config', 'create', stdin: "1\n\n2\n1\n\n\n")
+    _out, err, status = run_roma('config', 'create', stdin: "1\n1\n\n\n")
     assert_true status.success?, err
     assert_match(/^  config.storage.engine = :hash$/, File.read(File.join(@dir, 'config.rb')))
   end
 
   data('short' => '-m', 'long' => '--with-menu', 'underscore' => '--with_menu')
   def test_config_create_with_menu(option)
-    out, err, status = run_roma('config', 'create', option, stdin: "4\n")
+    out, err, status = run_roma('config', 'create', option, stdin: "3\n")
     assert_true status.success?, err
     assert_match(/Please select by number/, out)
     assert_true File.exist?(File.join(@dir, 'config.rb'))

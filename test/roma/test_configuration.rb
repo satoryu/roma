@@ -13,7 +13,7 @@ class ConfigurationTest < Test::Unit::TestCase
   def test_defaults
     assert_equal 'ROMA', @config.name
     assert_equal 12000, @config.port
-    assert_equal ['plugin_storage.rb'], @config.plugins
+    assert_equal './command_plugins', @config.command_plugin_path
     assert_equal :auto_assign, @config.routing.lost_action
     assert_equal :debug, @config.log.level
     assert_equal 5, @config.connection.pool.max
@@ -25,10 +25,8 @@ class ConfigurationTest < Test::Unit::TestCase
 
   # A mutable default is not shared with another config.
   def test_defaults_are_copied
-    @config.plugins << 'plugin_alist.rb'
     @config.routing.node_id_substitutions['10.0.0.0/8'] = {}
     other = Roma::Configuration::Settings.new
-    assert_equal ['plugin_storage.rb'], other.plugins
     assert_equal({}, other.routing.node_id_substitutions)
   end
 
@@ -52,7 +50,7 @@ class ConfigurationTest < Test::Unit::TestCase
        'nested' => [->(c) { c.connection.pool.max = 1.5 }, /\Aconnection.pool.max should be a valid Integer: 1.5\z/],
        'continuous limit' => [->(c) { c.connection.continuous_limit = '1:2' }, /continuous_limit should be/],
        'engine' => [->(c) { c.storage.engine = :'my-kvs' }, /\Astorage.engine should be a valid Symbol or Class: :"my-kvs"\z/],
-       'plugins' => [->(c) { c.plugins = [1] }, /\Aplugins should be/])
+       'command plugin path' => [->(c) { c.command_plugin_path = nil }, /\Acommand_plugin_path should be/])
   def test_wrong_value(data)
     set, message = data
     error = assert_raise(Roma::Configuration::Error) { set.call(@config) }

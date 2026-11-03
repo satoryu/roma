@@ -279,18 +279,21 @@ class RomadInitializeTest < Test::Unit::TestCase
     assert_equal %w(hash1 hash2), @romad.storages.keys.sort
   end
 
-  def test_plugin_path
-    assert_equal 'roma/command_plugin/plugin_storage.rb', call(:plugin_path, 'plugin_storage.rb')
-  end
-
-  # Plugins of others may be in roma/plugin, where ROMA's were.
-  def test_plugin_path_of_another_plugin
-    FileUtils.mkdir_p(File.join(@dir, 'roma/plugin'))
-    File.write(File.join(@dir, 'roma/plugin/plugin_another.rb'), '')
-    $LOAD_PATH.unshift(@dir)
-    assert_equal 'roma/plugin/plugin_another.rb', call(:plugin_path, 'plugin_another.rb')
+  # The bundled plugins and the ones in the plugin directory become commands.
+  def test_initialize_plugin
+    dir = File.join(@dir, 'command_plugins')
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, 'plugin_romad_test.rb'), <<~RUBY)
+      module Roma::CommandPlugin::PluginRomadTest
+        include Roma::CommandPlugin
+      end
+    RUBY
+    Roma.configure { |config| config.command_plugin_path = dir }
+    call(:initialize_plugin)
+    assert_include Roma::Command::Receiver.ancestors, Roma::CommandPlugin::PluginMap
+    assert_include Roma::Command::Receiver.ancestors, Roma::CommandPlugin::PluginRomadTest
   ensure
-    $LOAD_PATH.delete(@dir)
+    Roma.reset_config
   end
 
   def test_initialize_wb_writer
