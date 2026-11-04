@@ -3,7 +3,7 @@ require 'roma/command_plugin'
 module Roma
   module CommandPlugin
 
-    module PluginTest
+    module Test
       include ::Roma::CommandPlugin
 
       def ev_echo(s)

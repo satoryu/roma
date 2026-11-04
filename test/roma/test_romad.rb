@@ -283,15 +283,15 @@ class RomadInitializeTest < Test::Unit::TestCase
   def test_initialize_plugin
     dir = File.join(@dir, 'command_plugins')
     FileUtils.mkdir_p(dir)
-    File.write(File.join(dir, 'plugin_romad_test.rb'), <<~RUBY)
-      module Roma::CommandPlugin::PluginRomadTest
+    File.write(File.join(dir, 'romad_test.rb'), <<~RUBY)
+      module Roma::CommandPlugin::RomadTest
         include Roma::CommandPlugin
       end
     RUBY
     Roma.configure { |config| config.command_plugin_path = dir }
     call(:initialize_plugin)
-    assert_include Roma::Command::Receiver.ancestors, Roma::CommandPlugin::PluginMap
-    assert_include Roma::Command::Receiver.ancestors, Roma::CommandPlugin::PluginRomadTest
+    assert_include Roma::Command::Receiver.ancestors, Roma::CommandPlugin::Map
+    assert_include Roma::Command::Receiver.ancestors, Roma::CommandPlugin::RomadTest
   ensure
     Roma.reset_config
   end

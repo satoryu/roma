@@ -5,7 +5,7 @@ require 'roma/command/definition'
 module Roma
   module CommandPlugin
 
-    module PluginMapcount
+    module Mapcount
       include ::Roma::CommandPlugin
       include ::Roma::Command::Definition
 
@@ -181,6 +181,6 @@ module Roma
       DATE_FORMAT = "%Y-%m-%dT%H:%M:%S +00"
 
       PLUGIN_MAPCOUNT_VERSION = "1.0.1"
-    end # PluginMapcount
+    end # Mapcount
   end # CommandPlugin
 end # Roma

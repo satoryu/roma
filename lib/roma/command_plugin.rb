@@ -1,9 +1,9 @@
 module Roma
   module CommandPlugin
-    # ROMA's own plugins that every node has. plugin_debug and plugin_test are
+    # ROMA's own plugins that every node has. debug and test are
     # not here, since eval runs any Ruby code; require them from a file in the
     # plugin directory to use them.
-    BUNDLED = %w(plugin_storage plugin_alist plugin_map plugin_mapcount plugin_gui).freeze
+    BUNDLED = %w(storage alist map mapcount gui).freeze
 
     @@plugins=[]
     def self.plugins

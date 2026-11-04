@@ -1,12 +1,12 @@
 require 'test_helper'
-require 'roma/command_plugin/plugin_map'
+require 'roma/command_plugin/map'
 require 'plugin_test_harness'
 
 # Forwarding of the commands defined with Roma::Command::Definition, through
 # the map plugin: every key belongs to the owner and another node, so this
 # node forwards commands to the owner.
-class PluginMapForwardTest < Test::Unit::TestCase
-  HARNESS = PluginTestHarness.for(Roma::CommandPlugin::PluginMap)
+class CommandPluginMapForwardTest < Test::Unit::TestCase
+  HARNESS = PluginTestHarness.for(Roma::CommandPlugin::Map)
   NODE_ID = PluginTestHarness::NODE_ID
   OWNER_NODE_ID = PluginTestHarness::REPLICA_NODE_ID
   OTHER_NODE_ID = 'localhost_11213'

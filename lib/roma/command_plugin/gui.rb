@@ -4,7 +4,7 @@ require 'json'
 module Roma
   module CommandPlugin
 
-    module PluginGui
+    module Gui
       include ::Roma::CommandPlugin
 
       # get_routing_history
@@ -61,6 +61,6 @@ module Roma
         end
       end
 
-    end # end of module PluginGui
+    end # end of module Gui
   end # end of module CommandPlugin
 end # end of modlue Roma

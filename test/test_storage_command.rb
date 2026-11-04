@@ -2,7 +2,7 @@ require 'test_helper'
 
 require 'roma/messaging/con_pool'
 require 'roma/configuration'
-require 'roma/command_plugin/plugin_storage'
+require 'roma/command_plugin/storage'
 require 'plugin_test_harness'
 
 module StorageCommandTests
@@ -180,13 +180,13 @@ class StorageCommandInProcessTest < Test::Unit::TestCase
   include StorageCommandTests
 
   def setup
-    harness = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage).new
+    harness = PluginTestHarness.for(Roma::CommandPlugin::Storage).new
     @rc = PluginTestHarness::Client.new(harness)
   end
 
   def teardown; end
 
-  # They use commands that are not in PluginStorage.
+  # They use commands that are not in Roma::CommandPlugin::Storage.
   undef test_out
   undef test_routingdump_bin
 end

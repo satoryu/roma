@@ -1,18 +1,18 @@
 require 'test_helper'
 require 'zlib'
 require 'roma/write_behind'
-require 'roma/command_plugin/plugin_storage'
+require 'roma/command_plugin/storage'
 require 'plugin_test_harness'
 
-# Unit tests for the paths of PluginStorage that StorageCommandTests doesn't
+# Unit tests for the paths of Roma::CommandPlugin::Storage that StorageCommandTests doesn't
 # take: forwarding to the node that has the key, the f* commands that a
 # node receives forwarded, other hashes, write-behind and replication.
-module PluginStorageTestHelper
+module CommandPluginStorageTestHelper
   NODE_ID = PluginTestHarness::NODE_ID
   OWNER_NODE_ID = PluginTestHarness::REPLICA_NODE_ID
   # The other node of the vnodes; not this one.
   OTHER_NODE_ID = 'localhost_11213'
-  HARNESS = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage)
+  HARNESS = PluginTestHarness.for(Roma::CommandPlugin::Storage)
 
   # Stands in for a node that can't be reached.
   class DownNode
@@ -35,8 +35,8 @@ end
 
 # Every key belongs to the owner and another node, so this node forwards
 # commands to the owner.
-class PluginStorageForwardTest < Test::Unit::TestCase
-  include PluginStorageTestHelper
+class CommandPluginStorageForwardTest < Test::Unit::TestCase
+  include CommandPluginStorageTestHelper
 
   def setup
     @owner = HARNESS.new(node_id: OWNER_NODE_ID, nodes: [OWNER_NODE_ID, OTHER_NODE_ID])
@@ -136,8 +136,8 @@ end
 
 # A node gets f* commands only for keys it has; otherwise the routing tables
 # of the nodes differ.
-class PluginStorageForwardedTest < Test::Unit::TestCase
-  include PluginStorageTestHelper
+class CommandPluginStorageForwardedTest < Test::Unit::TestCase
+  include CommandPluginStorageTestHelper
 
   def setup
     # This node isn't in the vnode.
@@ -164,8 +164,8 @@ class PluginStorageForwardedTest < Test::Unit::TestCase
   end
 end
 
-class PluginStorageHashTest < Test::Unit::TestCase
-  include PluginStorageTestHelper
+class CommandPluginStorageHashTest < Test::Unit::TestCase
+  include CommandPluginStorageTestHelper
 
   def setup
     @conn = HARNESS.new
@@ -210,8 +210,8 @@ class PluginStorageHashTest < Test::Unit::TestCase
   end
 end
 
-class PluginStorageWriteBehindTest < Test::Unit::TestCase
-  include PluginStorageTestHelper
+class CommandPluginStorageWriteBehindTest < Test::Unit::TestCase
+  include CommandPluginStorageTestHelper
 
   def setup
     @conn = HARNESS.new
@@ -272,9 +272,9 @@ class PluginStorageWriteBehindTest < Test::Unit::TestCase
   end
 end
 
-# PluginStorage#redundant, which the harness stubs elsewhere.
-class PluginStorageRedundantTest < Test::Unit::TestCase
-  include PluginStorageTestHelper
+# Roma::CommandPlugin::Storage#redundant, which the harness stubs elsewhere.
+class CommandPluginStorageRedundantTest < Test::Unit::TestCase
+  include CommandPluginStorageTestHelper
 
   # The other node: answers rset and rzset, and records them.
   class Node
@@ -297,7 +297,7 @@ class PluginStorageRedundantTest < Test::Unit::TestCase
     @node = Node.new
     @conn.forward_to(@node)
     # Call the real one.
-    redundant = Roma::CommandPlugin::PluginStorage.instance_method(:redundant)
+    redundant = Roma::CommandPlugin::Storage.instance_method(:redundant)
     @conn.define_singleton_method(:redundant) { |*args| redundant.bind(self).call(*args) }
   end
 

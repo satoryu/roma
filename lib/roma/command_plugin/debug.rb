@@ -3,7 +3,7 @@ require 'roma/command_plugin'
 module Roma
   module CommandPlugin
 
-    module PluginDebug
+    module Debug
       include ::Roma::CommandPlugin
 
       # DANGER!!

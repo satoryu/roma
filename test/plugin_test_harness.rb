@@ -13,13 +13,13 @@ require 'roma_test_client'
 # HashStorage. Every key is routed to +nodes+ (this node first, unless
 # given), and replication is recorded instead of sent to other nodes.
 #
-#   conn = PluginTestHarness.for(Roma::CommandPlugin::PluginMap).new
+#   conn = PluginTestHarness.for(Roma::CommandPlugin::Map).new
 #   conn.request('map_set key1 mapkey1 0 0 6', 'value1') # => "STORED\r\n"
 #
 # To test forwarding, make two harnesses: one for the node that has every
 # key, and one that forwards commands to it.
 #
-#   klass = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage)
+#   klass = PluginTestHarness.for(Roma::CommandPlugin::Storage)
 #   owner = klass.new(node_id: PluginTestHarness::REPLICA_NODE_ID, nodes: [REPLICA_NODE_ID, NODE_ID])
 #   conn = klass.new(nodes: [REPLICA_NODE_ID, NODE_ID]).forward_to(owner)
 #   conn.request('get key1') # forwarded to owner
@@ -66,7 +66,7 @@ class PluginTestHarness
   end
 
   # Methods that would talk to other nodes. They are prepended so that they
-  # win over the plugins' own definitions (e.g. PluginStorage#redundant).
+  # win over the plugins' own definitions (e.g. Roma::CommandPlugin::Storage#redundant).
   module Stubs
     def redundant(nodes, hash_name, k, d, clock, expire_time, v)
       @redundant_calls << { nodes: nodes, hash_name: hash_name, key: k, expire_time: expire_time, value: v }

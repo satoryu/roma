@@ -5,7 +5,7 @@ require 'roma/command/definition'
 module Roma
   module CommandPlugin
 
-    module PluginMap
+    module Map
       include Roma::CommandPlugin
       include Roma::Command::Definition
       
@@ -171,7 +171,7 @@ module Roma
         send_data("END\r\n")
       end
 
-    end # module PluginMap
+    end # module Map
   end # module CommandPlugin
 end # module Roma
  

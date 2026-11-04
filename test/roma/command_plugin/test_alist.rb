@@ -1,12 +1,12 @@
 require 'test_helper'
-require 'roma/command_plugin/plugin_alist'
-require 'roma/command_plugin/plugin_storage'
+require 'roma/command_plugin/alist'
+require 'roma/command_plugin/storage'
 require 'plugin_test_harness'
 
-# Unit tests for the paths of PluginAlist that ListPluginTests doesn't
+# Unit tests for the paths of Roma::CommandPlugin::Alist that ListPluginTests doesn't
 # take: errors, writes the storage refuses, ranges and forwarding.
-class PluginAlistTest < Test::Unit::TestCase
-  HARNESS = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage, Roma::CommandPlugin::PluginAlist)
+class CommandPluginAlistTest < Test::Unit::TestCase
+  HARNESS = PluginTestHarness.for(Roma::CommandPlugin::Storage, Roma::CommandPlugin::Alist)
   NODE_ID = PluginTestHarness::NODE_ID
   OWNER_NODE_ID = PluginTestHarness::REPLICA_NODE_ID
 
@@ -136,8 +136,8 @@ class PluginAlistTest < Test::Unit::TestCase
 end
 
 # Every key belongs to the owner, so this node forwards commands to it.
-class PluginAlistForwardTest < Test::Unit::TestCase
-  HARNESS = PluginAlistTest::HARNESS
+class CommandPluginAlistForwardTest < Test::Unit::TestCase
+  HARNESS = CommandPluginAlistTest::HARNESS
   NODE_ID = PluginTestHarness::NODE_ID
   OWNER_NODE_ID = PluginTestHarness::REPLICA_NODE_ID
   OTHER_NODE_ID = 'localhost_11213'

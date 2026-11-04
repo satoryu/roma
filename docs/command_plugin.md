@@ -46,15 +46,15 @@ the ones marked **bundled**:
 
 | File | Module | Commands | Bundled |
 | --- | --- | --- | --- |
-| `plugin_storage.rb` | `PluginStorage` | `get`, `set`, `delete`, `incr` and the other memcached commands | yes |
-| `plugin_alist.rb` | `PluginAlist` | `alist_*`: a list in a value | yes |
-| `plugin_map.rb` | `PluginMap` | `map_*`: a hash in a value | yes |
-| `plugin_mapcount.rb` | `PluginMapcount` | `mapcount_*`: counters in a value | yes |
-| `plugin_gui.rb` | `PluginGui` | commands for the GUI tools | yes |
-| `plugin_debug.rb` | `PluginDebug` | `eval` and other commands for debugging | no |
-| `plugin_test.rb` | `PluginTest` | `echo`, a minimal sample | no |
+| `storage.rb` | `Storage` | `get`, `set`, `delete`, `incr` and the other memcached commands | yes |
+| `alist.rb` | `Alist` | `alist_*`: a list in a value | yes |
+| `map.rb` | `Map` | `map_*`: a hash in a value | yes |
+| `mapcount.rb` | `Mapcount` | `mapcount_*`: counters in a value | yes |
+| `gui.rb` | `Gui` | commands for the GUI tools | yes |
+| `debug.rb` | `Debug` | `eval` and other commands for debugging | no |
+| `test.rb` | `Test` | `echo`, a minimal sample | no |
 
-`plugin_debug.rb` is not bundled, since `eval` runs any Ruby code that a client
+`debug.rb` is not bundled, since `eval` runs any Ruby code that a client
 sends. See [Using a plugin that is not bundled](#using-a-plugin-that-is-not-bundled)
 to load it.
 
@@ -62,8 +62,8 @@ to load it.
 
 ```mermaid
 flowchart TD
-    bundled["bundled plugins<br>roma/command_plugin/plugin_storage.rb ..."]
-    dir["command_plugins/*.rb<br>command_plugins/plugin_hello.rb"]
+    bundled["bundled plugins<br>roma/command_plugin/storage.rb ..."]
+    dir["command_plugins/*.rb<br>command_plugins/hello.rb"]
     bundled -->|"require"| list
     dir -->|"require, by file name"| list["Roma::CommandPlugin.plugins<br>(include Roma::CommandPlugin registers a module)"]
     list -->|"include each module"| receiver["Roma::Command::Receiver"]
@@ -145,7 +145,7 @@ event list. These also add them:
 
 ## Getting started
 
-This section makes a plugin `PluginHello` with three commands, runs it on a node
+This section makes a plugin `Hello` with three commands, runs it on a node
 and tests it. It needs ROMA installed or checked out.
 
 | Command | What it does |
@@ -162,13 +162,13 @@ Make a directory to run a node in, and put the plugin in its
 ```
 hello/
 ├── command_plugins/
-│   └── plugin_hello.rb
-└── test_plugin_hello.rb
+│   └── hello.rb
+└── test_hello.rb
 ```
 
-`test_plugin_hello.rb` comes in [step 4](#4-test-the-plugin).
+`test_hello.rb` comes in [step 4](#4-test-the-plugin).
 
-`command_plugins/plugin_hello.rb`:
+`command_plugins/hello.rb`:
 
 ```ruby
 require 'roma/command_plugin'
@@ -176,7 +176,7 @@ require 'roma/command/definition'
 
 module Roma
   module CommandPlugin
-    module PluginHello
+    module Hello
       include Roma::CommandPlugin
       include Roma::Command::Definition
 
@@ -234,8 +234,8 @@ roma server localhost -p 11211 -d
 The log, `localhost_11211.log`, shows that the plugin is loaded:
 
 ```
-INFO -- : /path/to/hello/command_plugins/plugin_hello.rb loaded
-INFO -- : Roma::CommandPlugin::PluginHello included
+INFO -- : /path/to/hello/command_plugins/hello.rb loaded
+INFO -- : Roma::CommandPlugin::Hello included
 ```
 
 Wait for `all nodes started` in the log, up to 10 seconds. Until then, the node
@@ -280,12 +280,12 @@ hash storage, and records replication instead of sending it to other nodes.
 ```ruby
 require 'test/unit'
 require 'plugin_test_harness'
-require 'roma/command_plugin/plugin_storage'
-require_relative 'command_plugins/plugin_hello'
+require 'roma/command_plugin/storage'
+require_relative 'command_plugins/hello'
 
-class PluginHelloTest < Test::Unit::TestCase
+class HelloTest < Test::Unit::TestCase
   def setup
-    @conn = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage, Roma::CommandPlugin::PluginHello).new
+    @conn = PluginTestHarness.for(Roma::CommandPlugin::Storage, Roma::CommandPlugin::Hello).new
   end
 
   def test_hello
@@ -313,7 +313,7 @@ Run it from a checkout of the ROMA repository next to `hello/`, with the harness
 in the load path:
 
 ```sh
-bundle exec ruby -Ilib -Itest ../hello/test_plugin_hello.rb
+bundle exec ruby -Ilib -Itest ../hello/test_hello.rb
 ```
 
 The harness is a part of ROMA's tests, not a public API. The plugins' tests in
@@ -339,7 +339,7 @@ end
 A plain method does everything itself: checking the arguments, reading a data
 block with `read_bytes`, finding the node of a key, forwarding and replicating.
 Use it for commands that don't take a key, such as commands about the node.
-`ev_get` in [plugin_storage.rb](../lib/roma/command_plugin/plugin_storage.rb)
+`ev_get` in [storage.rb](../lib/roma/command_plugin/storage.rb)
 shows what a command with a key does by hand.
 
 ### Class macros
@@ -431,7 +431,7 @@ When a node forwards a request, it reads the reply of the other node by the
 - `:multi_line` reads lines in the form of `get`: `VALUE` lines with their data,
   and `END`. Use it for a command that replies like that.
 
-`map_get` in [plugin_map.rb](../lib/roma/command_plugin/plugin_map.rb) is an
+`map_get` in [map.rb](../lib/roma/command_plugin/map.rb) is an
 example of `:multi_line`.
 
 #### Commands on every node
@@ -482,6 +482,11 @@ another server stops the whole node until it ends.
   among them, by the order of the file names. Give your commands and helper
   methods a prefix, as `map_*` and `alist_*` do.
 - Only public methods are commands. Put helper methods under `private`.
+- A plugin is named after its file, with no `Plugin` prefix: `hello.rb`
+  defines `Roma::CommandPlugin::Hello`. In `module Roma; module CommandPlugin`,
+  a short constant name finds the plugins first, so `Storage` there is the
+  plugin `Roma::CommandPlugin::Storage`, not the storage engines. Write
+  `Roma::Storage::StorageException` in full.
 - An `r<cmd>` method is taken by `def_command_with_relay`. Don't define
   `ev_r<cmd>` yourself for such a command.
 
@@ -495,12 +500,12 @@ value before it.
 ### Using a plugin that is not bundled
 
 A file in the plugin directory can require a plugin from anywhere. To use
-`plugin_debug.rb` on a node, for example, put this file in its
+`debug.rb` on a node, for example, put this file in its
 `command_plugins` directory:
 
 ```ruby
-# command_plugins/plugin_debug.rb
-require 'roma/command_plugin/plugin_debug'
+# command_plugins/debug.rb
+require 'roma/command_plugin/debug'
 ```
 
 A plugin from a gem is used in the same way: install the gem, and require it
@@ -526,9 +531,9 @@ To port a plugin:
 
 | ROMA 1.x | ROMA 2.0 |
 | --- | --- |
-| `require 'roma/plugin/plugin_*'` | `require 'roma/command_plugin/plugin_*'` |
+| `require 'roma/plugin/plugin_*'` | `require 'roma/command_plugin/*'` |
 | `require 'roma/command/command_definition'` | `require 'roma/command/definition'` |
-| `PluginAshiatoList`, `PluginOperation`, `PluginMapCount` | `PluginAlist`, `PluginDebug`, `PluginMapcount` |
+| `PluginStorage`, `PluginAshiatoList`, `PluginMap`, `PluginMapCount`, `PluginGui`, `PluginOperation`, `PluginTest` | `Storage`, `Alist`, `Map`, `Mapcount`, `Gui`, `Debug`, `Test` |
 | `PluginCommandAliases` | removed |
 | `ClientErrorException`, `ServerErrorException` | `ClientError`, `ServerError` |
 | `@rttable`, `@nid`, `@defhash` | `@routing_table`, `@my_node_id`, `@default_hash_name` |
