@@ -18,8 +18,9 @@ class RandomPartitionerTest < Test::Unit::TestCase
     FileUtils.rm_rf(@dir)
   end
 
-  def make_rt(routes, **opts)
-    @rt = Roma::Routing::ChurnbasedRoutingTable.new(make_routing_data(routes, **opts), File.join(@dir, 'test.route.yml'))
+  def make_rt(routes, **)
+    @rt = Roma::Routing::ChurnbasedRoutingTable.new(make_routing_data(routes, **),
+                                                    File.join(@dir, 'test.route.yml'))
   end
 
   def test_exclude_nodes

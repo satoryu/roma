@@ -15,7 +15,8 @@ class RedundancyChangerTest < Test::Unit::TestCase
 
   def serve(redundancy)
     node = fake_node
-    routing_data = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.node_id, 'localhost_1', 'localhost_0'], true)
+    routing_data = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.node_id, 'localhost_1', 'localhost_0'],
+                                                     true)
     routing_data.clocks.each_key { |vnode| routing_data.clocks[vnode] = 5 }
     serve_routing(node, routing_data)
     [node, routing_data]

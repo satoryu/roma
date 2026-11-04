@@ -8,9 +8,10 @@ class VnodeCommandReceiverTest < Test::Unit::TestCase
   # bytes at the end. A nil value is a deleted mark, whose expiry is 0.
   def stream(vnode, pairs)
     data = pairs.map do |k, v|
-      [vnode, Time.now.to_i, 1, v ? 0x7fffffff : 0, k.bytesize, k, (v || '').bytesize, v || ''].pack("NNNNNa#{k.bytesize}Na*")
+      [vnode, Time.now.to_i, 1, v ? 0x7fffffff : 0, k.bytesize, k, (v || '').bytesize,
+       v || ''].pack("NNNNNa#{k.bytesize}Na*")
     end
-    data.join + "\0" * 20
+    data.join + ("\0" * 20)
   end
 
   def test_spushv_protection

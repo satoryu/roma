@@ -5,6 +5,7 @@ module Roma
     # roma config: make the config file of romad.
     class Config < Thor
       extend Common
+
       check_unknown_options!
 
       desc 'create', 'Make config.rb in the current directory by asking questions'

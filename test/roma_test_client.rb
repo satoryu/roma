@@ -49,7 +49,11 @@ class RomaTestClient
     attr_reader :connections
 
     def close_all
-      @connections.each_value { |con| con.close rescue nil }
+      @connections.each_value do |con|
+        con.close
+      rescue StandardError
+        nil
+      end
       @connections.clear
     end
   end
@@ -116,6 +120,7 @@ class RomaTestClient
 
     ret = request(key, "gets #{k(key)}", nil, :value_casid_receiver)
     return 'NOT_FOUND' if ret.empty?
+
     val, casid = ret
     val = Marshal.load(val) unless raw
     updated = yield val
@@ -134,6 +139,7 @@ class RomaTestClient
   def get(key, raw = false)
     val = request(key, "get #{k(key)}", nil, :value_list_receiver)[0]
     return nil if val.nil?
+
     raw ? val : Marshal.load(val)
   end
 
@@ -218,6 +224,7 @@ class RomaTestClient
   def alist_to_s(key, range = nil)
     ret = request(key, with_range("alist_to_s #{k(key)}", range), nil, :value_list_receiver)
     return nil if ret.empty?
+
     ret[0] = ret[0].to_i
     ret[1] = eval(ret[1])
     ret
@@ -230,6 +237,7 @@ class RomaTestClient
   def alist_index(key, value)
     ret = request_with_value(key, "alist_index #{k(key)}", value)
     return nil if ret == 'nil'
+
     to_i_if_digits(ret)
   end
 
@@ -374,6 +382,7 @@ class RomaTestClient
 
   def request_with_value(key, cmd, value)
     raise 'value must be a String object.' unless value.instance_of?(String)
+
     request(key, "#{cmd} #{value.bytesize}", value)
   end
 
@@ -385,8 +394,10 @@ class RomaTestClient
       when Hash then sub_keys.map { |sk, v| "#{sk}:#{v}" }.join(',')
       else ''
       end
-    ret = request(key, "#{cmd} #{k(key)} #{expire_time.to_i} #{sub_keys_str.bytesize}", sub_keys_str, :value_list_receiver)
+    ret = request(key, "#{cmd} #{k(key)} #{expire_time.to_i} #{sub_keys_str.bytesize}", sub_keys_str,
+                  :value_list_receiver)
     return nil if ret.empty?
+
     res = format == :marshal ? Marshal.load(ret[0]) : JSON.parse(ret[0])
     res['last_updated_date'] = Time.parse(res['last_updated_date']) if res['last_updated_date']
     res
@@ -398,6 +409,7 @@ class RomaTestClient
 
   def count_and_values(ret)
     return nil if ret.empty?
+
     ret[0] = ret[0].to_i
     ret
   end
@@ -437,6 +449,7 @@ class RomaTestClient
       raise
     end
     raise ret if ret.is_a?(String) && ret.start_with?('SERVER_ERROR', 'CLIENT_ERROR')
+
     ret
   end
 
@@ -446,6 +459,7 @@ class RomaTestClient
       con.write("routingdump\r\n")
       len = con.gets.to_i
       return nil if len <= 0
+
       routing_data = Marshal.load(read_bytes(con, len))
       read_bytes(con, 2) # "\r\n"
       con.gets # "END\r\n"
@@ -472,6 +486,7 @@ class RomaTestClient
   def oneline_receiver(con)
     ret = con.gets
     raise 'connection closed' if ret.nil?
+
     ret.chomp
   end
 
@@ -479,6 +494,7 @@ class RomaTestClient
     ret = []
     while (line = con.gets) != "END\r\n"
       raise 'connection closed' if line.nil?
+
       ret << line.chomp
     end
     ret
@@ -488,6 +504,7 @@ class RomaTestClient
     ret = []
     each_value(con) do |s, val|
       return s.join(' ') if error_line?(s)
+
       ret << val
     end
     ret
@@ -497,6 +514,7 @@ class RomaTestClient
     ret = {}
     each_value(con) do |s, val|
       return s.join(' ') if error_line?(s)
+
       ret[s[1]] = val
     end
     ret
@@ -506,6 +524,7 @@ class RomaTestClient
     ret = []
     each_value(con) do |s, val|
       return s.join(' ') if error_line?(s)
+
       ret << val << s[4]
     end
     ret
@@ -516,6 +535,7 @@ class RomaTestClient
   def each_value(con)
     while (line = con.gets) != "END\r\n"
       raise 'connection closed' if line.nil?
+
       s = line.split(' ')
       if error_line?(s)
         yield s, nil
@@ -528,12 +548,13 @@ class RomaTestClient
   end
 
   def error_line?(s)
-    s[0] == 'SERVER_ERROR' || s[0] == 'CLIENT_ERROR'
+    %w(SERVER_ERROR CLIENT_ERROR).include?(s[0])
   end
 
   def read_bytes(con, len)
     ret = con.read(len)
     raise 'connection closed' if ret.nil? || ret.bytesize != len
+
     ret
   end
 end

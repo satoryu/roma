@@ -3,12 +3,11 @@ require 'roma/stats'
 module Roma
   module WriteBehind
     class FileWriter
-
       attr_accessor :shift_size
 
       def initialize(path, shift_size, log)
         @stats = Roma::Stats.instance
-        path.chop! if path[-1]=='/'
+        path.chop! if path[-1] == '/'
         @path = path
         @log = log
         @file_handles = {} # file handle hash
@@ -24,10 +23,10 @@ module Roma
         ret['write-behind.path'] = File.expand_path(@path)
         ret['write-behind.shift_size'] = @shift_size
         ret['write-behind.do_write'] = @do_write
-        @file_handles.each{|hash_name,fname|
+        @file_handles.each do |hash_name, fname|
           ret["write-behind[#{hash_name}].path"] = File.expand_path(fname)
           ret["write-behind[#{hash_name}].size"] = @total_size[hash_name]
-        }
+        end
         ret
       end
 
@@ -50,7 +49,7 @@ module Roma
         vlen = val.length
         size = fd.write([t.to_i, cmd, klen, key, vlen, val].pack("NnNa#{klen}Na#{vlen}"))
         @total_size[hash_name] += size
-#        @log.debug("WriteBehind:hash_name=#{hash_name} cmd=#{cmd} key=#{key} val=#{val} total_size=#{@total_size}")
+      #        @log.debug("WriteBehind:hash_name=#{hash_name} cmd=#{cmd} key=#{key} val=#{val} total_size=#{@total_size}")
       ensure
         @do_write = false
       end
@@ -66,7 +65,7 @@ module Roma
         @file_names.delete(hash_name)
         sleep 0.01 while @do_write
         fd_old.close
-        @log.info("WriteBehind:rotate succeed")
+        @log.info('WriteBehind:rotate succeed')
         true
       end
 
@@ -75,16 +74,14 @@ module Roma
         path = "#{@path}/#{@stats.my_node_id}/#{hash_name}/#{t.strftime('%Y%m%d')}"
         mkdir(path)
         # set a next rotation time
-        @rotation_time = Time.local(t.year,t.month,t.day,0,0,0) + 24 * 60 * 60
+        @rotation_time = Time.local(t.year, t.month, t.day, 0, 0, 0) + (24 * 60 * 60)
 
         max = -1
-        Dir::glob("#{path}/*.wb").each{|f|
-          if /\D(\d+).wb$/ =~ f
-            max = $1.to_i if $1.to_i > max
-          end
-        }
+        Dir.glob("#{path}/*.wb").each do |f|
+          max = ::Regexp.last_match(1).to_i if /\D(\d+).wb$/ =~ f && (::Regexp.last_match(1).to_i > max)
+        end
         fname = "#{path}/#{max + 1}.wb"
-        fd = open(fname,'wb')
+        fd = open(fname, 'wb')
         @file_names[hash_name] = fname
         @file_handles[hash_name] = fd
       end
@@ -103,21 +100,20 @@ module Roma
       end
 
       def close_all
-        @file_handles.each_value{|fd| fd.close }
+        @file_handles.each_value { |fd| fd.close }
       end
 
       def mkdir(path)
         pbuf = +''
-        path.split('/').each{|p|
+        path.split('/').each do |p|
           pbuf << p
           begin
-            Dir::mkdir(pbuf) unless File.exist?(pbuf)
-          rescue
+            Dir.mkdir(pbuf) unless File.exist?(pbuf)
+          rescue StandardError
           end
           pbuf << '/'
-        }
+        end
       end
-
     end # class FileWriter
   end # module WriteBehind
 end # module Roma

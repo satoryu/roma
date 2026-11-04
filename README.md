@@ -150,7 +150,8 @@ If you would like to contribute, please...
 4. Run Unit Test
   * `bundle exec rake` (if unit test fails, run it again - it's fickle).
   * `bundle exec rake coverage` also measures the coverage of `lib`, including the romad processes that the tests start. Open `coverage/index.html` for the report. CI uploads it to Codecov.
-5. Create a pull request.
+5. Run RuboCop by `bundle exec rubocop`. CI runs it on pull requests too. `bundle exec rubocop -a` corrects what it can safely. `.rubocop_todo.yml` lists the offenses that the code had when RuboCop came in; when you fix them in a file, remove the file from the list.
+6. Create a pull request.
 
 Contributions, improvements, comments and suggestions are welcome!
 

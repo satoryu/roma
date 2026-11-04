@@ -15,8 +15,8 @@ class KeyAccessTest < Test::Unit::TestCase
     @out = StringIO.new
   end
 
-  def access(key, **opts)
-    use_mem_storages(Roma::Tools::KeyAccess.new(out: @out)).access(@dir, key, **opts)
+  def access(key, **)
+    use_mem_storages(Roma::Tools::KeyAccess.new(out: @out)).access(@dir, key, **)
   end
 
   def test_exist

@@ -42,7 +42,7 @@ class ConfigCreatorTest < Test::Unit::TestCase
     assert_match(/After\r\n.*storage.engine: :hash/m, out)
     assert_match(/^  config.storage.engine = :hash$/, config)
     assert_match(/^  config.storage.option = ""$/, config)
-    assert_match(/^  # config.command_plugin_path = "\.\/command_plugins"$/, config)
+    assert_match(%r{^  # config.command_plugin_path = "\./command_plugins"$}, config)
   end
 
   # romad can load the file. In another process, not to change Roma.config.

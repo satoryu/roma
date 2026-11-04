@@ -5,6 +5,7 @@ module Roma
     # roma storage: work with the storage files of a node.
     class Storage < Thor
       extend Common
+
       check_unknown_options!
 
       desc 'recover-lost NODE_ID STORAGE_PATH',
@@ -52,8 +53,8 @@ module Roma
       def merge(path1, path2, recent_path)
         require 'roma/tools/storage_merger'
         Roma::Tools::StorageMerger.new.merge(path1, path2, recent_path, digest_bits: options[:digest_bits],
-                                       divide_bits: options[:divide_bits],
-                                       division_count: options[:division_count])
+                                                                        divide_bits: options[:divide_bits],
+                                                                        division_count: options[:division_count])
         puts 'Make recent data process has succeed.'
       end
     end

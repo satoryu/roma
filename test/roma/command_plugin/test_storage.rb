@@ -49,9 +49,9 @@ class CommandPluginStorageForwardTest < Test::Unit::TestCase
 
   data('set' => ['set', nil, 'value'],
        'add' => ['add', nil, 'value'],
-       'replace' => ['replace', 'old', 'value'],
-       'append' => ['append', 'old', 'oldvalue'],
-       'prepend' => ['prepend', 'old', 'valueold'])
+       'replace' => %w(replace old value),
+       'append' => %w(append old oldvalue),
+       'prepend' => %w(prepend old valueold))
   def test_store(data)
     command, old, expected = data
     @owner.request('set key1 0 0 3', old) if old
@@ -188,7 +188,7 @@ class CommandPluginStorageHashTest < Test::Unit::TestCase
   def test_get_expt
     @conn.request('set key1 0 1735700000 5', 'value')
     assert_equal "1735700000\r\nEND\r\n", @conn.request('get_expt key1 unix')
-    assert_equal "#{Time.at(1735700000)}\r\nEND\r\n", @conn.request('get_expt key1')
+    assert_equal "#{Time.at(1_735_700_000)}\r\nEND\r\n", @conn.request('get_expt key1')
     assert_equal "END\r\n", @conn.request('get_expt key2')
     assert_equal "CLIENT_ERROR Wrong format of arguments.\r\n", @conn.request('get_expt key1 utc')
     assert_equal "CLIENT_ERROR Wrong number of arguments.\r\n", @conn.request('get_expt')
@@ -196,8 +196,12 @@ class CommandPluginStorageHashTest < Test::Unit::TestCase
 
   def test_set_size_of_zredundant
     broadcasts = []
-    @conn.define_singleton_method(:broadcast_cmd) { |cmd| broadcasts << cmd; { OWNER_NODE_ID => 'STORED' } }
-    assert_equal "#{{ OWNER_NODE_ID => 'STORED', NODE_ID => 'STORED' }}\r\n", @conn.request('set_size_of_zredundant 100')
+    @conn.define_singleton_method(:broadcast_cmd) do |cmd|
+      broadcasts << cmd
+      { OWNER_NODE_ID => 'STORED' }
+    end
+    assert_equal "#{{ OWNER_NODE_ID => 'STORED', NODE_ID => 'STORED' }}\r\n",
+                 @conn.request('set_size_of_zredundant 100')
     assert_equal ["rset_size_of_zredundant 100\r\n"], broadcasts
     assert_equal 100, @conn.stats.compression_threshold
     assert_equal "STORED\r\n", @conn.request('rset_size_of_zredundant 200')
@@ -264,11 +268,11 @@ class CommandPluginStorageWriteBehindTest < Test::Unit::TestCase
     # gets replies the key without the hash name.
     clock = @conn.request("gets key1\eother")[/VALUE key1 0 1 (\d+)/, 1]
     assert_equal "STORED\r\n", @conn.request("cas key1\eother 0 0 1 #{clock}", '5')
-    assert_equal ["set key1\eother 1 2147483647 1 \r\n1\r\n", "incr key1\eother 1\r\n",
+    assert_equal(["set key1\eother 1 2147483647 1 \r\n1\r\n", "incr key1\eother 1\r\n",
                   "set key1\eother 0 2147483647 1 \r\n5\r\n"],
-                 write_behind.map { |_hname, cmd, _key, _value| cmd }
+                 write_behind.map { |_hname, cmd, _key, _value| cmd })
     # The other node gets the key without the hash name.
-    assert_equal %w(key1 key1 key1), @conn.redundant_calls.map { |call| call[:key] }
+    assert_equal(%w(key1 key1 key1), @conn.redundant_calls.map { |call| call[:key] })
   end
 end
 

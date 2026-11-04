@@ -25,7 +25,8 @@ module Roma
       # given. With +all+, every vnode. +storage_path+ has a directory of
       # storage files for each hash. Raises Error if it fails.
       def recover(node_id, storage_path, since: nil, all: false)
-        raise Error, "The time should be YYYYMMDDHHMMSS." if since && since !~ /\A\d{14}\z/
+        raise Error, 'The time should be YYYYMMDDHHMMSS.' if since && since !~ /\A\d{14}\z/
+
         routing_data = @client.routing_data(node_id)
         if all
           vnodes = routing_data.routes.keys
@@ -36,7 +37,9 @@ module Roma
           return if vnodes.empty?
         end
         each_storage(storage_path, vnodes) do |hash_name, storage|
-          vnodes.each_with_index { |vnode, idx| recover_vnode(routing_data, hash_name, storage, vnode, "#{idx}/#{vnodes.length}") }
+          vnodes.each_with_index do |vnode, idx|
+            recover_vnode(routing_data, hash_name, storage, vnode, "#{idx}/#{vnodes.length}")
+          end
         end
       end
 
@@ -56,6 +59,7 @@ module Roma
           vnodes = []
           while (line = con.gets) != "END\r\n"
             raise Error, "#{node_id} replied to history_of_lost: #{line.to_s.chomp}" unless line =~ /\A\d+\r\n\z/
+
             vnodes << line.to_i
           end
           vnodes
@@ -89,7 +93,11 @@ module Roma
           @out.puts "#{progress} #{vnode} was auto assigned at #{node_ids.inspect}"
         end
         node_ids.each do |node_id|
-          res = push(node_id, hash_name, vnode) { |con| storage.each_vn_dump(vnode) { |data| write_data(con, clock_to_zero(data)) } }
+          res = push(node_id, hash_name, vnode) do |con|
+            storage.each_vn_dump(vnode) do |data|
+              write_data(con, clock_to_zero(data))
+            end
+          end
           raise Error, "Pushing vnode #{vnode} to #{node_id} failed: #{res}" unless res == 'STORED'
         end
         return unless assign
@@ -97,6 +105,7 @@ module Roma
         cmd = "setroute #{vnode} #{routing_data.clocks[vnode]} #{node_ids[0]}"
         res = @client.request(node_ids[0], cmd)
         raise Error, "#{node_ids[0]} replied to #{cmd}: #{res}" unless res == 'STORED'
+
         (routing_data.nodes - node_ids).each do |node_id|
           @client.request(node_id, cmd)
         rescue Error => e
@@ -107,15 +116,16 @@ module Roma
       def recover_key(routing_data, hash_name, storage, key)
         data = storage.get_raw2(key)
         return unless data
+
         @out.puts "hit => #{key}"
         vnode = (Digest::SHA1.hexdigest(key).hex % (2**routing_data.digest_bits)) & routing_data.search_mask
         _vn, last, _clk, expire_time, val = data
         Array(routing_data.routes[vnode]).each do |node_id|
           res = begin
-                  push(node_id, hash_name, vnode) { |con| write_data(con, pack(vnode, last, 0, expire_time, key, val)) }
-                rescue Error => e
-                  e.message
-                end
+            push(node_id, hash_name, vnode) { |con| write_data(con, pack(vnode, last, 0, expire_time, key, val)) }
+          rescue Error => e
+            e.message
+          end
           @out.puts "#{node_id}=>#{res}"
         end
       end
@@ -127,6 +137,7 @@ module Roma
           con.write("#{@pushv_cmd} #{hash_name} #{vnode}\r\n")
           res = con.gets
           next res.to_s.chomp unless res == "READY\r\n"
+
           yield con
           con.write("\0" * 20) # the end of the stream
           con.gets.to_s.chomp

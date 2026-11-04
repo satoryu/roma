@@ -5,6 +5,7 @@ module Roma
     # roma cluster: work with every node of a cluster.
     class Cluster < Thor
       extend Common
+
       check_unknown_options!
 
       # The method of send is send_command, since send is Object#send.

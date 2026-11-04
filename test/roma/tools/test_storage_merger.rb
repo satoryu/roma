@@ -25,6 +25,7 @@ class StorageMergerTest < Test::Unit::TestCase
     # The new files are on memory too.
     tool.define_singleton_method(:open_storage) do |dir, vnodes, division_count: nil, storage_class: nil|
       next storages.fetch(dir) { raise Roma::Tools::Error, "#{dir} has no storage files." } unless storage_class
+
       real.open(dir, vnodes, division_count: division_count, storage_class: storage_class).tap do |st|
         st.define_singleton_method(:closedb) { closed << dir }
         storages[dir] = st
@@ -33,8 +34,8 @@ class StorageMergerTest < Test::Unit::TestCase
     tool
   end
 
-  def make(**opts)
-    tool.merge(File.join(@dir, 'a'), File.join(@dir, 'b'), @recent, digest_bits: 32, divide_bits: 1, **opts)
+  def make(**)
+    tool.merge(File.join(@dir, 'a'), File.join(@dir, 'b'), @recent, digest_bits: 32, divide_bits: 1, **)
   end
 
   def get(storage, key)
@@ -48,9 +49,10 @@ class StorageMergerTest < Test::Unit::TestCase
     make(division_count: 3)
     recent = @storages.fetch(File.join(@recent, 'roma'))
     assert_equal 3, recent.divnum
-    assert_equal [[2, 'new'], [5, 'a2'], [1, 'b3']], %w(key1 key2 key3).map { |k| get(recent, k) }
-    assert_equal [File.join(@dir, 'a', 'roma'), File.join(@dir, 'b', 'roma'), File.join(@recent, 'roma')].sort, @closed.sort
-    assert_match(/\AOpen .*a\/roma\nOpen .*b\/roma\nOpen .*recent\/roma\nroma:0\/2\rroma:1\/2\r\n\z/, @out.string)
+    assert_equal([[2, 'new'], [5, 'a2'], [1, 'b3']], %w(key1 key2 key3).map { |k| get(recent, k) })
+    assert_equal [File.join(@dir, 'a', 'roma'), File.join(@dir, 'b', 'roma'), File.join(@recent, 'roma')].sort,
+                 @closed.sort
+    assert_match(%r{\AOpen .*a/roma\nOpen .*b/roma\nOpen .*recent/roma\nroma:0/2\rroma:1/2\r\n\z}, @out.string)
   end
 
   def test_recent_path_exists

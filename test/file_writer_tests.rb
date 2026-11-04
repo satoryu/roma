@@ -41,8 +41,8 @@ module FileWriterTests
 
     100.times do |i|
       fw.write('roma', 0,
-               sprintf('key-%04d', i),
-               sprintf('val-%04d', i))
+               format('key-%04d', i),
+               format('val-%04d', i))
     end
 
     assert(File.exist?("#{path}/0.wb"))
@@ -165,7 +165,7 @@ module FileWriterTests
         last, cmd, klen = b1.unpack('NnN')
         key = f.read(klen)
         b2 = f.read(4)
-        vlen = b2.unpack('N')[0]
+        vlen = b2.unpack1('N')
         val = f.read(vlen)
         ret << [last, cmd, key, val]
       end

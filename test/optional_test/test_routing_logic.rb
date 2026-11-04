@@ -9,7 +9,7 @@ if ENV['OPTIONAL']
 
     def teardown
       stop_roma
-    rescue => e
+    rescue StandardError => e
       puts "#{e} #{$ERROR_POSITION}"
     end
 

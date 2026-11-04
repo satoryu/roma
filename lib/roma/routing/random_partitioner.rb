@@ -16,8 +16,8 @@ module Roma
         [my_node_id]
       end
 
-      alias_method :exclude_nodes_for_recover, :exclude_nodes
-      alias_method :exclude_nodes_for_balance, :exclude_nodes
+      alias exclude_nodes_for_recover exclude_nodes
+      alias exclude_nodes_for_balance exclude_nodes
 
       def myhost_include?(nodes, myhost)
         nodes.each do |node_id|
@@ -35,14 +35,14 @@ module Roma
         myhost = exclude_nodes[0].split(/[:_]/)[0]
 
         @routing_data.routes.each_pair do |vnode, node_ids|
-          unless list_include?(node_ids, exclude_nodes)
-            if myhost_include?(node_ids, myhost)
-              myhost_idx[vnode] = node_ids
-            else
-              idx[vnode] = node_ids # other hosts
-            end
-            short_idx[vnode] = node_ids if node_ids.length < @routing_data.redundancy
+          next if list_include?(node_ids, exclude_nodes)
+
+          if myhost_include?(node_ids, myhost)
+            myhost_idx[vnode] = node_ids
+          else
+            idx[vnode] = node_ids # other hosts
           end
+          short_idx[vnode] = node_ids if node_ids.length < @routing_data.redundancy
         end
 
         # vnodes sampling priority:
@@ -61,11 +61,11 @@ module Roma
         vnode = ks[rand(ks.length)]
         node_ids = idx[vnode]
 
-        if !replication_in_host && node_ids[0].split(/[:_]/)[0] == myhost
-          is_primary = true
-        else
-          is_primary = rand(@routing_data.redundancy) == 0
-        end
+        is_primary = if !replication_in_host && node_ids[0].split(/[:_]/)[0] == myhost
+                       true
+                     else
+                       rand(@routing_data.redundancy) == 0
+                     end
 
         [vnode, node_ids, is_primary]
       end
@@ -89,15 +89,15 @@ module Roma
       def select_node_for_release(my_node_id, replication_in_host, node_ids)
         buf = nodes
 
-        unless replication_in_host
+        if replication_in_host
+          node_ids.each { |node_id| buf.delete(node_id) }
+        else
           deny_hosts = []
           node_ids.each do |node_id|
             host = node_id.split(/[:_]/)[0]
             deny_hosts << host if host != my_node_id.split(/[:_]/)[0]
           end
           buf.delete_if { |node_id| deny_hosts.include?(node_id.split(/[:_]/)[0]) }
-        else
-          node_ids.each { |node_id| buf.delete(node_id) }
         end
 
         buf.delete_if { |instance| instance == my_node_id }
@@ -120,6 +120,7 @@ module Roma
 
         ks = idx.keys
         return nil if ks.length == 0
+
         vnode = ks[rand(ks.length)]
         node_ids = idx[vnode]
         [vnode, node_ids, rand(@routing_data.redundancy) == 0]

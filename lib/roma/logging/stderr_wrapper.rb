@@ -3,7 +3,6 @@ require 'roma/logging/rlogger'
 module Roma
   module Logging
     class StderrWrapper < IO
-
       def initialize
         @log = RLogger.instance
       end
@@ -13,7 +12,6 @@ module Roma
       end
 
       def flush; end
-
     end # class StderrWrapper < IO
   end # module Logging
 end # module Roma

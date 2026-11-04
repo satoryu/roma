@@ -9,7 +9,7 @@ class NewFuncTest < Test::Unit::TestCase
   extend RomaTestUtils::RomaPerClass
 
   def setup
-    @sock = TCPSocket.new("localhost", 11211)
+    @sock = TCPSocket.new('localhost', 11_211)
   end
 
   def teardown
@@ -18,15 +18,15 @@ class NewFuncTest < Test::Unit::TestCase
 
   def test_jaro_winkler
     @sock.write("staat\r\n")
-    assert_equal("", @sock.gets.chomp)
+    assert_equal('', @sock.gets.chomp)
     assert_equal("ERROR: 'staat' is not roma command.", @sock.gets.chomp)
-    assert_equal("Did you mean this?", @sock.gets.chomp)
+    assert_equal('Did you mean this?', @sock.gets.chomp)
     assert_equal("\tstat", @sock.gets.chomp)
 
     @sock.write("outingdump yaml\r\n")
-    assert_equal("", @sock.gets.chomp)
+    assert_equal('', @sock.gets.chomp)
     assert_equal("ERROR: 'outingdump' is not roma command.", @sock.gets.chomp)
-    assert_equal("Did you mean this?", @sock.gets.chomp)
+    assert_equal('Did you mean this?', @sock.gets.chomp)
     assert_equal("\troutingdump", @sock.gets.chomp)
 
     @sock.write("hoge\r\n")
@@ -36,45 +36,45 @@ class NewFuncTest < Test::Unit::TestCase
 
   def test_stat_log_level
     @sock.write("stat log_level\r\n")
-    assert_equal("stats.log_level debug", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('stats.log_level debug', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
   end
 
   def test_stat_failover
     @sock.write("stat failover\r\n")
-    assert_equal("routing.enabled_failover false", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('routing.enabled_failover false', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
   end
 
   def test_stat_secondary
     @sock.write("stat secondary\r\n")
     column, param = @sock.gets.chomp.split("\s")
-    assert_equal("routing.secondary1", column)
+    assert_equal('routing.secondary1', column)
     assert_equal(true, param.to_i > 0)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
   end
 
   def test_stat_latency
     @sock.write("stat latency\r\n")
-    assert_equal("stats.hilatency_warn_time 5.0", @sock.gets.chomp)
-    assert_equal("stats.latency_log false", @sock.gets.chomp)
+    assert_equal('stats.hilatency_warn_time 5.0', @sock.gets.chomp)
+    assert_equal('stats.latency_log false', @sock.gets.chomp)
     assert_equal('stats.latency_check_cmd ["get", "set", "delete"]', @sock.gets.chomp)
-    assert_equal("stats.latency_check_time_count false", @sock.gets.chomp)
+    assert_equal('stats.latency_check_time_count false', @sock.gets.chomp)
   end
 
   def test_auto_recover_stat
     @sock.write("stat recover\r\n")
-    assert_equal("stats.run_recover false", @sock.gets.chomp)
-    assert_equal("routing.auto_recover false", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_status waiting", @sock.gets.chomp)
-    assert_equal("routing.auto_recover_time 1800", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('stats.run_recover false', @sock.gets.chomp)
+    assert_equal('routing.auto_recover false', @sock.gets.chomp)
+    assert_equal('routing.auto_recover_status waiting', @sock.gets.chomp)
+    assert_equal('routing.auto_recover_time 1800', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
   end
 
   def test_stat_trans_timeout
     @sock.write("stat trans\r\n")
-    assert_equal("stats.routing_transaction_timeout 10800", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('stats.routing_transaction_timeout 10800', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
   end
 
   def test_stat_routing_event
@@ -105,10 +105,9 @@ class NewFuncTest < Test::Unit::TestCase
   end
 
   def test_waiting_node
-    log = File.read("./localhost_11211.log")
+    log = File.read('./localhost_11211.log')
     assert_equal(true, log.include?("I'm waiting for booting the localhost_11211 instance"))
   end
-
 end
 
 # Tests that change settings or nodes start new romad processes each time.
@@ -121,7 +120,7 @@ class NewFuncChangingClusterTest < Test::Unit::TestCase
 
   def setup
     start_roma
-    @sock = TCPSocket.new("localhost", 11211)
+    @sock = TCPSocket.new('localhost', 11_211)
   end
 
   def teardown
@@ -131,46 +130,46 @@ class NewFuncChangingClusterTest < Test::Unit::TestCase
 
   def test_switch_dns_caching
     @sock.write("stat dns\r\n")
-    assert_equal("dns_caching false", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('dns_caching false', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
 
     @sock.write("switch_dns_caching on \r\n")
     assert_equal('{"localhost_11212" => "ENABLED", "localhost_11211" => "ENABLED"}', @sock.gets.chomp)
     @sock.write("stat dns\r\n")
-    assert_equal("dns_caching true", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('dns_caching true', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
 
     @sock.write("switch_dns_caching off \r\n")
     assert_equal('{"localhost_11212" => "DISABLED", "localhost_11211" => "DISABLED"}', @sock.gets.chomp)
     @sock.write("stat dns\r\n")
-    assert_equal("dns_caching false", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('dns_caching false', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
 
     @sock.write("switch_dns_caching off \r\n")
     assert_equal('{"localhost_11212" => "DISABLED", "localhost_11211" => "DISABLED"}', @sock.gets.chomp)
     @sock.write("stat dns\r\n")
-    assert_equal("dns_caching false", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('dns_caching false', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
   end
 
   def test_set_latency_avg_calc_rule
     @sock.write("set_latency_avg_calc_rule off\r\n")
     assert_equal('{"localhost_11212" => "DEACTIVATED", "localhost_11211" => "DEACTIVATED"}', @sock.gets.chomp)
     @sock.write("stat latency\r\n")
-    assert_equal("stats.hilatency_warn_time 5.0", @sock.gets.chomp)
-    assert_equal("stats.latency_log false", @sock.gets.chomp)
+    assert_equal('stats.hilatency_warn_time 5.0', @sock.gets.chomp)
+    assert_equal('stats.latency_log false', @sock.gets.chomp)
     assert_equal('stats.latency_check_cmd []', @sock.gets.chomp)
-    assert_equal("stats.latency_check_time_count false", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('stats.latency_check_time_count false', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
 
     @sock.write("set_latency_avg_calc_rule on 30 get set\r\n")
     assert_equal('{"localhost_11212" => "ACTIVATED", "localhost_11211" => "ACTIVATED"}', @sock.gets.chomp)
     @sock.write("stat latency\r\n")
-    assert_equal("stats.hilatency_warn_time 5.0", @sock.gets.chomp)
-    assert_equal("stats.latency_log true", @sock.gets.chomp)
+    assert_equal('stats.hilatency_warn_time 5.0', @sock.gets.chomp)
+    assert_equal('stats.latency_log true', @sock.gets.chomp)
     assert_equal('stats.latency_check_cmd ["get", "set"]', @sock.gets.chomp)
-    assert_equal("stats.latency_check_time_count 30", @sock.gets.chomp)
-    assert_equal("END", @sock.gets.chomp)
+    assert_equal('stats.latency_check_time_count 30', @sock.gets.chomp)
+    assert_equal('END', @sock.gets.chomp)
   end
 
   def test_add_routing_event
@@ -190,8 +189,7 @@ class NewFuncChangingClusterTest < Test::Unit::TestCase
       line != 'routing.event []'
     end
     @sock.write("stat routing.event$\r\n")
-    assert_match(/routing\.event \["[-T\d:\.]+ leave localhost_11212"\]/, @sock.gets.chomp)
+    assert_match(/routing\.event \["[-T\d:.]+ leave localhost_11212"\]/, @sock.gets.chomp)
     assert_equal('END', @sock.gets.chomp)
   end
-
 end

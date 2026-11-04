@@ -16,10 +16,13 @@ module Roma
       # +node_id+ can't be got. A lower redundancy drops the last nodes of
       # each virtual node. The clocks start over.
       def change(node_id, redundancy)
-        raise Error, "The redundancy should be 1 or more." if redundancy < 1
+        raise Error, 'The redundancy should be 1 or more.' if redundancy < 1
+
         routing_data = @client.routing_data(node_id)
         routing_data.clocks.each_key { |vnode| routing_data.clocks[vnode] = 0 }
-        routing_data.routes.each_key { |vnode| routing_data.routes[vnode] = routing_data.routes[vnode].first(redundancy) }
+        routing_data.routes.each_key do |vnode|
+          routing_data.routes[vnode] = routing_data.routes[vnode].first(redundancy)
+        end
         routing_data.redundancy = redundancy
         routing_data.nodes.sort!
         @out.puts routing_data.dump_yaml

@@ -10,12 +10,11 @@ require 'roma/event/em_connection'
 
 module Roma
   module Event
-
     class EMConPool
       include Singleton
-      attr :pool
-      attr_accessor :maxlength
-      attr_accessor :expire_time
+
+      attr_reader :pool
+      attr_accessor :maxlength, :expire_time
 
       def initialize
         @pool = {}
@@ -31,7 +30,7 @@ module Roma
           ret = nil
           Logging::RLogger.instance.info("EM connection expired at #{ap},remains #{@pool[ap].length}")
         end
-        ret = create_connection(ap) if ret == nil || ret.connected != true
+        ret = create_connection(ap) if ret.nil? || ret.connected != true
         ret
       end
 
@@ -51,42 +50,41 @@ module Roma
       end
 
       def create_connection(ap)
-        host,port = ap.split(/[:_]/)
+        host, port = ap.split(/[:_]/)
         addr = DNSCache.instance.resolve_name(host)
         # romad listens on IPv4 only (0.0.0.0), so resolve to an IPv4 address.
         # EventMachine 1.2 may pick IPv6 (e.g. ::1 for localhost) otherwise.
         addr = Addrinfo.getaddrinfo(addr, port, :INET, :STREAM).first.ip_address
-        con = EventMachine::connect(addr, port, Roma::Event::EMConnection)
+        con = EventMachine.connect(addr, port, Roma::Event::EMConnection)
         con.ap = ap
         con
       end
 
       def close_all
-        @pool.each_key{|ap| close_at(ap) }
+        @pool.each_key { |ap| close_at(ap) }
       end
 
       def close_same_host(ap)
         host, _port = ap.split(/[:_]/)
-        @pool.each_key{|eap|
+        @pool.each_key do |eap|
           close_at(eap) if eap.split(/[:_]/)[0] == host
-        }
+        end
       end
 
       def close_at(ap)
         return unless @pool.key?(ap)
-        @lock.synchronize {
-          while(@pool[ap].length > 0)
+
+        @lock.synchronize do
+          while @pool[ap].length > 0
             begin
               @pool[ap].shift.close_connection
-            rescue =>e
+            rescue StandardError => e
               Roma::Logging::RLogger.instance.error("#{__FILE__}:#{__LINE__}:#{e.inspect}")
             end
           end
           @pool.delete(ap)
-        }
+        end
       end
-
     end # class EMConPool
-
   end # module Event
 end # module Roma

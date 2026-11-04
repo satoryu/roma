@@ -56,6 +56,7 @@ class FakeNode
         s.write(@replies['spushv result'] || "STORED\r\n")
       elsif (reply = @replies[res.split(' ').first])
         break if reply == :close
+
         s.write(reply.respond_to?(:call) ? reply.call(res) : reply)
       elsif res.start_with?('whoami')
         s.write("ROMA\r\n")
@@ -66,7 +67,7 @@ class FakeNode
         s.write("STORED\r\n")
       end
     end
-  rescue => e
+  rescue StandardError => e
     p e
     p $ERROR_POSITION
   ensure
@@ -81,12 +82,11 @@ class FakeNode
       vnode, last, clock, expire_time, klen = context_bin.unpack('NNNNN')
 
       break if klen == 0 # end of dump ?
+
       k = sok.read(klen)
       vlen_bin = sok.read(4)
       vlen, =  vlen_bin.unpack('N')
-      if vlen != 0
-        v = sok.read(vlen)
-      end
+      v = sok.read(vlen) if vlen != 0
       ret[k] = [vnode, last, clock, expire_time, v].pack('NNNNa*')
     end
     ret
@@ -94,14 +94,10 @@ class FakeNode
 
   def receive_dump(sok, len)
     dump = String.new
-    while (dump.length != len.to_i)
-      dump = dump + sok.read(len.to_i - dump.length)
-    end
+    dump += sok.read(len.to_i - dump.length) while dump.length != len.to_i
     sok.read(2)
-    if sok.gets == "END\r\n"
-      return Marshal.load(dump)
-    else
-      return nil
-    end
+    return Marshal.load(dump) if sok.gets == "END\r\n"
+
+    nil
   end
 end

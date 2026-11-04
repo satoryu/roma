@@ -1,0 +1,52 @@
+inherit_from: .rubocop_todo.yml
+
+plugins:
+  - rubocop-rake
+
+AllCops:
+  TargetRubyVersion: 3.4
+  NewCops: enable
+  SuggestExtensions: false
+  Exclude:
+    - 'coverage/**/*'
+    - 'vendor/**/*'
+    - 'wb/**/*'
+
+# The code is old and has long methods and classes. Splitting them is a
+# refactoring of its own, not a style fix.
+Metrics:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+# Strings are chilled since Ruby 3.4, and frozen by default in a later Ruby.
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+# A command method gets the words of its request line in s: ev_get(s).
+Naming/MethodParameterName:
+  AllowedNames: [at, by, db, id, in, io, ip, of, on, os, pp, to, s, k, v, n]
+
+# String.new is a buffer to append to, while '' is chilled.
+Style/EmptyLiteral:
+  Enabled: false
+
+# Its correction writes the literal as an older Ruby inspects it, such as
+# {:set=>1} for "#{{ set: 1 }}".
+Lint/LiteralInInterpolation:
+  Enabled: false
+
+# %w(a b) and %i(a b), as the code writes them.
+Style/PercentLiteralDelimiters:
+  PreferredDelimiters:
+    '%i': '()'
+    '%w': '()'
+
+# $PROGRAM_NAME and $LOAD_PATH need no require 'English'; $! and $1 are fine.
+Style/SpecialGlobalVars:
+  EnforcedStyle: use_builtin_english_names
+
+# The development gems are in roma.gemspec, and Gemfile has only gemspec.
+Gemspec/DevelopmentDependencies:
+  EnforcedStyle: gemspec

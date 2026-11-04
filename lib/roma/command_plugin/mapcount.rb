@@ -4,7 +4,6 @@ require 'roma/command/definition'
 
 module Roma
   module CommandPlugin
-
     module Mapcount
       include ::Roma::CommandPlugin
       include ::Roma::Command::Definition
@@ -84,24 +83,23 @@ module Roma
       end
 
       private
+
       def countup(ctx, stype)
-       v = {}
+        v = {}
         v = data_load(ctx.stored.value) if ctx.stored
 
         args = ctx.params.value.split(/\s*,\s*/)
         args.each do |arg|
-          if arg =~ /^([A-Za-z0-9]+)(:(\-?[\d]+))?$/
-            key = $1
-            count = 1
-            count = $3.to_i if $3
-            v[key] ||= 0
-            v[key] += count
-          else
-            raise ClientError, "invalid sub_keys format: #{ctx.params.value}"
-          end
+          raise ClientError, "invalid sub_keys format: #{ctx.params.value}" unless arg =~ /^([A-Za-z0-9]+)(:(-?\d+))?$/
+
+          key = ::Regexp.last_match(1)
+          count = 1
+          count = ::Regexp.last_match(3).to_i if ::Regexp.last_match(3)
+          v[key] ||= 0
+          v[key] += count
         end
 
-        v["last_updated_date"] = Time.now.strftime(DATE_FORMAT)
+        v['last_updated_date'] = Time.now.strftime(DATE_FORMAT)
         expire_time = chg_time_expt(ctx.argv[2].to_i)
 
         ret_str = return_str(v, stype)
@@ -110,14 +108,12 @@ module Roma
       end
 
       def update(ctx, stype)
-        if !ctx.stored
+        unless ctx.stored
           send_data("END\r\n")
           return
         end
-
-        v = {}
         v = data_load(ctx.stored.value)
-        v["last_updated_date"] = Time.now.strftime(DATE_FORMAT)
+        v['last_updated_date'] = Time.now.strftime(DATE_FORMAT)
 
         if v.is_a?(Hash)
           args = ctx.params.value.split(/\s*,\s*/)
@@ -125,9 +121,9 @@ module Roma
             ret = return_str(v, stype)
           else
             ret = {}
-            ret["last_updated_date"] = v["last_updated_date"]
+            ret['last_updated_date'] = v['last_updated_date']
             args.each do |arg|
-              ret[arg] = v[arg] if v[arg] != nil
+              ret[arg] = v[arg] unless v[arg].nil?
             end
             ret = return_str(ret, stype)
           end
@@ -150,9 +146,9 @@ module Roma
               ret = return_str(ret_val, stype)
             else
               ret = {}
-              ret["last_updated_date"] = ret_val["last_updated_date"]
+              ret['last_updated_date'] = ret_val['last_updated_date']
               args.each do |arg|
-                ret[arg] = ret_val[arg] if ret_val[arg] != nil
+                ret[arg] = ret_val[arg] unless ret_val[arg].nil?
               end
               ret = return_str(ret, stype)
             end
@@ -165,22 +161,21 @@ module Roma
 
       def return_str(data, stype)
         return Marshal.dump(data) if stype == :marshal
+
         data.to_json
       end
 
       def data_load(data)
-        begin
-          Marshal.load(data)
-        rescue => e
-          msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n"," ")
-          send_data("#{msg}\r\n")
-          @log.error("#{e} #{$@}")
-        end
+        Marshal.load(data)
+      rescue StandardError => e
+        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
+        send_data("#{msg}\r\n")
+        @log.error("#{e} #{$@}")
       end
 
-      DATE_FORMAT = "%Y-%m-%dT%H:%M:%S +00"
+      DATE_FORMAT = '%Y-%m-%dT%H:%M:%S +00'
 
-      PLUGIN_MAPCOUNT_VERSION = "1.0.1"
+      PLUGIN_MAPCOUNT_VERSION = '1.0.1'
     end # Mapcount
   end # CommandPlugin
 end # Roma

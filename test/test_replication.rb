@@ -33,28 +33,27 @@ class StreamWriterTest < Test::Unit::TestCase
   include StreamWriterTests
   include RomaTestUtils
 
-   def test_sw_get_routing_data
-     sw = Roma::WriteBehind::StreamWriter.new(Logger.new(nil))
+  def test_sw_get_routing_data
+    sw = Roma::WriteBehind::StreamWriter.new(Logger.new(nil))
 
-     sw.update_mklhash('localhost_21211')
-     pre_mklhash = sw.replica_mklhash
-     assert_match(/\h{40}/, pre_mklhash)
+    sw.update_mklhash('localhost_21211')
+    pre_mklhash = sw.replica_mklhash
+    assert_match(/\h{40}/, pre_mklhash)
 
-     sw.update_nodelist('localhost_21211')
-     pre_nodelist = sw.replica_nodelist
-     assert_equal(['localhost_21211', 'localhost_21212'], pre_nodelist)
+    sw.update_nodelist('localhost_21211')
+    pre_nodelist = sw.replica_nodelist
+    assert_equal(%w(localhost_21211 localhost_21212), pre_nodelist)
 
-     sw.update_rttable('localhost_21211')
-     pre_rttable = sw.replica_rttable
-     assert_kind_of(Roma::Routing::RoutingData, pre_rttable)
-   end
+    sw.update_rttable('localhost_21211')
+    pre_rttable = sw.replica_rttable
+    assert_kind_of(Roma::Routing::RoutingData, pre_rttable)
+  end
 
-   def test_sw_change_mkl_hash?
-     sw = Roma::WriteBehind::StreamWriter.new(Logger.new(nil))
-     sw.replica_mklhash = 'dummy'
-     assert_equal(true, sw.change_mklhash?)
-   end
-
+  def test_sw_change_mkl_hash?
+    sw = Roma::WriteBehind::StreamWriter.new(Logger.new(nil))
+    sw.replica_mklhash = 'dummy'
+    assert_equal(true, sw.change_mklhash?)
+  end
 end #  end of StreamWriterTest class
 
 # Checks that data reaches the replica cluster. The replies and argument
@@ -88,7 +87,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
     assert_equal("write-behind.run_replication false\r\n", ret)
     # replica_mklhash
     post_mklhash = send_cmd('localhost_11211', 'stat replica_mklhash')
-    assert_match("write-behind\.replica_mklhash \r\n", post_mklhash)
+    assert_match("write-behind.replica_mklhash \r\n", post_mklhash)
     assert_not_equal(pre_mklhash, post_mklhash)
     # replica_nodelist
     ret = send_cmd('localhost_11211', 'stat replica_nodelist')
@@ -112,12 +111,12 @@ class ClusterReplicationTest < Test::Unit::TestCase
     pre_mklhash = send_cmd('localhost_11211', 'stat replica_mklhash')
     assert_match(/write-behind\.replica_mklhash \h{40}\r\n/, pre_mklhash)
     # replica_nodelist
-    pre_mklhash = send_cmd('localhost_11211', 'stat replica_mklhash')
+    send_cmd('localhost_11211', 'stat replica_mklhash')
     ret = send_cmd('localhost_11211', 'stat replica_nodelist')
     assert_equal("write-behind.replica_nodelist [\"localhost_21211\", \"localhost_21212\"]\r\n", ret)
   end
 
-  def test_rc_store_cmd  # get/set/add/replace/append/prepend
+  def test_rc_store_cmd # get/set/add/replace/append/prepend
     send_cmd('localhost_11211', 'switch_replication true localhost_21211')
 
     # set/get
@@ -127,7 +126,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
     # add
     @rc.add('key2', 'val2')
     assert_eventually_equal('val2') { @rc_replica.get('key2') }
-    @rc.add("key2", "val3")
+    @rc.add('key2', 'val3')
     # Nothing should change; give replication a moment to do something wrong.
     sleep 0.1
     assert_equal('val2', @rc_replica.get('key2'))
@@ -140,19 +139,19 @@ class ClusterReplicationTest < Test::Unit::TestCase
     @rc.replace('key4', 'val4')
     # Nothing should change; give replication a moment to do something wrong.
     sleep 0.1
-    assert_nil( @rc_replica.get('key4'))
+    assert_nil(@rc_replica.get('key4'))
 
     # append
-    @rc.set('key5','value5', 0, true)
+    @rc.set('key5', 'value5', 0, true)
     assert_eventually_equal('value5') { @rc_replica.get('key5', true) }
-    @rc.append("key5","_end")
-    assert_eventually_equal("value5_end") { @rc_replica.get('key5',true) }
+    @rc.append('key5', '_end')
+    assert_eventually_equal('value5_end') { @rc_replica.get('key5', true) }
 
     # prepend
-    @rc.set('key6','value6', 0, true)
+    @rc.set('key6', 'value6', 0, true)
     assert_eventually_equal('value6') { @rc_replica.get('key6', true) }
-    @rc.prepend("key6","start_")
-    assert_eventually_equal("start_value6") { @rc_replica.get('key6',true) }
+    @rc.prepend('key6', 'start_')
+    assert_eventually_equal('start_value6') { @rc_replica.get('key6', true) }
   end
 
   def test_rc_other_store_cmd # delete/incr/decr/set_expt/cas
@@ -165,7 +164,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
     assert_eventually_equal(nil) { @rc_replica.get('key1') }
 
     # incr
-    @rc.set('key2','100',0,true)
+    @rc.set('key2', '100', 0, true)
     assert_eventually_equal('100') { @rc_replica.get('key2', true) }
     @rc.incr('key2')
     assert_eventually_equal('101') { @rc_replica.get('key2', true) }
@@ -173,7 +172,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
     assert_eventually_equal('111') { @rc_replica.get('key2', true) }
 
     # decr
-    @rc.set('key3','100', 0, true)
+    @rc.set('key3', '100', 0, true)
     assert_eventually_equal('100') { @rc_replica.get('key3', true) }
 
     @rc.decr('key3')
@@ -191,22 +190,22 @@ class ClusterReplicationTest < Test::Unit::TestCase
     assert_eventually_equal([nil, nil]) { [@rc_replica.get('key4'), @rc_replica.get('key5')] }
 
     # cas
-    @rc.set("cnt", 1)
-    res = @rc.cas("cnt"){|v|
+    @rc.set('cnt', 1)
+    @rc.cas('cnt') do |v|
       assert_equal(1, v)
-      v += 1
-    }
-    assert_eventually_equal(2) { @rc_replica.get("cnt") }
+      v + 1
+    end
+    assert_eventually_equal(2) { @rc_replica.get('cnt') }
 
-    res = @rc.cas("cnt"){|v|
-      res2 = @rc.cas("cnt"){|v2|
+    res = @rc.cas('cnt') do |v|
+      res2 = @rc.cas('cnt') do |_v2|
         v += 2
-      }
-      assert_equal("STORED", res2)
+      end
+      assert_equal('STORED', res2)
       v += 1
-    }
-    assert_equal("EXISTS", res)
-    assert_eventually_equal(4) { @rc_replica.get("cnt") }
+    end
+    assert_equal('EXISTS', res)
+    assert_eventually_equal(4) { @rc_replica.get('cnt') }
   end
 
   def test_rc_background_copy_activate
@@ -239,7 +238,7 @@ class ClusterReplicationTest < Test::Unit::TestCase
   end
 
   def test_rc_background_copy_not_overwrite
-    @rc.set('key1', 'val1') #clock = 0
+    @rc.set('key1', 'val1') # clock = 0
     @rc_replica.set('key1', 'replica1')
     @rc_replica.set('key1', 'replica1') # clock = 1
 
@@ -250,5 +249,4 @@ class ClusterReplicationTest < Test::Unit::TestCase
 
     assert_equal('replica1', @rc_replica.get('key1'))
   end
-
 end #  end of ClusterReplicationTest class

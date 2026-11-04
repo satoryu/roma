@@ -6,6 +6,7 @@ module Roma
     # roma log: work with the log files of romad.
     class Log < Thor
       extend Common
+
       check_unknown_options!
 
       desc 'merge LOG_FILE...', 'Merge the log files of romad in time order'
@@ -17,7 +18,7 @@ module Roma
       def merge(log_file, *log_files)
         out = options[:output] ? File.open(options[:output], 'w') : $stdout
         Roma::Tools::LogMerger.new(out: out).merge([log_file, *log_files], level: options[:level],
-                                                   start_date: options[:start], end_date: options[:end])
+                                                                           start_date: options[:start], end_date: options[:end])
       ensure
         out.close if options[:output] && out
       end

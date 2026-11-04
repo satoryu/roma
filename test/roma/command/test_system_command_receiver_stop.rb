@@ -74,10 +74,10 @@ class SystemCommandReceiverStopTest < Test::Unit::TestCase
     assert_stopped
   end
 
-  data('balse, no' => ['balse', 'no'],
+  data('balse, no' => %w(balse no),
        'balse, no answer' => ['balse', nil],
-       'shutdown, no' => ['shutdown', 'no'],
-       'shutdown, YES' => ['shutdown', 'YES'])
+       'shutdown, no' => %w(shutdown no),
+       'shutdown, YES' => %w(shutdown YES))
   def test_stop_cluster_not_confirmed(data)
     command, answer = data
     assert_equal 1, @conn.request(command, answer).lines.size

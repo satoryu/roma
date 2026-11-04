@@ -28,7 +28,7 @@ module Roma
         end
         yield
       end
-      $stderr.puts pid
+      warn pid
       exit! 0
     end
   end

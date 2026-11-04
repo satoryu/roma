@@ -1,11 +1,9 @@
-require 'thread'
 require 'digest/sha1'
 require 'timeout'
 require 'roma/async_message'
 require 'roma/configuration'
 
 module Roma
-
   module AsyncProcess
     @@async_queue = Queue.new
     @@async_queue_latency = Queue.new
@@ -28,7 +26,7 @@ module Roma
         async_process_loop_for_latency
       end
       @async_thread_latency[:name] = __method__
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
     end
 
@@ -55,22 +53,20 @@ module Roma
         while msg = @@async_queue.pop
           if send("asyncev_#{msg.event}", msg.args)
             msg.callback.call(msg, true) if msg.callback
-          else
-            if msg.retry?
-              t = Thread.new do
-                msg.wait
-                msg.incr_count
-                @@async_queue.push(msg)
-              end
-              t[:name] = __method__
-            else
-              @log.error("async process retry out:#{msg.inspect}")
-              msg.callback.call(msg, false) if msg.callback
+          elsif msg.retry?
+            t = Thread.new do
+              msg.wait
+              msg.incr_count
+              @@async_queue.push(msg)
             end
+            t[:name] = __method__
+          else
+            @log.error("async process retry out:#{msg.inspect}")
+            msg.callback.call(msg, false) if msg.callback
           end
         end
       end
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
       retry
     end
@@ -80,22 +76,20 @@ module Roma
         while msg = @@async_queue_latency.pop
           if send("asyncev_#{msg.event}", msg.args)
             msg.callback.call(msg, true) if msg.callback
-          else
-            if msg.retry?
-              t = Thread.new do
-                msg.wait
-                msg.incr_count
-                @@async_queue_latency.push(msg)
-              end
-              t[:name] = __method__
-            else
-              @log.error("async process retry out:#{msg.inspect}")
-              msg.callback.call(msg, false) if msg.callback
+          elsif msg.retry?
+            t = Thread.new do
+              msg.wait
+              msg.incr_count
+              @@async_queue_latency.push(msg)
             end
+            t[:name] = __method__
+          else
+            @log.error("async process retry out:#{msg.inspect}")
+            msg.callback.call(msg, false) if msg.callback
           end
         end
       end
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
       retry
     end
@@ -126,14 +120,12 @@ module Roma
       end
       @stats.run_join = true
       t = Thread.new do
-        begin
-          join_process
-        rescue => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-        ensure
-          @stats.run_join = false
-          @stats.join_node_id = nil
-        end
+        join_process
+      rescue StandardError => e
+        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
+      ensure
+        @stats.run_join = false
+        @stats.join_node_id = nil
       end
       t[:name] = __method__
       true
@@ -155,13 +147,11 @@ module Roma
       end
       @stats.run_balance = true
       t = Thread.new do
-        begin
-          balance_process
-        rescue => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-        ensure
-          @stats.run_balance = false
-        end
+        balance_process
+      rescue StandardError => e
+        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
+      ensure
+        @stats.run_balance = false
       end
       t[:name] = __method__
       true
@@ -189,7 +179,8 @@ module Roma
         @log.warn("async zredundant failed:#{node_id} does not found in routing table.#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}")
         return true # no retry
       end
-      res = async_send_cmd(node_id, "rzset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}\r\n#{zv}\r\n", 10)
+      res = async_send_cmd(node_id, "rzset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}\r\n#{zv}\r\n",
+                           10)
       if res.nil? || res.start_with?('ERROR')
         @log.warn("async zredundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length} -> #{node_id}")
         return false # retry
@@ -220,13 +211,11 @@ module Roma
       else
         @stats.run_iterate_storage = true
         t = Thread.new do
-          begin
-            sync_a_vnode(vnode.to_i, node_id, p == 'true')
-          rescue => e
-            @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-          ensure
-            @stats.run_iterate_storage = false
-          end
+          sync_a_vnode(vnode.to_i, node_id, p == 'true')
+        rescue StandardError => e
+          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
+        ensure
+          @stats.run_iterate_storage = false
         end
         t[:name] = __method__
       end
@@ -248,13 +237,11 @@ module Roma
       end
       @stats.run_recover = true
       t = Thread.new do
-        begin
-          acquired_recover_process
-        rescue => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-        ensure
-          @stats.run_recover = false
-        end
+        acquired_recover_process
+      rescue StandardError => e
+        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
+      ensure
+        @stats.run_recover = false
       end
       t[:name] = __method__
     end
@@ -277,34 +264,32 @@ module Roma
 
       @routing_table.auto_recover_status = 'preparing'
       t = Thread.new do
-        begin
-          Timeout.timeout(@routing_table.auto_recover_time)do
-            loop do
-              sleep 1
-              break if @routing_table.auto_recover_status != 'preparing'
-              # break if @stats.run_join #run_join don't have possibility to be true in this case.
-              break if @stats.run_recover
-              break if @stats.run_balance
-            end
+        Timeout.timeout(@routing_table.auto_recover_time) do
+          loop do
+            sleep 1
+            break if @routing_table.auto_recover_status != 'preparing'
+            # break if @stats.run_join #run_join don't have possibility to be true in this case.
+            break if @stats.run_recover
+            break if @stats.run_balance
           end
-          @log.debug('inactivated AUTO_RECOVER')
-        rescue
-          case @routing_table.lost_action
-            when :auto_assign, :shutdown
-              @stats.run_recover = true
-              @routing_table.auto_recover_status = 'executing'
-              begin
-                @log.debug('auto recover start')
-                acquired_recover_process
-              rescue => e
-                @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-              ensure
-                @stats.run_recover = false
-                @routing_table.auto_recover_status = 'waiting'
-              end
-            when :no_action
-              @log.debug('auto recover NOT start. Because lost action is [no_action]')
+        end
+        @log.debug('inactivated AUTO_RECOVER')
+      rescue StandardError
+        case @routing_table.lost_action
+        when :auto_assign, :shutdown
+          @stats.run_recover = true
+          @routing_table.auto_recover_status = 'executing'
+          begin
+            @log.debug('auto recover start')
+            acquired_recover_process
+          rescue StandardError => e
+            @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
+          ensure
+            @stats.run_recover = false
+            @routing_table.auto_recover_status = 'waiting'
           end
+        when :no_action
+          @log.debug('auto recover NOT start. Because lost action is [no_action]')
         end
       end
       t[:name] = __method__
@@ -319,14 +304,12 @@ module Roma
         @stats.run_iterate_storage = true
         @stats.spushv_protection = true
         t = Thread.new do
-          begin
-            release_process
-          rescue => e
-            @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-          ensure
-            @stats.run_iterate_storage = false
-            @stats.run_release = false
-          end
+          release_process
+        rescue StandardError => e
+          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
+        ensure
+          @stats.run_iterate_storage = false
+          @stats.run_release = false
         end
         t[:name] = __method__
       end
@@ -345,18 +328,18 @@ module Roma
         vnode, nodes, is_primary = @routing_table.select_vnode_for_recover(exclude_nodes, @stats.replication_in_host)
         break unless vnode
 
-        if nodes.length != 0
-          ret = req_push_a_vnode(vnode, nodes[0], is_primary)
-          if ret == :rejected
-            sleep 1
-          elsif ret == false
-            break
-          end
+        next unless nodes.length != 0
+
+        ret = req_push_a_vnode(vnode, nodes[0], is_primary)
+        if ret == :rejected
           sleep 1
+        elsif ret == false
+          break
         end
+        sleep 1
       end
       @log.info("#{__method__} has done.")
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e.inspect} #{$ERROR_POSITION}")
     ensure
       @do_acquired_recover_process = false
@@ -385,7 +368,7 @@ module Roma
           count += 1
         end
       end
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e.inspect} #{$ERROR_POSITION}")
     ensure
       @log.info("#{__method__} has done.")
@@ -416,7 +399,7 @@ module Roma
         end
       end
       @log.info("#{__method__} has done.")
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e.inspect} #{$ERROR_POSITION}")
     ensure
       @do_balance_process = false
@@ -446,7 +429,7 @@ module Roma
         return :timeout
       end
       true
-    rescue => e
+    rescue StandardError => e
       @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       @routing_table.proc_failed(src_node_id)
       false
@@ -463,25 +446,27 @@ module Roma
       @do_release_process = true
       while @routing_table.has_node?(@stats.my_node_id)
         break unless @do_release_process
+
         @routing_table.each_vnode do |vnode, node_ids|
           break unless @do_release_process
-          if node_ids.include?(@stats.my_node_id)
 
-            to_node_id, new_node_ids = @routing_table.select_node_for_release(@stats.my_node_id, @stats.replication_in_host, node_ids)
-            res = sync_a_vnode_for_release(vnode, to_node_id, new_node_ids)
-            if res == :abort
-              @log.error("#{__method__}:release_process aborted due to SERVER_ERROR received.")
-              @do_release_process = false
-            end
-            if res == false
-              @log.warn("#{__method__}:error at vnode=#{vnode} to_node_id=#{to_node_id} new_node_id=#{new_node_ids}")
-              redo
-            end
+          next unless node_ids.include?(@stats.my_node_id)
+
+          to_node_id, new_node_ids = @routing_table.select_node_for_release(@stats.my_node_id,
+                                                                            @stats.replication_in_host, node_ids)
+          res = sync_a_vnode_for_release(vnode, to_node_id, new_node_ids)
+          if res == :abort
+            @log.error("#{__method__}:release_process aborted due to SERVER_ERROR received.")
+            @do_release_process = false
+          end
+          if res == false
+            @log.warn("#{__method__}:error at vnode=#{vnode} to_node_id=#{to_node_id} new_node_id=#{new_node_ids}")
+            redo
           end
         end
       end
       @log.info("#{__method__} has done.")
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
     ensure
       @do_release_process = false
@@ -501,12 +486,13 @@ module Roma
         @storages.each_key do |hash_name|
           res = push_a_vnode_stream(hash_name, vnode, to_node_id)
 
-          if res != 'STORED'
-            @routing_table.rollback(vnode)
-            @log.error("#{__method__}:push_a_vnode was failed:hash_name=#{hash_name} vnode=#{vnode}:#{res}")
-            return :abort if res.start_with?('SERVER_ERROR')
-            return false
-          end
+          next unless res != 'STORED'
+
+          @routing_table.rollback(vnode)
+          @log.error("#{__method__}:push_a_vnode was failed:hash_name=#{hash_name} vnode=#{vnode}:#{res}")
+          return :abort if res.start_with?('SERVER_ERROR')
+
+          return false
         end
 
         if (clock = @routing_table.commit(vnode)) == false
@@ -516,9 +502,7 @@ module Roma
         end
 
         clock = @routing_table.set_route(vnode, clock, new_node_ids)
-        if clock.is_a?(Integer) == false
-          clock, new_node_ids = @routing_table.search_nodes_with_clk(vnode)
-        end
+        clock, new_node_ids = @routing_table.search_nodes_with_clk(vnode) if clock.is_a?(Integer) == false
 
         cmd = "setroute #{vnode} #{clock - 1}"
         new_node_ids.each { |nn| cmd << " #{nn}" }
@@ -526,8 +510,8 @@ module Roma
         @log.debug("#{__method__}:async_broadcast_cmd(#{cmd}) #{res}")
       end
 
-      return true
-    rescue => e
+      true
+    rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
       false
     end
@@ -545,11 +529,11 @@ module Roma
         @storages.each_key do |hash_name|
           res = push_a_vnode_stream(hash_name, vnode, to_node_id)
 
-          if res != 'STORED'
-            @routing_table.rollback(vnode)
-            @log.error("#{__method__}:push_a_vnode was failed:hash_name=#{hash_name} vnode=#{vnode}:#{res}")
-            return false
-          end
+          next unless res != 'STORED'
+
+          @routing_table.rollback(vnode)
+          @log.error("#{__method__}:push_a_vnode was failed:hash_name=#{hash_name} vnode=#{vnode}:#{res}")
+          return false
         end
 
         if (clock = @routing_table.commit(vnode)) == false
@@ -560,9 +544,7 @@ module Roma
 
         node_ids = edit_nodes(node_ids, to_node_id, is_primary)
         clock = @routing_table.set_route(vnode, clock, node_ids)
-        if clock.is_a?(Integer) == false
-          clock, node_ids = @routing_table.search_nodes_with_clk(vnode)
-        end
+        clock, node_ids = @routing_table.search_nodes_with_clk(vnode) if clock.is_a?(Integer) == false
 
         cmd = "setroute #{vnode} #{clock - 1}"
         node_ids.each { |nn| cmd << " #{nn}" }
@@ -579,16 +561,15 @@ module Roma
         end
       end
 
-      return true
-    rescue => e
+      true
+    rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
       false
     end
 
     def edit_nodes(nodes, new_node_id, is_primary)
-      if @routing_table.redundancy == 1
-        return [new_node_id]
-      end
+      return [new_node_id] if @routing_table.redundancy == 1
+
       # [node_a, node_b, new_node_id]
       nodes.delete(new_node_id)
       # [node_a, node_b]
@@ -636,7 +617,6 @@ module Roma
       end
 
       res_dump = @storages[hash_name].each_vn_dump(vnode) do |data|
-
         unless @do_push_a_vnode_stream
           con.close
           @log.error("#{__method__}:canceled in hash_name=#{hash_name} vnode=#{vnode} node_id=#{node_id}")
@@ -656,7 +636,7 @@ module Roma
         return 'CANCELED'
       end
       res
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
       e.to_s
     end
@@ -669,14 +649,12 @@ module Roma
       end
       @stats.run_storage_clean_up = true
       t = Thread.new do
-        begin
-          storage_clean_up_process
-        rescue => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-        ensure
-          @stats.last_clean_up = Time.now
-          @stats.run_storage_clean_up = false
-        end
+        storage_clean_up_process
+      rescue StandardError => e
+        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
+      ensure
+        @stats.last_clean_up = Time.now
+        @stats.run_storage_clean_up = false
       end
       t[:name] = __method__
     end
@@ -686,18 +664,19 @@ module Roma
       me = @stats.my_node_id
       vnhash = {}
       @routing_table.each_vnode do |vnode, node_ids|
-        if node_ids.include?(me)
-          if node_ids[0] == me
-            vnhash[vnode] = :primary
-          else
-            vnhash[vnode] = "secondary#{node_ids.index(me)}".to_sym
-          end
-        end
+        next unless node_ids.include?(me)
+
+        vnhash[vnode] = if node_ids[0] == me
+                          :primary
+                        else
+                          :"secondary#{node_ids.index(me)}"
+                        end
       end
       t = Time.now.to_i - Roma.config.storage.delete_mark_expire_time
       count = 0
       @storages.each_pair do |hash_name, st|
         break unless @stats.do_clean_up?
+
         st.each_clean_up(t, vnhash) do |key, vnode|
           # @log.debug("#{__method__}:key=#{key} vnode=#{vnode}")
           if @stats.run_receive_a_vnode.key?("#{hash_name}_#{vnode}")
@@ -707,9 +686,7 @@ module Roma
             if nodes && nodes.length > 1
               nodes[1..-1].each do |node_id|
                 res = async_send_cmd(node_id, "out #{key}\e#{hash_name} #{vnode}\r\n")
-                unless res
-                  @log.warn("send out command failed:#{key}\e#{hash_name} #{vnode} -> #{node_id}")
-                end
+                @log.warn("send out command failed:#{key}\e#{hash_name} #{vnode} -> #{node_id}") unless res
                 # @log.debug("#{__method__}:res=#{res}")
               end
             end
@@ -719,9 +696,7 @@ module Roma
           end
         end
       end
-      if count > 0
-        @log.info("#{__method__}:#{count} keys deleted.")
-      end
+      @log.info("#{__method__}:#{count} keys deleted.") if count > 0
 
       # delete @routing_table.logs
       if @stats.gui_run_gather_logs || @routing_table.logs.empty?
@@ -752,24 +727,29 @@ module Roma
         @stats.latency_data[cmd]['latency'].delete_at(0) if @stats.latency_data[cmd]['latency'].length >= 10
         @stats.latency_data[cmd]['latency'].push(latency)
 
-        @stats.latency_data[cmd]['latency_max']['current'] = latency if latency > @stats.latency_data[cmd]['latency_max']['current']
-        @stats.latency_data[cmd]['latency_min']['current'] = latency if latency < @stats.latency_data[cmd]['latency_min']['current']
-
-      rescue => e
+        if latency > @stats.latency_data[cmd]['latency_max']['current']
+          @stats.latency_data[cmd]['latency_max']['current'] =
+            latency
+        end
+        if latency < @stats.latency_data[cmd]['latency_min']['current']
+          @stats.latency_data[cmd]['latency_min']['current'] =
+            latency
+        end
+      rescue StandardError => e
         @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-
       ensure
         if @stats.latency_check_time_count && Time.now.to_i - @stats.latency_data[cmd]['time'] > @stats.latency_check_time_count
-          average = @stats.latency_data[cmd]['latency'].inject(0.0) { |r, i| r += i } / @stats.latency_data[cmd]['latency'].size
+          average = @stats.latency_data[cmd]['latency'].inject(0.0) do |r, i|
+            r + i
+          end / @stats.latency_data[cmd]['latency'].size
           max = @stats.latency_data[cmd]['latency_max']['current']
           min = @stats.latency_data[cmd]['latency_min']['current']
-          @log.debug("Latency average[#{cmd}]: #{sprintf('%.8f', average)}"\
-                     "(denominator=#{@stats.latency_data[cmd]['latency'].length}"\
-                     " max=#{sprintf('%.8f', max)}"\
-                     " min=#{sprintf('%.8f', min)})"
-                    )
+          @log.debug("Latency average[#{cmd}]: #{format('%.8f', average)}" \
+                     "(denominator=#{@stats.latency_data[cmd]['latency'].length} " \
+                     "max=#{format('%.8f', max)} " \
+                     "min=#{format('%.8f', min)})")
 
-          @stats.latency_data[cmd]['time'] =  Time.now.to_i
+          @stats.latency_data[cmd]['time'] = Time.now.to_i
           @stats.latency_data[cmd]['latency_past'] = @stats.latency_data[cmd]['latency']
           @stats.latency_data[cmd]['latency'] = []
           @stats.latency_data[cmd]['latency_max']['past'] = @stats.latency_data[cmd]['latency_max']['current']
@@ -791,14 +771,11 @@ module Roma
         return true
       end
       t = Thread.new do
-        begin
-          st.flush_db(db_index)
-          st.set_db_stat(db_index, :safecopy_flushed)
-          @log.info("#{__method__}:storage has flushed. (#{hash_name}, #{db_index})")
-        rescue => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-        ensure
-        end
+        st.flush_db(db_index)
+        st.set_db_stat(db_index, :safecopy_flushed)
+        @log.info("#{__method__}:storage has flushed. (#{hash_name}, #{db_index})")
+      rescue StandardError => e
+        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       end
       t[:name] = __method__
       true
@@ -814,12 +791,9 @@ module Roma
         return true
       end
       t = Thread.new do
-        begin
-          storage_cachecleaning_process(hash_name, db_index)
-        rescue => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-        ensure
-        end
+        storage_cachecleaning_process(hash_name, db_index)
+      rescue StandardError => e
+        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       end
       t[:name] = __method__
       true
@@ -842,6 +816,7 @@ module Roma
         # copy cache -> db
         st.each_cache_by_keys(db_index, keys) do |vnode, last, clock, expire_time, k, v|
           break unless @do_storage_cachecleaning_process
+
           if st.load_stream_dump_for_cachecleaning(vnode, last, clock, expire_time, k, v)
             count += 1
             # @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
@@ -868,12 +843,9 @@ module Roma
     def asyncev_start_get_routing_event(args)
       @log.debug("#{__method__} #{args}")
       t = Thread.new do
-        begin
-          get_routing_event
-        rescue => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-        ensure
-        end
+        get_routing_event
+      rescue StandardError => e
+        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       end
       t[:name] = __method__
     end
@@ -885,8 +857,8 @@ module Roma
       # The storage files may be in a directory named like the routing logs.
       f_list = Dir.glob("#{routing_path}/#{@stats.my_node_id}*").select { |f| File.file?(f) }
 
-      f_list.each do|fname|
-        IO.foreach(fname)do|line|
+      f_list.each do |fname|
+        IO.foreach(fname) do |line|
           if line =~ /join|leave/
             @routing_table.event.shift if @routing_table.event.size >= @routing_table.event_limit_line
             @routing_table.event << line.chomp
@@ -895,20 +867,18 @@ module Roma
       end
 
       @log.info("#{__method__} has done.")
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
     end
 
     def asyncev_start_get_logs(args)
       @log.debug("#{__method__} #{args}")
       t = Thread.new do
-        begin
-          get_logs(args)
-        rescue => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-        ensure
-          @stats.gui_run_gather_logs = false
-        end
+        get_logs(args)
+      rescue StandardError => e
+        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
+      ensure
+        @stats.gui_run_gather_logs = false
       end
       t[:name] = __method__
     end
@@ -916,11 +886,11 @@ module Roma
     def get_logs(args)
       @log.debug("#{__method__}:start.")
 
-      log_path =  Roma.config.log.path
+      log_path = Roma.config.log.path
       log_file = "#{log_path}/#{@stats.my_node_id}.log"
 
       target_logs = []
-      File.open(log_file)do|f|
+      File.open(log_file) do |f|
         start_point = get_point(f, args[0], 'start')
         end_point = get_point(f, args[1], 'end')
 
@@ -936,7 +906,7 @@ module Roma
       @routing_table.logs.unshift(Time.now)
 
       @log.debug("#{__method__} has done.")
-    rescue => e
+    rescue StandardError => e
       @routing_table.logs = []
       @log.error("#{e}\n#{$ERROR_POSITION}")
     ensure
@@ -948,7 +918,7 @@ module Roma
       ps = Time.now - latency_time
       if ps > 5
         @log.warn('gather_logs process was failed.')
-        fail
+        raise
       end
 
       # initialize read size
@@ -959,21 +929,24 @@ module Roma
         # in case of not set end_date
         return f.size if target_time == 'current'
 
-        target_time =~ (/(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/)
-        target_time = Time.mktime(Regexp.last_match[1], Regexp.last_match[2], Regexp.last_match[3], Regexp.last_match[4], Regexp.last_match[5], Regexp.last_match[6], 000000)
+        target_time =~ /(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)/
+        target_time = Time.mktime(Regexp.last_match[1], Regexp.last_match[2], Regexp.last_match[3],
+                                  Regexp.last_match[4], Regexp.last_match[5], Regexp.last_match[6], 0o00000)
 
         # check outrange or not
         f.seek(0, IO::SEEK_SET)
         begining_log = f.read(read_size)
         # Regexp.last_match is the first time in the log.
         begining_log.index(/[IDEW],\s\[(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)\.(\d+)/)
-        begining_time = Time.mktime(Regexp.last_match[1], Regexp.last_match[2], Regexp.last_match[3], Regexp.last_match[4], Regexp.last_match[5], Regexp.last_match[6], Regexp.last_match[7])
+        begining_time = Time.mktime(Regexp.last_match[1], Regexp.last_match[2], Regexp.last_match[3],
+                                    Regexp.last_match[4], Regexp.last_match[5], Regexp.last_match[6], Regexp.last_match[7])
 
         f.seek(-read_size, IO::SEEK_END)
         end_log = f.read(read_size)
         # Regexp.last_match is the last time in the log.
         end_log.rindex(/[IDEW],\s\[(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)\.(\d+)/)
-        end_time = Time.mktime(Regexp.last_match[1], Regexp.last_match[2], Regexp.last_match[3], Regexp.last_match[4], Regexp.last_match[5], Regexp.last_match[6], Regexp.last_match[7])
+        end_time = Time.mktime(Regexp.last_match[1], Regexp.last_match[2], Regexp.last_match[3], Regexp.last_match[4],
+                               Regexp.last_match[5], Regexp.last_match[6], Regexp.last_match[7])
 
         case type
         when 'start'
@@ -981,14 +954,14 @@ module Roma
             return 0
           elsif target_time > end_time
             @log.error('irregular time was set.')
-            fail
+            raise
           end
         when 'end'
           if target_time > end_time
             return f.size
           elsif target_time < begining_time
             @log.error('irregular time was set.')
-            fail
+            raise
           end
         end
       end
@@ -1000,19 +973,19 @@ module Roma
       date_a = sector_log.scan(/[IDEW],\s\[(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)\.(\d+)/)
 
       time_a = []
-      date_a.each do|time|
+      date_a.each do |time|
         time_a.push(Time.mktime(time[0], time[1], time[2], time[3], time[4], time[5], time[6]))
       end
       sector_time_first = time_a[0]
       sector_time_last = time_a[-1]
 
       if target_time.between?(sector_time_first, sector_time_last)
-        time_a.each do|time|
-          if target_time <= time
-            time_string = time.strftime('%Y-%m-%dT%H:%M:%S')
-            target_index = sector_log.index(/[IDEW],\s\[#{time_string}/)
-            return new_pos + target_index
-          end
+        time_a.each do |time|
+          next unless target_time <= time
+
+          time_string = time.strftime('%Y-%m-%dT%H:%M:%S')
+          target_index = sector_log.index(/[IDEW],\s\[#{time_string}/)
+          return new_pos + target_index
         end
       elsif sector_time_first > target_time
         target_pos = new_pos - ((new_pos - current_pos).abs / 2)
@@ -1026,14 +999,12 @@ module Roma
     def asyncev_start_replicate_existing_data_process(args)
       # args is [$roma.cluster_replication_writer.replica_rttable])
       t = Thread.new do
-        begin
-          $roma.cluster_replication_writer.run_existing_data_replication = true
-          replicate_existing_data_process(args)
-        rescue => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-        ensure
-          $roma.cluster_replication_writer.run_existing_data_replication = false
-        end
+        $roma.cluster_replication_writer.run_existing_data_replication = true
+        replicate_existing_data_process(args)
+      rescue StandardError => e
+        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
+      ensure
+        $roma.cluster_replication_writer.run_existing_data_replication = false
       end
       t[:name] = __method__
     end
@@ -1044,6 +1015,7 @@ module Roma
       @storages.each_key do |hash_name|
         @routing_table.routes.each_key do |vnode|
           raise unless $roma.cluster_replication_writer.run_existing_data_replication
+
           args[0].routes[vnode].each do |replica_node_id|
             res = push_a_vnode_stream(hash_name, vnode, replica_node_id)
             if res != 'STORED'
@@ -1055,9 +1027,8 @@ module Roma
       end
 
       @log.info("#{__method__} has done.")
-    rescue => e
+    rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
     end
-
   end # module AsyncProcess
 end # module Roma

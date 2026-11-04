@@ -12,7 +12,7 @@ class RoutingTableTest < Test::Unit::TestCase
     assert_equal VN[0], @rt.get_vnode_id(0)
     assert_equal VN[0], @rt.get_vnode_id(VN[1] - 1)
     assert_equal VN[1], @rt.get_vnode_id(VN[1])
-    assert_equal VN[3], @rt.get_vnode_id(2**32 - 1)
+    assert_equal VN[3], @rt.get_vnode_id((2**32) - 1)
   end
 
   def test_search_nodes_returns_a_copy
@@ -20,7 +20,7 @@ class RoutingTableTest < Test::Unit::TestCase
     assert_equal [A1, B1], nodes
     nodes << A2
     assert_equal [A1, B1], @rt.search_nodes(VN[0])
-    assert_nil @rt.search_nodes(12345)
+    assert_nil @rt.search_nodes(12_345)
   end
 
   def test_num_of_vn
@@ -41,7 +41,7 @@ class RoutingTableTest < Test::Unit::TestCase
   def test_leave
     @rt.leave(B1)
     assert_equal [A1], @rt.nodes
-    assert_equal [[A1], [A1], [A1], []], VN.map { |vnode| @rt.search_nodes(vnode) }
+    assert_equal([[A1], [A1], [A1], []], VN.map { |vnode| @rt.search_nodes(vnode) })
     # [primary, [secondary], short, lost]
     assert_equal [3, [0], 3, 1], @rt.count_vnodes(A1)
   end

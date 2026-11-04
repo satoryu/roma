@@ -26,7 +26,7 @@ module Roma
          !subcommands.include?(command)
         given_args = ['help', command]
       end
-      super(given_args, config)
+      super
     end
 
     desc 'server ADDRESS [OPTIONS]', 'Run romad. romad ADDRESS [OPTIONS] is the same. See roma server --help'
@@ -49,9 +49,9 @@ module Roma
       modes = Roma::Tools::Benchmark::MODES.select { |mode| options[mode] }
       modes << :random if modes.empty?
       Roma::Tools::Benchmark.new([node_id, *node_ids]).run(modes, key_count: options[:key_count],
-                                                           threads: options[:threads],
-                                                           value_size: options[:value_size],
-                                                           duration: options[:duration])
+                                                                  threads: options[:threads],
+                                                                  value_size: options[:value_size],
+                                                                  duration: options[:duration])
     end
 
     desc 'route SUBCOMMAND', 'Make and change the routing tables'

@@ -1,6 +1,7 @@
 require 'bundler/gem_tasks'
 require 'rake'
 require 'rake/testtask'
+require 'rubocop/rake_task'
 
 begin
   require 'rdoc/task'
@@ -9,19 +10,19 @@ rescue LoadError
 end
 
 RDOC_OPTIONS = [
-                '--line-numbers',
-                '--inline-source',
-                "--main", "README.md",
-                "-c UTF-8",
-               ]
+  '--line-numbers',
+  '--inline-source',
+  '--main', 'README.md',
+  '-c UTF-8'
+]
 
-Rake::RDocTask.new("doc") do |rdoc|
+Rake::RDocTask.new('doc') do |rdoc|
   rdoc.rdoc_dir = 'doc'
-  rdoc.title = "ROMA documents"
+  rdoc.title = 'ROMA documents'
   rdoc.options.concat RDOC_OPTIONS
   rdoc.rdoc_files.include('lib/**/*.rb')
-  rdoc.rdoc_files.include("README.md")
-  rdoc.rdoc_files.include("ChangeLog.md")
+  rdoc.rdoc_files.include('README.md')
+  rdoc.rdoc_files.include('ChangeLog.md')
 end
 
 Rake::TestTask.new do |t|
@@ -31,6 +32,8 @@ Rake::TestTask.new do |t|
   t.options = '--verbose'
 end
 
+RuboCop::RakeTask.new
+
 desc 'Run the tests and report the coverage of lib in coverage/index.html'
 task :coverage do
   rm_rf 'coverage'
@@ -39,7 +42,7 @@ task :coverage do
   # SimpleCov skips the rest of the report while an exception is raised.
   begin
     Rake::Task[:test].invoke
-  rescue => test_failure
+  rescue StandardError => e
   end
 
   # The last romad processes may still be writing their results.
@@ -49,7 +52,7 @@ task :coverage do
 
   require_relative 'test/coverage_helper'
   CoverageHelper.report
-  raise test_failure if test_failure
+  raise e if e
 end
 
 namespace :changelog do
@@ -66,7 +69,7 @@ namespace :changelog do
       req = Net::HTTP::Get.new("/repos/roma/roma/pulls/#{pr.chomp}")
       res = http.request(req)
 
-      if Net::HTTPSuccess === res
+      if res.is_a?(Net::HTTPSuccess)
         json = JSON.parse(res.body)
         puts "* #{json['title']}, [#{json['user']['login']}](#{json['user']['html_url']}), [##{json['number']}](#{json['html_url']})"
       end

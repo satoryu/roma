@@ -173,6 +173,7 @@ class CommandPluginAlistForwardTest < Test::Unit::TestCase
 
     def dispatch(_line, _rest)
       raise Errno::ECONNREFUSED unless @reply
+
       @reply
     end
   end

@@ -22,10 +22,10 @@ module Roma
       def send_command_to_all(command)
         @routing_data.nodes.map do |node_id|
           reply = begin
-                    send_command(command, node_id)
-                  rescue Error => e
-                    "ERROR: #{e.message}\r\n"
-                  end
+            send_command(command, node_id)
+          rescue Error => e
+            "ERROR: #{e.message}\r\n"
+          end
           "****** #{node_id}\r\n#{reply}"
         end.join
       end

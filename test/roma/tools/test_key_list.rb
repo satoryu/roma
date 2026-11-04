@@ -15,7 +15,7 @@ class KeyListTest < Test::Unit::TestCase
     err = StringIO.new
     use_mem_storages(Roma::Tools::KeyList.new(out: out, err: err, wait: 0)).list(@dir)
     assert_equal %w(key1 key2 key3), out.string.lines.map(&:chomp).sort
-    assert_match(/\A### roma #{@dir}\/roma\n.*done\n### roma2 #{@dir}\/roma2\n.*done\n\z/m, err.string)
+    assert_match(%r{\A### roma #{@dir}/roma\n.*done\n### roma2 #{@dir}/roma2\n.*done\n\z}m, err.string)
     assert_match(%r{1/3\r2/3\r}, err.string)
     assert_equal [File.join(@dir, 'roma'), File.join(@dir, 'roma2')], @closed
   end

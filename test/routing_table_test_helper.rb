@@ -1,4 +1,3 @@
-
 require 'roma/routing/churnbased_routing_table'
 
 # Helpers of the unit tests for the routing tables and the vnode selection

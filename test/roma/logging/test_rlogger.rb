@@ -30,7 +30,7 @@ class RLoggerTest < Test::Unit::TestCase
   end
 
   def make_old
-    File.utime(Time.now - 86_400 * 40, Time.now - 86_400 * 40, @file)
+    File.utime(Time.now - (86_400 * 40), Time.now - (86_400 * 40), @file)
   end
 
   def test_levels

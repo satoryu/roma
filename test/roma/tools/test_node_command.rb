@@ -7,9 +7,9 @@ require 'roma/tools/node_command'
 class NodeCommandTest < Test::Unit::TestCase
   include ToolTestHelper
 
-  def run_adm(cmd, input: '', **opts)
+  def run_adm(cmd, input: '', **)
     @out = StringIO.new
-    Roma::Tools::NodeCommand.new(input: StringIO.new(input), out: @out).run(@node.node_id, cmd, **opts)
+    Roma::Tools::NodeCommand.new(input: StringIO.new(input), out: @out).run(@node.node_id, cmd, **)
   end
 
   def setup

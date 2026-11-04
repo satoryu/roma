@@ -24,10 +24,10 @@ module ToolTestHelper
 
   # Runs a command in bin/ in another process, since the tools run when they
   # are loaded and some exit. With COVERAGE, it is measured too.
-  def run_tool(name, *args, stdin: '')
+  def run_tool(name, *, stdin: '')
     cmd = [RbConfig.ruby]
     cmd.push('-r', File.expand_path('start_coverage', __dir__)) if ENV['COVERAGE']
-    cmd.push(File.join(BIN_DIR, name), *args)
+    cmd.push(File.join(BIN_DIR, name), *)
     Open3.capture3(*cmd, stdin_data: stdin, chdir: @dir)
   end
 
