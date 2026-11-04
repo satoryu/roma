@@ -1,12 +1,12 @@
 require 'test/unit'
 require 'plugin_test_harness'
-require 'roma/command_plugin/plugin_map'
+require 'roma/command_plugin/map'
 
 # Unit tests for the map plugin commands. They run in-process, so no romad is
 # started. Forwarding between nodes is covered by test/test_map_plugin.rb.
-class PluginMapTest < Test::Unit::TestCase
+class CommandPluginMapTest < Test::Unit::TestCase
   def setup
-    @conn = PluginTestHarness.for(Roma::CommandPlugin::PluginMap).new
+    @conn = PluginTestHarness.for(Roma::CommandPlugin::Map).new
   end
 
   def map_set(key, mapkey, value, expire_time = 0)

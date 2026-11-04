@@ -7,7 +7,7 @@ require 'roma/configuration'
 module Roma
   module CommandPlugin
 
-    module PluginAlist
+    module Alist
       include ::Roma::CommandPlugin
  
       # alist_at <key> <index> [forward]\r\n
@@ -1290,7 +1290,7 @@ module Roma
           send_data("STORED\r\n")
         end
         @log.debug("alist #{count} keys loaded.")
-      rescue Storage::StorageException => e
+      rescue Roma::Storage::StorageException => e
         @log.error("#{e.inspect} #{$@}")
         close_connection
         if Roma.config.storage.exception_action == :shutdown
@@ -1468,6 +1468,6 @@ module Roma
         send_data("#{res}\r\n")
       end
 
-    end #  PluginAlist
+    end #  Alist
   end # CommandPlugin
 end # Roma

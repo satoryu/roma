@@ -6,7 +6,7 @@ require 'roma/async_process'
 module Roma
   module CommandPlugin
 
-    module PluginStorage
+    module Storage
       include ::Roma::CommandPlugin
 
       # "set" means "store this data".
@@ -753,7 +753,7 @@ module Roma
         store_incr_decr(fnc, hash_name, vnode, key, d, v, nodes)
       end
 
-    end # module PluginStorage
+    end # module Storage
 
   end # module CommandPlugin
 end # module Roma

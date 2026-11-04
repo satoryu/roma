@@ -25,11 +25,11 @@ class CommandPluginTest < Test::Unit::TestCase
   # The *.rb files in the directory, by their names. Files in the
   # subdirectories are for the plugins to require.
   def test_files
-    write_plugin('plugin_b.rb', :PluginB)
-    write_plugin('plugin_a.rb', :PluginA)
+    write_plugin('b.rb', :B)
+    write_plugin('a.rb', :A)
     write_plugin('lib/helper.rb', :Helper)
     File.write(File.join(@dir, 'README.md'), '')
-    assert_equal [File.join(@dir, 'plugin_a.rb'), File.join(@dir, 'plugin_b.rb')],
+    assert_equal [File.join(@dir, 'a.rb'), File.join(@dir, 'b.rb')],
                  Roma::CommandPlugin.files(@dir)
   end
 
@@ -40,15 +40,15 @@ class CommandPluginTest < Test::Unit::TestCase
   # The plugins in the directory come after the bundled ones, so that they
   # are included later and their commands win.
   def test_require_all
-    write_plugin('plugin_command_plugin_test.rb', :PluginCommandPluginTest)
+    write_plugin('command_plugin_test.rb', :CommandPluginTest)
     paths = Roma::CommandPlugin.require_all(@dir)
     assert_equal Roma::CommandPlugin::BUNDLED.map { |name| "roma/command_plugin/#{name}" } +
-                 [File.join(@dir, 'plugin_command_plugin_test.rb')], paths
-    assert_equal Roma::CommandPlugin::PluginCommandPluginTest, Roma::CommandPlugin.plugins.last
+                 [File.join(@dir, 'command_plugin_test.rb')], paths
+    assert_equal Roma::CommandPlugin::CommandPluginTest, Roma::CommandPlugin.plugins.last
   end
 
-  # eval of plugin_debug runs any Ruby code, so it is not bundled.
+  # eval of debug runs any Ruby code, so it is not bundled.
   def test_debug_is_not_bundled
-    assert_not_include Roma::CommandPlugin::BUNDLED, 'plugin_debug'
+    assert_not_include Roma::CommandPlugin::BUNDLED, 'debug'
   end
 end

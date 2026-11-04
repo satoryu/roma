@@ -93,14 +93,15 @@ The internal names are words, too, such as `@routing_table`, `node_id`, `vnode`,
 ### File names
 The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins required, is `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)
 
-The plugins are in `roma/command_plugin/`, after their namespace `Roma::CommandPlugin`, and named after their files [#49](https://github.com/satoryu/roma/pull/49):
+The plugins are in `roma/command_plugin/`, after their namespace `Roma::CommandPlugin`, and named after their files with no `plugin_` prefix [#49](https://github.com/satoryu/roma/pull/49):
 
 | Before | After |
 | --- | --- |
-| `roma/plugin/plugin_*.rb` | `roma/command_plugin/plugin_*.rb` |
-| `Roma::CommandPlugin::PluginAshiatoList` | `Roma::CommandPlugin::PluginAlist` |
-| `Roma::CommandPlugin::PluginOperation` | `Roma::CommandPlugin::PluginDebug` |
-| `Roma::CommandPlugin::PluginMapCount` | `Roma::CommandPlugin::PluginMapcount` |
+| `roma/plugin/plugin_*.rb` | `roma/command_plugin/*.rb`, such as `roma/command_plugin/storage.rb` |
+| `Roma::CommandPlugin::PluginStorage`, `PluginMap`, `PluginGui`, `PluginTest` | `Roma::CommandPlugin::Storage`, `Map`, `Gui`, `Test` |
+| `Roma::CommandPlugin::PluginAshiatoList` | `Roma::CommandPlugin::Alist` |
+| `Roma::CommandPlugin::PluginOperation` | `Roma::CommandPlugin::Debug` |
+| `Roma::CommandPlugin::PluginMapCount` | `Roma::CommandPlugin::Mapcount` |
 | `Roma::Command::Definition::ClientErrorException`, `ServerErrorException` | `ClientError`, `ServerError`, which inherit `StandardError` |
 
 The old files and names are removed, with no aliases. [Porting a plugin from ROMA 1.x](docs/command_plugin.md#porting-a-plugin-from-roma-1x) lists what a 1.x plugin needs to change.
@@ -108,8 +109,8 @@ The old files and names are removed, with no aliases. [Porting a plugin from ROM
 ### Command plugins
 romad loads the command plugins by a convention, instead of a list in the config file. `PLUGIN_FILES` is removed, and there is no setting to list the plugins. See [Command plugins](docs/command_plugin.md).
 
-* The plugins of ROMA for data, `plugin_storage.rb`, `plugin_alist.rb`, `plugin_map.rb`, `plugin_mapcount.rb` and `plugin_gui.rb`, are always loaded.
-* `plugin_debug.rb` and `plugin_test.rb` are not, since `eval` of plugin_debug runs any Ruby code. To use one, put a file that requires it, such as `require 'roma/command_plugin/plugin_debug'`, in the plugin directory.
+* The plugins of ROMA for data, `storage.rb`, `alist.rb`, `map.rb`, `mapcount.rb` and `gui.rb`, are always loaded.
+* `debug.rb` and `test.rb` are not, since `eval` of debug runs any Ruby code. To use one, put a file that requires it, such as `require 'roma/command_plugin/debug'`, in the plugin directory.
 * romad requires the `*.rb` files in `./command_plugins`, by their names, after ROMA's plugins. `config.command_plugin_path` sets another directory. The `stats` command shows it as `config.command_plugin_path` (`config.plugins` before).
 * `plugin_cmd_aliases.rb`, which had no commands, is removed.
 * `roma config create` doesn't ask for the plugins.

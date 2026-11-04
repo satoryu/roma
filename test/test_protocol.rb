@@ -1,7 +1,7 @@
 require 'test_helper'
 
 require 'socket'
-require 'roma/command_plugin/plugin_storage'
+require 'roma/command_plugin/storage'
 require 'plugin_test_harness'
 
 module ProtocolTests
@@ -179,7 +179,7 @@ class ProtocolInProcessTest < Test::Unit::TestCase
   include ProtocolTests
 
   def setup
-    harness = PluginTestHarness.for(Roma::CommandPlugin::PluginStorage).new
+    harness = PluginTestHarness.for(Roma::CommandPlugin::Storage).new
     @sock = PluginTestHarness::Connection.new(harness)
   end
 end

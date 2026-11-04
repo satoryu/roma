@@ -1,7 +1,7 @@
 require 'test_helper'
 
 # End-to-end tests for the mapcount plugin through romad.
-# Each command's behavior is covered by test/roma/command_plugin/test_plugin_mapcount.rb.
+# Each command's behavior is covered by test/roma/command_plugin/test_mapcount.rb.
 class MapCountPluginTest < Test::Unit::TestCase
   self.test_order = :defined
   extend RomaTestUtils::RomaPerClass
