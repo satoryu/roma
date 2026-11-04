@@ -1,7 +1,6 @@
 require 'singleton'
 
 module Roma
-
   class Stats
     include Singleton
 
@@ -10,76 +9,39 @@ module Roma
 
     # command options
     attr_accessor :address, :port
-    attr_accessor :daemon
-    attr_accessor :join_node_id
-    attr_accessor :start_with_failover
-    attr_accessor :name
-    attr_accessor :verbose
-    attr_accessor :replication_in_host
-    attr_accessor :command_protection_disabled
+    attr_accessor :daemon, :join_node_id, :start_with_failover, :name, :verbose, :replication_in_host,
+                  :command_protection_disabled, :run_sync_routing, :run_iterate_storage, :run_storage_clean_up, :run_receive_a_vnode, :run_release, :run_join, :run_balance, :last_clean_up, :spushv_protection, :stream_show_wait, :dcnice, :clean_up_interval, :read_count, :delete_count, :out_count, :out_message_count, :redundant_count, :hilatency_warn_time, :latency_check_cmd, :latency_check_time_count, :latency_data, :spushv_vlength_warn, :spushv_read_timeout, :reqpushv_timeout_count, :routing_transaction_timeout, :gui_run_gather_logs, :gui_last_snapshot, :log_shift_age, :log_level
 
     # proc mode
     attr_accessor :enabled_vnodes_balance
 
     # proc status
     attr_accessor :run_recover
-    attr_accessor :run_sync_routing
-    attr_accessor :run_iterate_storage
-    attr_accessor :run_storage_clean_up
-    attr_accessor :run_receive_a_vnode
-    attr_accessor :run_release
-    attr_accessor :run_join
-    attr_accessor :run_balance
-
-    attr_accessor :last_clean_up
-    attr_accessor :spushv_protection
 
     # proc param
     attr_accessor :stream_copy_wait
-    attr_accessor :stream_show_wait
-    attr_accessor :dcnice
-    attr_accessor :clean_up_interval
 
     # compressed redundant param
     attr_accessor :compression_threshold
 
     # performance counter
     attr_accessor :write_count
-    attr_accessor :read_count
-    attr_accessor :delete_count
-    attr_accessor :out_count
-    attr_accessor :out_message_count
-    attr_accessor :redundant_count
-
-    attr_accessor :hilatency_warn_time
 
     # for write behind
     attr_accessor :wb_command_map
 
     # for latency average check
     attr_accessor :latency_log
-    attr_accessor :latency_check_cmd
-    attr_accessor :latency_check_time_count
-    attr_accessor :latency_data
-    #attr_accessor :latency_denominator
+    # attr_accessor :latency_denominator
 
     # for vnode copy parameter
     attr_accessor :spushv_klength_warn
-    attr_accessor :spushv_vlength_warn
-    attr_accessor :spushv_read_timeout
-    attr_accessor :reqpushv_timeout_count
-
-    attr_accessor :routing_transaction_timeout
 
     # for GUI tool
     attr_accessor :gui_run_snapshot
-    attr_accessor :gui_run_gather_logs
-    attr_accessor :gui_last_snapshot
 
     # for log
     attr_accessor :log_shift_size
-    attr_accessor :log_shift_age
-    attr_accessor :log_level
 
     def initialize
       @config_path = nil
@@ -111,15 +73,15 @@ module Roma
       @hilatency_warn_time = 5.0
       @wb_command_map = {}
       @latency_log = false
-      @latency_check_cmd =["get", "set", "delete"]
+      @latency_check_cmd = %w(get set delete)
       @latency_check_time_count = false
-      @latency_data = Hash.new { |hash,key| hash[key] = {} } #double hash
+      @latency_data = Hash.new { |hash, key| hash[key] = {} } # double hash
       @spushv_klength_warn = 1024 # 1kB
       @spushv_vlength_warn = 1024 * 1024 # 1MB
       @spushv_read_timeout = 100
       @reqpushv_timeout_count = 300 # 0.1 * 300 sec
       @routing_transaction_timeout = 3600 * 3 # 3hr
-      @log_shift_size = 1048576
+      @log_shift_size = 1_048_576
       @log_shift_age = 0
       @log_level = :debug
     end
@@ -162,9 +124,9 @@ module Roma
       ret['stats.redundant_count'] = @redundant_count
       ret['stats.hilatency_warn_time'] = @hilatency_warn_time
       ret['stats.wb_command_map'] = @wb_command_map.inspect
-      ret['stats.latency_log']  = @latency_log
-      ret['stats.latency_check_cmd']  = @latency_check_cmd
-      ret['stats.latency_check_time_count']  = @latency_check_time_count
+      ret['stats.latency_log'] = @latency_log
+      ret['stats.latency_check_cmd'] = @latency_check_cmd
+      ret['stats.latency_check_time_count'] = @latency_check_time_count
       ret['stats.spushv_klength_warn'] = @spushv_klength_warn
       ret['stats.spushv_vlength_warn'] = @spushv_vlength_warn
       ret['stats.spushv_read_timeout'] = @spushv_read_timeout
@@ -192,11 +154,9 @@ module Roma
     private
 
     def clear_count(var)
-      if self.instance_variable_get(var) > 0xffffffff
-        self.instance_variable_set(var,0)
-      end
+      return unless instance_variable_get(var) > 0xffffffff
+
+      instance_variable_set(var, 0)
     end
-
   end # class Stats
-
 end # module Roma

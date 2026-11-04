@@ -5,12 +5,8 @@ require 'roma/messaging/con_pool'
 module Roma
   module WriteBehind
     class StreamWriter
-
-      attr_accessor :run_replication
-      attr_accessor :run_existing_data_replication
-      attr_accessor :replica_mklhash
-      attr_accessor :replica_nodelist
-      attr_accessor :replica_rttable
+      attr_accessor :run_replication, :run_existing_data_replication, :replica_mklhash, :replica_nodelist,
+                    :replica_rttable
 
       def initialize(log)
         @log = log
@@ -37,16 +33,14 @@ module Roma
         current_mklhash = con.gets.chomp
         Roma::Messaging::ConPool.instance.return_connection(@replica_nodelist[0], con)
 
-        if current_mklhash == @replica_mklhash
-          return false
-        else
-          return true
-        end
-      rescue
+        return false if current_mklhash == @replica_mklhash
+
+        true
+      rescue StandardError
         @replica_nodelist.shift
         if @replica_nodelist.length == 0
           @run_replication = false
-          @log.error("Replicate Cluster was down.")
+          @log.error('Replicate Cluster was down.')
         else
           retry
         end
@@ -60,7 +54,7 @@ module Roma
           Roma::Messaging::ConPool.instance.return_connection(node_id, con)
           @log.debug("replica_mklhash has updated: [#{@replica_mklhash}]")
         end
-      rescue => e
+      rescue StandardError => e
         @log.error("#{e}\n#{$@}")
       end
 
@@ -72,7 +66,7 @@ module Roma
           Roma::Messaging::ConPool.instance.return_connection(node_id, con)
           @log.debug("replica_nodelist has updated: #{@replica_nodelist}")
         end
-      rescue => e
+      rescue StandardError => e
         @log.error("#{e}\n#{$@}")
       end
 
@@ -81,16 +75,14 @@ module Roma
           con = Roma::Messaging::ConPool.instance.get_connection(node_id)
           con.write "routingdump\r\n"
           routes_length = con.gets.to_i
-          if (routes_length <= 0)
+          if routes_length <= 0
             con.close
             @log.error("#{__method__} process was failed.\r\n") if routes_length < 0
             return nil
           end
 
           routes = ''
-          while (routes.length != routes_length)
-            routes = routes + con.read(routes_length - routes.length)
-          end
+          routes += con.read(routes_length - routes.length) while routes.length != routes_length
           con.read(2) # "\r\n"
           con.gets
           routing_data = Marshal.load(routes)
@@ -98,7 +90,7 @@ module Roma
           @replica_rttable = routing_data
           @log.debug("replica_rttable has updated: [#{@replica_rttable}]")
         end
-      rescue => e
+      rescue StandardError => e
         @log.error("#{e}\n#{$@}")
         nil
       end
@@ -106,8 +98,8 @@ module Roma
       def search_replica_primary_node(key)
         d = Digest::SHA1.hexdigest(key).hex % (2**@replica_rttable.digest_bits)
         nodes = @replica_rttable.routes[d & @replica_rttable.search_mask]
-        return nodes[0] # for send primary node of replica cluster
-      rescue => e
+        nodes[0] # for send primary node of replica cluster
+      rescue StandardError => e
         @log.error("#{e}\n#{$@}")
         nil
       end
@@ -121,7 +113,7 @@ module Roma
           con.gets # for return connection
           Roma::Messaging::ConPool.instance.return_connection(node_id, con)
         end
-      rescue => e
+      rescue StandardError => e
         @log.error("#{e}\n#{$@}")
         @log.error("replication error: key=#{key} value=#{value}\r\n")
       ensure
@@ -129,11 +121,10 @@ module Roma
       end
 
       def close_all
-        @replica_nodelist.each{|node_id|
+        @replica_nodelist.each do |node_id|
           Roma::Messaging::ConPool.instance.close_at(node_id)
-        }
+        end
       end
-
     end # class StreamWriter
   end # module WriteBehind
 end # module Roma

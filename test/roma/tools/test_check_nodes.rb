@@ -24,7 +24,8 @@ class CheckNodesTest < Test::Unit::TestCase
   def test_split
     nodes = [answering('a b'), answering('c'), answering('a b')]
     assert_false check(*nodes.map(&:node_id))
-    assert_equal "#{nodes[0].node_id} #{nodes[2].node_id} => a b (2 nodes)\n#{nodes[1].node_id} => c (1 nodes)\n", @out.string
+    assert_equal "#{nodes[0].node_id} #{nodes[2].node_id} => a b (2 nodes)\n#{nodes[1].node_id} => c (1 nodes)\n",
+                 @out.string
   end
 
   def test_node_down

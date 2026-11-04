@@ -8,12 +8,12 @@ module MapPluginTests
   include RomaTestUtils
 
   def setup
-    @rc=RomaTestClient.new(["localhost_11211","localhost_11212"])
+    @rc = RomaTestClient.new(%w(localhost_11211 localhost_11212))
   end
 
   def teardown
     @rc.delete_used_keys
-    Roma::Messaging::ConPool::instance.close_all
+    Roma::Messaging::ConPool.instance.close_all
   end
 
   def mk_data(n = 10)
@@ -22,16 +22,16 @@ module MapPluginTests
       k = "mapkey#{i}"
       assert_equal 'STORED', @rc.map_set('key1', k, v)
       assert_equal v, @rc.map_get('key1', k)
-    end    
+    end
   end
 
   def test_map_set
-    assert_nil @rc.map_get('key1','mapkey1')
-    assert_equal 'STORED', @rc.map_set('key1','mapkey1','value1')
-    assert_equal 'value1', @rc.map_get('key1','mapkey1')
+    assert_nil @rc.map_get('key1', 'mapkey1')
+    assert_equal 'STORED', @rc.map_set('key1', 'mapkey1', 'value1')
+    assert_equal 'value1', @rc.map_get('key1', 'mapkey1')
 
-    assert_equal 'STORED', @rc.map_set('key1','mapkey1','value2')
-    assert_equal 'value2', @rc.map_get('key1','mapkey1')
+    assert_equal 'STORED', @rc.map_set('key1', 'mapkey1', 'value2')
+    assert_equal 'value2', @rc.map_get('key1', 'mapkey1')
   end
 
   def test_map_delete
@@ -60,15 +60,14 @@ module MapPluginTests
     assert !@rc.map_value?('key1', 'key1')
     assert @rc.map_value?('key1', 'value1')
   end
-  
+
   def test_map_keys
     assert_nil @rc.map_keys('key1')
     mk_data
     v = [10]
-    10.times{|i| v << "mapkey#{i}" }
+    10.times { |i| v << "mapkey#{i}" }
     assert_equal v, @rc.map_keys('key1')
   end
-
 end # MapPluginTests
 
 class MapPluginTest < Test::Unit::TestCase
@@ -85,6 +84,5 @@ class MapPluginForceForwardTest < Test::Unit::TestCase
   def setup
     super
     @rc.routing_table.force_forward = true
-  end  
+  end
 end
-

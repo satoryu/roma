@@ -27,9 +27,7 @@ class CopyDataTest < Test::Unit::TestCase
     n.times do |i|
       d = Digest::SHA1.hexdigest(i.to_s).hex % @rc.routing_table.hash_space_size
       vnode = @rc.routing_table.get_vnode_id(d)
-      if vnode == 0
-        keys << i.to_s
-      end
+      keys << i.to_s if vnode == 0
     end
     node_id = @rc.routing_table.search_nodes(0)
 
@@ -62,7 +60,7 @@ class CopyDataTest < Test::Unit::TestCase
     Roma::Messaging::ConPool.instance.return_connection(node_id, con)
     res.chomp! if res
     res
-  rescue => e
+  rescue StandardError => e
     "#{e}"
   end
   private :push_a_vnode_stream
@@ -74,7 +72,7 @@ class CopyDataTest < Test::Unit::TestCase
     dat[0] = reqpushv('roma', 0)
     assert_not_nil(dat[0])
     dat[0] = reqpushv('roma', 0)
-    assert_not_nil(dat[0])  # confirming twice access to same node
+    assert_not_nil(dat[0]) # confirming twice access to same node
 
     dat[1] = reqpushv('roma', 536_870_912)
     assert_not_nil(dat[1])
@@ -111,6 +109,7 @@ class CopyDataTest < Test::Unit::TestCase
       con.write("reqpushv #{vnode} #{@node.node_id} #{is_primary}\r\n")
       res = con.gets
       break if res == "PUSHED\r\n"
+
       sleep 0.5
     end
     assert_equal("PUSHED\r\n", res)

@@ -60,8 +60,8 @@ class AsyncProcessHarness
   end
 
   # Calls a private method of Roma::AsyncProcess.
-  def call(name, *args)
-    send(name, *args)
+  def call(name, *)
+    send(name, *)
   end
 
   # Stores +value+ under +key+ in the vnode the key belongs to, and returns

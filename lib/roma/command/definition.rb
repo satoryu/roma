@@ -1,7 +1,6 @@
 module Roma
   module Command
     module Definition
-
       # Raised in a command, they are replied as CLIENT_ERROR and SERVER_ERROR.
       class ClientError < StandardError; end
       class ServerError < StandardError; end
@@ -12,43 +11,36 @@ module Roma
       end
 
       module ClassMethods
-
-        def def_command_with_relay(cmd, &block)
+        def def_command_with_relay(cmd, &)
           # check a duplicated command definition in a same scope
-          if public_method_defined? "ev_#{cmd}".to_sym
-            raise "ev_#{cmd} already defined."
-          end
+          raise "ev_#{cmd} already defined." if public_method_defined? :"ev_#{cmd}"
 
           # define a command receiver
           define_method "ev_#{cmd}" do |s|
-            begin
-              res = {}
-              res[@stats.my_node_id] = instance_exec(s, &block)
-              # command relay
-              res.merge! broadcast_cmd("r#{cmd} #{s[1..-1].join(' ')}\r\n")
-              send_data("#{res}\r\n")
-            rescue ClientError => e
-              send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerError => e
-              send_data("SERVER_ERROR #{e.message}\r\n")
-            rescue LocalJumpError => e
-              @log.warn("#{e} #{$@}")
-              e.exit_value
-            end
+            res = {}
+            res[@stats.my_node_id] = instance_exec(s, &)
+            # command relay
+            res.merge! broadcast_cmd("r#{cmd} #{s[1..-1].join(' ')}\r\n")
+            send_data("#{res}\r\n")
+          rescue ClientError => e
+            send_data("CLIENT_ERROR #{e.message}\r\n")
+          rescue ServerError => e
+            send_data("SERVER_ERROR #{e.message}\r\n")
+          rescue LocalJumpError => e
+            @log.warn("#{e} #{$@}")
+            e.exit_value
           end
 
           # define a relaid command receiver
           define_method "ev_r#{cmd}" do |s|
-            begin
-              send_data("#{instance_exec(s, &block)}\r\n")
-            rescue ClientError => e
-              send_data("CLIENT_ERROR #{e.message}\r\n")
-            rescue ServerError => e
-              send_data("SERVER_ERROR #{e.message}\r\n")
-            rescue LocalJumpError => e
-              @log.warn("#{e} #{$@}")
-              e.exit_value
-            end
+            send_data("#{instance_exec(s, &)}\r\n")
+          rescue ClientError => e
+            send_data("CLIENT_ERROR #{e.message}\r\n")
+          rescue ServerError => e
+            send_data("SERVER_ERROR #{e.message}\r\n")
+          rescue LocalJumpError => e
+            @log.warn("#{e} #{$@}")
+            e.exit_value
           end
         end # def_command_with_relay
 
@@ -56,9 +48,10 @@ module Roma
         StoredData = Struct.new(:vnode, :last, :clock, :flags, :expire_time, :value)
         CommandContext = Struct.new(:argv, :params, :stored)
 
-        def def_read_command_with_key(cmd, forward = :one_line, &block)
+        def def_read_command_with_key(cmd, forward = :one_line, &)
           define_method "ev_#{cmd}" do |s|
             return send_data("CLIENT_ERROR does not find key\r\n") if s.length < 2
+
             begin
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
@@ -69,7 +62,7 @@ module Roma
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s)
-                elsif  forward == :multi_line
+                elsif forward == :multi_line
                   return forward_and_multi_line_receive(params.nodes[0], s)
                 end
               end
@@ -80,9 +73,9 @@ module Roma
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
                 @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
-              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
+              stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
-              instance_exec(ctx, &block)
+              instance_exec(ctx, &)
               @stats.read_count += 1
             rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
@@ -95,9 +88,10 @@ module Roma
           end
         end # def_read_command_with_key
 
-        def def_write_command_with_key(cmd, forward = :one_line, &block)
+        def def_write_command_with_key(cmd, forward = :one_line, &)
           define_method "ev_#{cmd}" do |s|
             return send_data("CLIENT_ERROR does not find key\r\n") if s.length < 2
+
             begin
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
@@ -108,7 +102,7 @@ module Roma
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s)
-                elsif  forward == :multi_line
+                elsif forward == :multi_line
                   return forward_and_multi_line_receive(params.nodes[0], s)
                 end
               end
@@ -119,18 +113,18 @@ module Roma
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
                 @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
-              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
-              if stored && @stats.wb_command_map.key?("#{cmd}__prev".to_sym)
-                Roma::WriteBehindProcess::push(params.hash_name,
-                                               @stats.wb_command_map["#{cmd}__prev".to_sym],
-                                               params.key, stored.value)
+              stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
+              if stored && @stats.wb_command_map.key?(:"#{cmd}__prev")
+                Roma::WriteBehindProcess.push(params.hash_name,
+                                              @stats.wb_command_map[:"#{cmd}__prev"],
+                                              params.key, stored.value)
               end
               ctx = CommandContext.new(s, params, stored)
 
-              ret = instance_exec(ctx, &block)
+              ret = instance_exec(ctx, &)
               if ret.instance_of? Array
                 _flg, expire_time, value, count, msg = ret
-                ret = @storages[ctx.params.hash_name].set(ctx.params.vnode, 
+                ret = @storages[ctx.params.hash_name].set(ctx.params.vnode,
                                                           ctx.params.key,
                                                           ctx.params.digest,
                                                           expire_time,
@@ -143,9 +137,9 @@ module Roma
 
                 if ret
                   if @stats.wb_command_map.key?(cmd.to_sym)
-                    Roma::WriteBehindProcess::push(ctx.params.hash_name,
-                                                   @stats.wb_command_map[cmd.to_sym],
-                                                   ctx.params.key, ret[4])
+                    Roma::WriteBehindProcess.push(ctx.params.hash_name,
+                                                  @stats.wb_command_map[cmd.to_sym],
+                                                  ctx.params.key, ret[4])
                   end
                   redundant(ctx.params.nodes[1..-1], ctx.params.hash_name,
                             ctx.params.key, ctx.params.digest, ret[2],
@@ -166,9 +160,10 @@ module Roma
           end
         end # def_write_command_with_key
 
-        def def_command_with_key(cmd, forward = :one_line, &block)
+        def def_command_with_key(cmd, forward = :one_line, &)
           define_method "ev_#{cmd}" do |s|
             return send_data("CLIENT_ERROR does not find key\r\n") if s.length < 2
+
             begin
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
@@ -179,7 +174,7 @@ module Roma
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s)
-                elsif  forward == :multi_line
+                elsif forward == :multi_line
                   return forward_and_multi_line_receive(params.nodes[0], s)
                 end
               end
@@ -190,9 +185,9 @@ module Roma
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
                 @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
-              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
+              stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
-              instance_exec(ctx, &block)
+              instance_exec(ctx, &)
             rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
             rescue ServerError => e
@@ -204,9 +199,10 @@ module Roma
           end
         end # def_command_with_key
 
-        def def_write_command_with_key_value(cmd, idx_of_val_len, forward = :one_line, &block)
+        def def_write_command_with_key_value(cmd, idx_of_val_len, forward = :one_line, &)
           define_method "ev_#{cmd}" do |s|
             return send_data("CLIENT_ERROR does not find key\r\n") if s.length < 2
+
             begin
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
@@ -219,7 +215,7 @@ module Roma
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s, params.value)
-                elsif  forward == :multi_line
+                elsif forward == :multi_line
                   return forward_and_multi_line_receive(params.nodes[0], s, params.value)
                 end
               end
@@ -230,20 +226,20 @@ module Roma
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
                 @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
-              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
+              stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
 
-              if stored && @stats.wb_command_map.key?("#{cmd}__prev".to_sym)
-                Roma::WriteBehindProcess::push(params.hash_name,
-                                               @stats.wb_command_map["#{cmd}__prev".to_sym],
-                                               params.key, stored.value)
+              if stored && @stats.wb_command_map.key?(:"#{cmd}__prev")
+                Roma::WriteBehindProcess.push(params.hash_name,
+                                              @stats.wb_command_map[:"#{cmd}__prev"],
+                                              params.key, stored.value)
               end
 
               ctx = CommandContext.new(s, params, stored)
-              
-              ret = instance_exec(ctx, &block)
+
+              ret = instance_exec(ctx, &)
               if ret.instance_of? Array
                 _flg, expire_time, value, count, msg = ret
-                ret = @storages[ctx.params.hash_name].set(ctx.params.vnode, 
+                ret = @storages[ctx.params.hash_name].set(ctx.params.vnode,
                                                           ctx.params.key,
                                                           ctx.params.digest,
                                                           expire_time,
@@ -256,12 +252,12 @@ module Roma
 
                 if ret
                   if @stats.wb_command_map.key?(cmd.to_sym)
-                    Roma::WriteBehindProcess::push(ctx.params.hash_name,
-                                                   @stats.wb_command_map[cmd.to_sym],
-                                                   ctx.params.key, ret[4])
+                    Roma::WriteBehindProcess.push(ctx.params.hash_name,
+                                                  @stats.wb_command_map[cmd.to_sym],
+                                                  ctx.params.key, ret[4])
                   end
-                  redundant(ctx.params.nodes[1..-1], ctx.params.hash_name, 
-                            ctx.params.key, ctx.params.digest, ret[2], 
+                  redundant(ctx.params.nodes[1..-1], ctx.params.hash_name,
+                            ctx.params.key, ctx.params.digest, ret[2],
                             expire_time, ret[4])
                   send_data("#{msg}\r\n")
                 else
@@ -279,9 +275,10 @@ module Roma
           end
         end # def_write_command_with_key_value
 
-        def def_read_command_with_key_value(cmd, idx_of_val_len, forward = :one_line, &block)
+        def def_read_command_with_key_value(cmd, idx_of_val_len, forward = :one_line, &)
           define_method "ev_#{cmd}" do |s|
             return send_data("CLIENT_ERROR does not find key\r\n") if s.length < 2
+
             begin
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
@@ -294,7 +291,7 @@ module Roma
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s, params.value)
-                elsif  forward == :multi_line
+                elsif forward == :multi_line
                   return forward_and_multi_line_receive(params.nodes[0], s, params.value)
                 end
               end
@@ -305,10 +302,10 @@ module Roma
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
                 @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
-              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
+              stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
 
-              instance_exec(ctx, &block)
+              instance_exec(ctx, &)
               @stats.read_count += 1
             rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
@@ -321,9 +318,10 @@ module Roma
           end
         end # def_read_command_with_key_value
 
-        def def_command_with_key_value(cmd, idx_of_val_len, forward = :one_line, &block)
+        def def_command_with_key_value(cmd, idx_of_val_len, forward = :one_line, &)
           define_method "ev_#{cmd}" do |s|
             return send_data("CLIENT_ERROR does not find key\r\n") if s.length < 2
+
             begin
               params = CommandParams.new
               params.key, params.hash_name = s[1].split("\e")
@@ -336,7 +334,7 @@ module Roma
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s, params.value)
-                elsif  forward == :multi_line
+                elsif forward == :multi_line
                   return forward_and_multi_line_receive(params.nodes[0], s, params.value)
                 end
               end
@@ -347,9 +345,9 @@ module Roma
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
                 @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
-              stored = nil if stored.vnode == nil || Time.now.to_i > stored.expire_time
+              stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
-              instance_exec(ctx, &block)
+              instance_exec(ctx, &)
             rescue ClientError => e
               send_data("CLIENT_ERROR #{e.message}\r\n")
             rescue ServerError => e
@@ -360,51 +358,43 @@ module Roma
             end
           end
         end # def_command_with_key_value
-
       end # module ClassMethods
 
-      #
       def forward_and_one_line_receive(node_id, rs, data = nil)
-        if rs.last == "forward"
-          return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
-        end
+        return send_data("SERVER_ERROR Routing table is inconsistent.\r\n") if rs.last == 'forward'
 
-        @log.warn("forward #{rs} to #{node_id}");
+        @log.warn("forward #{rs} to #{node_id}")
 
         buf = rs.join(' ') + " forward\r\n"
-        buf << data + "\r\n" if data
+        buf << (data + "\r\n") if data
         res = send_cmd(node_id, buf)
-        if res == nil || res.start_with?("ERROR")
-          return send_data("SERVER_ERROR Message forward failed.\r\n")
-        end
+        return send_data("SERVER_ERROR Message forward failed.\r\n") if res.nil? || res.start_with?('ERROR')
+
         send_data("#{res}\r\n")
       end
 
-      # 
-      def forward_and_multi_line_receive(node_id, rs, data=nil)
-        if rs.last == "forward"
-          return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
-        end
+      def forward_and_multi_line_receive(node_id, rs, data = nil)
+        return send_data("SERVER_ERROR Routing table is inconsistent.\r\n") if rs.last == 'forward'
 
-        @log.warn("forward #{rs} to #{node_id}");
+        @log.warn("forward #{rs} to #{node_id}")
 
         buf = rs.join(' ') + " forward\r\n"
-        buf << data + "\r\n" if data
+        buf << (data + "\r\n") if data
 
         con = get_connection(node_id)
         con.send(buf)
 
         buf = con.gets
-        if buf == nil
+        if buf.nil?
           @routing_table.proc_failed(node_id)
           @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{$@}")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
-        elsif buf.start_with?("ERROR")
+        elsif buf.start_with?('ERROR')
           @routing_table.proc_succeed(node_id)
           con.close_connection
           @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{$@}")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
-        elsif buf.start_with?("VALUE") == false
+        elsif buf.start_with?('VALUE') == false
           return_connection(node_id, con)
           @routing_table.proc_succeed(node_id)
           return send_data(buf)
@@ -420,7 +410,7 @@ module Roma
             return send_data(buf)
           end
           res << con.read_bytes(s[3].to_i + 2)
-        end while (buf = con.gets)!="END\r\n"
+        end while (buf = con.gets) != "END\r\n"
 
         res << "END\r\n"
 
@@ -428,12 +418,11 @@ module Roma
         @routing_table.proc_succeed(node_id)
 
         send_data(res)
-      rescue => e
-        @routing_table.proc_failed(node_id) if e.message != "no connection"
+      rescue StandardError => e
+        @routing_table.proc_failed(node_id) if e.message != 'no connection'
         @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{e} #{$@}")
         send_data("SERVER_ERROR Message forward failed.\r\n")
       end
-
     end #  module Definition
   end # module Command
 end # module Roma

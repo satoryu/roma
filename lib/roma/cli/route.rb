@@ -5,6 +5,7 @@ module Roma
     # roma route: make and change the routing tables.
     class Route < Thor
       extend Common
+
       check_unknown_options!
 
       desc 'create NODE_ID...', 'Make the routing table and write it into NODE_ID.route.yml for each node'
@@ -17,9 +18,9 @@ module Roma
       def create(node_id, *node_ids)
         require 'roma/tools/route_creator'
         Roma::Tools::RouteCreator.new.create([node_id, *node_ids],
-                                        digest_bits: options[:digest_bits], divide_bits: options[:divide_bits],
-                                        redundancy: options[:redundancy],
-                                        replication_in_host: options[:replication_in_host])
+                                             digest_bits: options[:digest_bits], divide_bits: options[:divide_bits],
+                                             redundancy: options[:redundancy],
+                                             replication_in_host: options[:replication_in_host])
       end
 
       desc 'snapshot NODE_ID', 'Put the routing logs of a node, but the last one, into NODE_ID.route.yml'

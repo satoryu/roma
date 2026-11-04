@@ -16,8 +16,8 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
     FileUtils.rm_rf(@dir)
   end
 
-  def make_rt(routes, **opts)
-    @rt = Roma::Routing::ChurnbasedRoutingTable.new(make_routing_data(routes, **opts), @fname)
+  def make_rt(routes, **)
+    @rt = Roma::Routing::ChurnbasedRoutingTable.new(make_routing_data(routes, **), @fname)
   end
 
   def log_lines
@@ -58,8 +58,8 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
     assert_equal B1, left
     assert_equal 'start_auto_recover_process', recovered
     assert_equal [A1], @rt.nodes
-    assert_equal [[A1]] * 4, VN.map { |vnode| @rt.search_nodes(vnode) }
-    assert_equal [1] * 4, VN.map { |vnode| @rt.search_nodes_with_clk(vnode)[0] }
+    assert_equal([[A1]] * 4, VN.map { |vnode| @rt.search_nodes(vnode) })
+    assert_equal([1] * 4, VN.map { |vnode| @rt.search_nodes_with_clk(vnode)[0] })
     assert_match(/ leave #{B1}\z/, @rt.event.last)
   end
 
@@ -142,7 +142,6 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
     assert_false @rt.can_i_release?(B1, true)
     assert_true @rt.can_i_release?(B1, false)
   end
-
 
   def test_has_node?
     make_rt([[A1, B1], [B1, A1], [A1, B1], [B1, A1]], nodes: [A1, A2, B1])

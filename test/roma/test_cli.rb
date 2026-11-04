@@ -59,7 +59,9 @@ class CLITest < Test::Unit::TestCase
   def test_group_commands(args)
     out, _err, status = roma(*args)
     assert_nil status
-    assert_match(/roma route change-redundancy NUM NODE_ID.*roma route create NODE_ID\.\.\..*roma route snapshot NODE_ID/m, out)
+    assert_match(
+      /roma route change-redundancy NUM NODE_ID.*roma route create NODE_ID\.\.\..*roma route snapshot NODE_ID/m, out
+    )
   end
 
   def test_unknown_command_in_group
@@ -113,7 +115,8 @@ class CLITest < Test::Unit::TestCase
   data('no nodes' => [%w(), /"roma route create" was called with no arguments/],
        'unknown option' => [%w(host1_1 host2_1 --unknown), /Unknown switches "--unknown"/],
        'not a number' => [%w(-d x host1_1 host2_1), /Expected numeric value for '--divide-bits'; got "x"/],
-       'invalid combination' => [%w(-r 3 host1_1 host2_1), /\AThe number of the node IDs should be the redundancy or more\.\n\z/])
+       'invalid combination' => [%w(-r 3 host1_1 host2_1),
+                                 /\AThe number of the node IDs should be the redundancy or more\.\n\z/])
   def test_route_create_invalid_arguments(data)
     args, message = data
     out, err, status = roma('route', 'create', *args)
@@ -197,7 +200,8 @@ class CLITest < Test::Unit::TestCase
     node = fake_node
     # FakeNode answers the line of the value.
     node.replies['set'] = proc { '' }
-    out, _err, status = roma('node', 'send', 'set', 'key1', '0', '0', '5', '-p', node.node_id.split('_')[1], '-v', 'value')
+    out, _err, status = roma('node', 'send', 'set', 'key1', '0', '0', '5', '-p', node.node_id.split('_')[1], '-v',
+                             'value')
     assert_nil status
     assert_equal "STORED\n", out
     assert_equal ['set key1 0 0 5', 'value'], node.commands
@@ -236,8 +240,16 @@ class CLITest < Test::Unit::TestCase
     calls = []
     spy = Object.new
     # They return 0, such as the number of errors.
-    methods.each { |m| spy.define_singleton_method(m) { |*args, **opts| calls << [m, args, opts]; 0 } }
-    klass.define_singleton_method(:new) { |*args, **opts| calls << [:new, *args, opts]; spy }
+    methods.each do |m|
+      spy.define_singleton_method(m) do |*args, **opts|
+        calls << [m, args, opts]
+        0
+      end
+    end
+    klass.define_singleton_method(:new) do |*args, **opts|
+      calls << [:new, *args, opts]
+      spy
+    end
     yield
     calls
   ensure
@@ -337,16 +349,19 @@ class CLITest < Test::Unit::TestCase
     spy.define_singleton_method(:recover) { |*args, **opts| calls << [:recover, args, opts] }
     spy.define_singleton_method(:recover_keys) { |*args| calls << [:recover_keys, args] }
     require 'roma/tools/recover_lost'
-    Roma::Tools::RecoverLost.define_singleton_method(:new) { |**opts| calls << [:new, opts]; spy }
+    Roma::Tools::RecoverLost.define_singleton_method(:new) do |**opts|
+      calls << [:new, opts]
+      spy
+    end
     yield
     calls
   ensure
     Roma::Tools::RecoverLost.singleton_class.send(:remove_method, :new)
   end
 
-  data('lost' => [[], [:recover, ['host1_1', 'path'], { since: nil, all: false }]],
-       'since' => [%w(-s 20260101000000), [:recover, ['host1_1', 'path'], { since: '20260101000000', all: false }]],
-       'all' => [%w(--all --alist), [:recover, ['host1_1', 'path'], { since: nil, all: true }]],
+  data('lost' => [[], [:recover, %w(host1_1 path), { since: nil, all: false }]],
+       'since' => [%w(-s 20260101000000), [:recover, %w(host1_1 path), { since: '20260101000000', all: false }]],
+       'all' => [%w(--all --alist), [:recover, %w(host1_1 path), { since: nil, all: true }]],
        'keys' => [%w(--keys keys.txt), [:recover_keys, ['host1_1', 'path', %w(key1 key2)]]])
   def test_storage_recover_lost(data)
     args, call = data
@@ -390,7 +405,7 @@ class CLITest < Test::Unit::TestCase
     write_logs
     out, _err, status = roma('log', 'merge', 'a.log', 'b.log')
     assert_nil status
-    assert_equal %w(a1 b1 a2 b2 a3), out.lines.map { |l| l.split.last }
+    assert_equal(%w(a1 b1 a2 b2 a3), out.lines.map { |l| l.split.last })
   end
 
   # Each option leaves out a line: a1 by the start, b2 by the level and a3
@@ -400,7 +415,7 @@ class CLITest < Test::Unit::TestCase
   def test_log_merge_options(options)
     write_logs
     out, _err, _status = roma('log', 'merge', 'a.log', 'b.log', *options)
-    assert_equal %w(b1 a2), out.lines.map { |l| l.split.last }
+    assert_equal(%w(b1 a2), out.lines.map { |l| l.split.last })
   end
 
   data('short' => '-o', 'long' => '--output')
@@ -409,7 +424,7 @@ class CLITest < Test::Unit::TestCase
     out, _err, status = roma('log', 'merge', 'a.log', option, 'merged.log')
     assert_nil status
     assert_equal '', out
-    assert_equal %w(a1 a2 a3), File.readlines(File.join(@dir, 'merged.log')).map { |l| l.split.last }
+    assert_equal(%w(a1 a2 a3), File.readlines(File.join(@dir, 'merged.log')).map { |l| l.split.last })
   end
 
   data('no files' => [%w(), /"roma log merge" was called with no arguments/],
@@ -424,10 +439,10 @@ class CLITest < Test::Unit::TestCase
     assert_match(message, err)
   end
 
-  def run_roma(*args, stdin: '')
+  def run_roma(*, stdin: '')
     cmd = [RbConfig.ruby]
     cmd.push('-r', File.expand_path('../start_coverage', __dir__)) if ENV['COVERAGE']
-    Open3.capture3(*cmd, ROMA, *args, stdin_data: stdin, chdir: @dir)
+    Open3.capture3(*cmd, ROMA, *, stdin_data: stdin, chdir: @dir)
   end
 
   # It reads the answers from the standard input.

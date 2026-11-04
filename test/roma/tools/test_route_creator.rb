@@ -7,9 +7,9 @@ require 'roma/tools/route_creator'
 class RouteCreatorTest < Test::Unit::TestCase
   include ToolTestHelper
 
-  def create_route(nodes, **opts)
+  def create_route(nodes, **)
     out = StringIO.new
-    Roma::Tools::RouteCreator.new(out: out, dir: @dir).create(nodes, **opts)
+    Roma::Tools::RouteCreator.new(out: out, dir: @dir).create(nodes, **)
     out.string
   end
 
@@ -49,7 +49,8 @@ class RouteCreatorTest < Test::Unit::TestCase
 
   data('digest bits less than divide bits' => [{ digest_bits: 8, divide_bits: 9 }, 'The digest bits should be divide bits or more.'],
        'divide bits over 32' => [{ digest_bits: 40, divide_bits: 33 }, 'The upper bound of divide bits is 32.'],
-       'fewer nodes than redundancy' => [{ redundancy: 3 }, 'The number of the node IDs should be the redundancy or more.'])
+       'fewer nodes than redundancy' => [{ redundancy: 3 },
+                                         'The number of the node IDs should be the redundancy or more.'])
   def test_invalid_arguments(data)
     opts, message = data
     error = assert_raise(Roma::Tools::Error) { create_route(%w(host1_1 host2_1), **opts) }

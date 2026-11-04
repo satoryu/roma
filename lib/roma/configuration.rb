@@ -160,6 +160,7 @@ module Roma
         class_name = "#{engine.to_s.split('_').map(&:capitalize).join}Storage"
         name = Roma::Storage.constants.find { |c| c.to_s.casecmp?(class_name.delete('_')) }
         raise Error, "#{file} has no storage class such as Roma::Storage::#{class_name}." unless name
+
         Roma::Storage.const_get(name)
       end
     end
@@ -182,7 +183,7 @@ module Roma
 
     class Settings < Group
       setting :name, 'ROMA', type: String
-      setting :port, 12000, type: Integer, check: ->(v) { (1..65535).cover?(v) }
+      setting :port, 12_000, type: Integer, check: ->(v) { (1..65_535).cover?(v) }
       # The directory of the command plugins. romad requires the *.rb files in it.
       setting :command_plugin_path, './command_plugins', type: String
       group :routing, Routing

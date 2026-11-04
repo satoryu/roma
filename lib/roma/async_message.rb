@@ -1,8 +1,6 @@
 module Roma
   class AsyncMessage
-    attr_accessor :event
-    attr_accessor :args
-    attr_accessor :callback
+    attr_accessor :event, :args, :callback
 
     def initialize(ev, ag = nil, &cb)
       @event = ev

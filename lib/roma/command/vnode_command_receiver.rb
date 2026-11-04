@@ -4,9 +4,7 @@ require 'roma/configuration'
 
 module Roma
   module Command
-
     module VnodeCommandReceiver
-
       # spushv_protection <true/false>
       def ev_spushv_protection(s)
         if s.length == 1
@@ -35,7 +33,7 @@ module Roma
         end
         if @stats.spushv_protection
           @log.info("#{__method__}:In spushv_protection")
-          return send_data("SERVER_ERROR In spushv_protection.\r\n")          
+          return send_data("SERVER_ERROR In spushv_protection.\r\n")
         end
         @stats.run_receive_a_vnode["#{s[1]}_#{s[2]}"] = true
 
@@ -45,41 +43,38 @@ module Roma
 
         count = rcount = 0
         @log.debug("#{__method__}:#{s.inspect} received.")
-        loop {
+        loop do
           context_bin = read_bytes(20, @stats.spushv_read_timeout)
           vnode, last, clock, expire_time, klen = context_bin.unpack('NNNNN')
           break if klen == 0 # end of dump ?
+
           k = read_bytes(klen)
           vlen_bin = read_bytes(4, @stats.spushv_read_timeout)
           vlen, =  vlen_bin.unpack('N')
-          if vlen != 0
-            if klen > @stats.spushv_klength_warn
-              @log.warn("#{__method__}:Too long key: key = #{k}")
+          if vlen == 0
+            createhash(s[1], 'CREATED') unless @storages[s[1]]
+            if @storages[s[1]].load_stream_dump(vnode, last, clock, expire_time, k, nil)
+              #              @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
+              count += 1
+            else
+              rcount += 1
+              #              @log.warn("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was rejected.")
             end
-            if vlen > @stats.spushv_vlength_warn
-              @log.warn("#{__method__}:Too long value: key = #{k} vlen = #{vlen}")
-            end
+          else
+            @log.warn("#{__method__}:Too long key: key = #{k}") if klen > @stats.spushv_klength_warn
+            @log.warn("#{__method__}:Too long value: key = #{k} vlen = #{vlen}") if vlen > @stats.spushv_vlength_warn
             v = read_bytes(vlen, @stats.spushv_read_timeout)
 
             createhash(s[1], 'CREATED') unless @storages[s[1]]
             if @storages[s[1]].load_stream_dump(vnode, last, clock, expire_time, k, v)
               count += 1
-#              @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
+            #              @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
             else
               rcount += 1
-#              @log.warn("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was rejected.")
-            end
-          else
-            createhash(s[1], 'CREATED') unless @storages[s[1]]
-            if @storages[s[1]].load_stream_dump(vnode, last, clock, expire_time, k, nil)
-#              @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
-              count += 1
-            else
-              rcount += 1
-#              @log.warn("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was rejected.")
+              #              @log.warn("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was rejected.")
             end
           end
-        }
+        end
         if @stats.spushv_protection
           @log.info("#{__method__}:Canceled because of spushv_protection")
           send_data("CANCELED\r\n")
@@ -95,30 +90,30 @@ module Roma
           @log.error("#{__method__}:Romad will be stop.")
           @stop_event_loop = true
         end
-      rescue => e
+      rescue StandardError => e
         @log.error("#{e} #{$@}")
       ensure
         @stats.run_receive_a_vnode.delete("#{s[1]}_#{s[2]}") if s.length == 3
         @stats.last_clean_up = Time.now
-      end      
+      end
 
       # reqpushv <vnode-id> <node-id> <is primary?>
       # src                                       dst
       #  |<-['reqpushv <vnode> <node_id> <p?>\r\n']         |
       #  |                           ['PUSHED'\r\n]->|
       def ev_reqpushv(s)
-        if s.length!=4
+        if s.length != 4
           send_data("CLIENT_ERROR usage:reqpushv vnode-id node-id primary-flag(true/false)\r\n")
           return
         end
-        if(@stats.run_iterate_storage || @stats.run_join || @stats.run_balance)
+        if @stats.run_iterate_storage || @stats.run_join || @stats.run_balance
           @log.warn("reqpushv rejected:#{s}")
           send_data("REJECTED\r\n")
           return
         end
-        Roma::AsyncProcess::queue.push(Roma::AsyncMessage.new('reqpushv',[s[1],s[2],s[3]]))
+        Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('reqpushv', [s[1], s[2], s[3]]))
         send_data("PUSHED\r\n")
-      rescue =>e
+      rescue StandardError => e
         @log.error("#{e}\n#{$@}")
       end
 
@@ -126,20 +121,18 @@ module Roma
         con = Roma::Messaging::ConPool.instance.get_connection(src_node_id)
         con.write("reqpushv #{vnode} #{@my_node_id} #{is_primary}\r\n")
         con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n'
-        Roma::Messaging::ConPool.instance.return_connection(src_node_id,con)
+        Roma::Messaging::ConPool.instance.return_connection(src_node_id, con)
         # waiting for pushv
         count = 0
-        while @routing_table.search_nodes(vnode).include?(@my_node_id)==false && count < 300
+        while @routing_table.search_nodes(vnode).include?(@my_node_id) == false && count < 300
           sleep 0.1
           count += 1
         end
-      rescue =>e
+      rescue StandardError => e
         @log.error("#{e}\n#{$@}")
         @routing_table.proc_failed(src_node_id)
         false
       end
-
     end # module VnodeCommandReceiver
-
   end # module Command
 end # module Roma

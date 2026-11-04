@@ -18,17 +18,18 @@ module Roma
       def create(nodes, digest_bits: 32, divide_bits: 9, redundancy: 2, replication_in_host: false)
         nodes = nodes.map { |n| n.sub(':', '_') }
         if digest_bits < divide_bits
-          raise Error, "The digest bits should be divide bits or more."
+          raise Error, 'The digest bits should be divide bits or more.'
         elsif divide_bits > 32
-          raise Error, "The upper bound of divide bits is 32."
+          raise Error, 'The upper bound of divide bits is 32.'
         elsif nodes.length < redundancy
-          raise Error, "The number of the node IDs should be the redundancy or more."
+          raise Error, 'The number of the node IDs should be the redundancy or more.'
         end
 
-        routing_data = Roma::Routing::RoutingData.create(digest_bits, divide_bits, redundancy, nodes, replication_in_host)
+        routing_data = Roma::Routing::RoutingData.create(digest_bits, divide_bits, redundancy, nodes,
+                                                         replication_in_host)
         nodes.each { |node_id| routing_data.save(File.join(@dir, Roma::Routing::RoutingData.file_name(node_id))) }
         @out.puts "nodes => #{nodes}"
-        @out.puts "Routing table has created."
+        @out.puts 'Routing table has created.'
       end
     end
   end

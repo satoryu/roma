@@ -22,8 +22,10 @@ module Roma
             con.write("routingdump\r\n")
             len = con.gets.to_i
             raise Error, "#{node_id} has no routing data." if len <= 0
+
             dump = con.read(len)
             raise Error, "#{node_id} closed the connection." unless dump && dump.bytesize == len
+
             Marshal.load(dump)
           end
         end
@@ -43,6 +45,7 @@ module Roma
             wait = idle
           end
           raise Error, "#{node_id} didn't reply to #{cmd}." if lines.empty?
+
           lines
         end
       end
@@ -54,6 +57,7 @@ module Roma
           con.write("#{cmd}\r\n")
           line = Timeout.timeout(@timeout) { con.gets }
           raise Error, "#{node_id} closed the connection." unless line
+
           line.chomp
         end
       end

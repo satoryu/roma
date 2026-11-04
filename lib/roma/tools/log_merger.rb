@@ -18,25 +18,21 @@ module Roma
         end
 
         def read_line
-          begin
-            if /^#\sLogfile\screated\son.+/ =~ @prev then
-              @prev = @f.gets
-            end
-
-            @buff = @prev
+          if /^#\sLogfile\screated\son.+/ =~ @prev
             @prev = @f.gets
-
-            while !(match_line(@prev)) && !(@prev.nil?) do
-              @buff << @prev
-              @prev = @f.gets
-            end
-
-            match_line(@buff)
-          rescue
-            unless @f.closed?
-              @f.close
-            end
           end
+
+          @buff = @prev
+          @prev = @f.gets
+
+          while !match_line(@prev) && !@prev.nil?
+            @buff << @prev
+            @prev = @f.gets
+          end
+
+          match_line(@buff)
+        rescue StandardError
+          @f.close unless @f.closed?
         end
 
         def get_line
@@ -48,8 +44,8 @@ module Roma
         end
 
         def match_line(l)
-          if /^[TDIWEFU],\s\[(\d{4})\-(\d{2})\-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d+)\s#\d+\].+/ =~ l then
-            @s_date = $1 << $2 << $3 << $4 << $5 << $6 << $7
+          if /^[TDIWEFU],\s\[(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})\.(\d+)\s#\d+\].+/ =~ l
+            @s_date = ::Regexp.last_match(1) << ::Regexp.last_match(2) << ::Regexp.last_match(3) << ::Regexp.last_match(4) << ::Regexp.last_match(5) << ::Regexp.last_match(6) << ::Regexp.last_match(7)
             true
           else
             @s_date = nil

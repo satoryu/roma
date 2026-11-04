@@ -129,9 +129,9 @@ class AsyncProcessEventTest < Test::Unit::TestCase
     wait_until('the broadcast') { @h.broadcasts == ["stat\r\n"] }
   end
 
-  data('join' => [:asyncev_start_join_process, :join_process, :run_join],
-       'balance' => [:asyncev_start_balance_process, :balance_process, :run_balance],
-       'recover' => [:asyncev_start_recover_process, :acquired_recover_process, :run_recover])
+  data('join' => %i(asyncev_start_join_process join_process run_join),
+       'balance' => %i(asyncev_start_balance_process balance_process run_balance),
+       'recover' => %i(asyncev_start_recover_process acquired_recover_process run_recover))
   def test_start_process(data)
     event, process, flag = data
     @h.stats.join_node_id = OTHER_NODE_ID if flag == :run_join
@@ -271,6 +271,7 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
     def req_push_a_vnode(vnode, src_node_id, is_primary)
       @requests << [vnode, src_node_id, is_primary]
       return @push_reply unless @push_reply == true
+
       node_ids = @routing_table.search_nodes(vnode) - [@stats.my_node_id]
       is_primary || @always_primary ? node_ids.unshift(@stats.my_node_id) : node_ids.push(@stats.my_node_id)
       @routing_table.set_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], node_ids)
@@ -285,7 +286,9 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
     # Takes vnodes until it is primary of its share: 8 vnodes / 3 nodes.
     assert_equal :even, @h.routing_table.vnode_balance(NODE_ID)
     assert_equal 2, @h.requests.size
-    @h.requests.each { |vnode, src, _| assert_include @h.routing_table.search_nodes(vnode), NODE_ID unless src == NODE_ID }
+    @h.requests.each do |vnode, src, _|
+      assert_include @h.routing_table.search_nodes(vnode), NODE_ID unless src == NODE_ID
+    end
   end
 
   # It asks for at most as many vnodes as there are.
@@ -490,6 +493,7 @@ class AsyncProcessReleaseTest < Test::Unit::TestCase
     def sync_a_vnode_for_release(vnode, to_node_id, new_node_ids)
       @moves << [vnode, to_node_id]
       return @move_reply unless @move_reply == true
+
       @routing_table.set_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], new_node_ids)
       true
     end

@@ -54,8 +54,8 @@ module RomadTestHelper
     ivars.each { |name, value| @romad.instance_variable_set("@#{name}", value) }
   end
 
-  def call(name, *args)
-    @romad.send(name, *args)
+  def call(name, *)
+    @romad.send(name, *)
   end
 
   # Answers async_send_cmd from +replies+, by command name, and records the
@@ -150,7 +150,7 @@ class RomadOptionsTest < Test::Unit::TestCase
 
   # Without --config, the settings are kept.
   def test_without_config
-    Roma.configure { |config| config.port = 11300 }
+    Roma.configure { |config| config.port = 11_300 }
     call(:options, ['roma0'])
     assert_equal '11300', stats.port
     assert_nil stats.config_path
@@ -420,7 +420,10 @@ class RomadTimerTest < Test::Unit::TestCase
     set(storages: { 'roma' => storage })
     @romad.stats.run_join = true
     @romad.stats.run_storage_clean_up = true
-    Thread.new { Kernel.sleep 0.05; @romad.stats.run_storage_clean_up = false }
+    Thread.new do
+      Kernel.sleep 0.05
+      @romad.stats.run_storage_clean_up = false
+    end
     call(:timer_event_1sec)
     assert_true storage.stopped?
   end
@@ -450,12 +453,17 @@ class RomadRoutingSyncTest < Test::Unit::TestCase
   def test_routing_hash_comparison_inconsistent
     romad
     other = Roma::Routing::ChurnbasedRoutingTable.new(
-      Marshal.load(Marshal.dump(@romad.routing_table.instance_variable_get(:@routing_data))), File.join(@dir, 'other.route.yml'))
+      Marshal.load(Marshal.dump(@romad.routing_table.instance_variable_get(:@routing_data))), File.join(@dir,
+                                                                                                        'other.route.yml')
+    )
     vnode = other.routes.keys[3]
     other.set_route(vnode, 0, [OTHER_NODE_ID])
     sent = stub_send_cmd(
       'mklhash' => ->(_nid, cmd) { other.merkle_tree.get(cmd.split(' ')[1].chomp) },
-      'getroute' => ->(_nid, _cmd) { clock, node_ids = other.search_nodes_with_clk(vnode); "#{clock} #{node_ids.join(' ')}" }
+      'getroute' => lambda { |_nid, _cmd|
+        clock, node_ids = other.search_nodes_with_clk(vnode)
+        "#{clock} #{node_ids.join(' ')}"
+      }
     )
     assert_equal :inconsistent, call(:routing_hash_comparison, OTHER_NODE_ID)
     assert_equal [OTHER_NODE_ID], @romad.routing_table.search_nodes(vnode)

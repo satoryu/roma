@@ -60,7 +60,9 @@ class RecoverLostTest < Test::Unit::TestCase
   def test_recover_lost_vnodes
     vnode = lose(store('key1', 'value1'))
     tool.recover(@node.node_id, @dir)
-    assert_match(/\A1 vnodes where data was lost\.\nroma #{@dir}\/roma\n0\/1 #{vnode} assign to \["#{@node.node_id}"\]\n\z/, @out.string)
+    assert_match(
+      %r{\A1 vnodes where data was lost\.\nroma #{@dir}/roma\n0/1 #{vnode} assign to \["#{@node.node_id}"\]\n\z}, @out.string
+    )
     # The vnode is pushed to a node, and it is told to own the vnode.
     assert_equal ['key1'], @node.dat[vnode].keys
     # The clock of the data is reset.
@@ -96,7 +98,7 @@ class RecoverLostTest < Test::Unit::TestCase
     @node.replies['history_of_lost'] = "#{vnode}\r\nEND\r\n"
     tool.recover(@node.node_id, @dir, since: '20260101000000')
     assert_include @node.commands, 'history_of_lost 20260101000000'
-    assert_match(/^0\/1 #{vnode} was auto assigned at \["#{@node.node_id}"\]$/, @out.string)
+    assert_match(%r{^0/1 #{vnode} was auto assigned at \["#{@node.node_id}"\]$}, @out.string)
     assert_equal ['key1'], @node.dat[vnode].keys
     assert_empty @node.commands.grep(/\Asetroute/)
   end
@@ -170,7 +172,9 @@ class RecoverLostTest < Test::Unit::TestCase
 
   def test_no_directories
     FileUtils.rm_rf(File.join(@dir, 'roma'))
-    assert_raise_message("#{@dir} has no directories of storage files.") { tool.recover(@node.node_id, @dir, all: true) }
+    assert_raise_message("#{@dir} has no directories of storage files.") do
+      tool.recover(@node.node_id, @dir, all: true)
+    end
   end
 
   def test_node_down

@@ -31,7 +31,12 @@ module Roma
         # Writes the report to +out+ every +interval+ seconds while the block
         # runs.
         def reporting(out, interval)
-          reporter = Thread.new { loop { sleep interval; out.puts report(interval) } }
+          reporter = Thread.new do
+            loop do
+              sleep interval
+              out.puts report(interval)
+            end
+          end
           yield
         ensure
           reporter&.kill
@@ -119,20 +124,23 @@ module Roma
 
       def run_random(client, key_count, value_size, duration)
         @out.puts 'random_request_sender'
-        stop = duration && Process.clock_gettime(Process::CLOCK_MONOTONIC) + duration
+        stop = duration && (Process.clock_gettime(Process::CLOCK_MONOTONIC) + duration)
         until @stop || (stop && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= stop)
           i = rand(key_count)
           case rand(3)
           when 0 then request("set k=#{i}") { client.set(i.to_s, value(i, value_size)) == 'STORED' }
-          when 1 then request("get k=#{i}") { client.get(i.to_s); true }
+          when 1 then request("get k=#{i}") do
+            client.get(i.to_s)
+            true
+          end
           else request("del k=#{i}") { %w(DELETED NOT_FOUND).include?(client.delete(i.to_s)) }
           end
         end
       end
 
       # The block returns false for a wrong reply.
-      def request(label)
-        ok = @stats.measure { yield }
+      def request(label, &)
+        ok = @stats.measure(&)
         @out.puts "#{label} failed" unless ok
       rescue Error => e
         @out.puts "#{label} #{e.message}"

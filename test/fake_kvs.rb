@@ -32,6 +32,7 @@ class FakeKVS
       name, key, *args = line.split
       if (reply = @replies[name])
         break if reply == :close
+
         s.read(args[2].to_i + 2) if name == 'set'
         s.write(reply)
         next

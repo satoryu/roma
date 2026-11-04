@@ -5,25 +5,16 @@ require 'json'
 
 module Roma
   module Routing
-
     class RoutingTable
-
-      attr :routing_data
-      attr :search_mask
-      attr :failure_counts
-      attr :merkle_tree
-      attr_reader :hash_space_size
-      attr_reader :redundancy
-      attr_reader :divide_bits
-      attr_accessor :failure_count_threshold
-      attr_accessor :failure_count_gap
-      attr_accessor :node_id_substitutions
+      attr_reader :routing_data, :search_mask, :failure_counts, :merkle_tree, :hash_space_size, :redundancy,
+                  :divide_bits
+      attr_accessor :failure_count_threshold, :failure_count_gap, :node_id_substitutions
 
       def initialize(routing_data)
         @log = Roma::Logging::RLogger.instance
         @routing_data = routing_data
         @redundancy = @routing_data.redundancy
-        @divide_bits=@routing_data.divide_bits
+        @divide_bits = @routing_data.divide_bits
         @hash_space_size = 2**@routing_data.digest_bits
         @search_mask = @routing_data.search_mask
         @failure_counts = Hash.new(0)
@@ -37,8 +28,8 @@ module Roma
       def count_vnodes(ap)
         pn = short = lost = 0
         sn = Array.new(@routing_data.redundancy - 1, 0)
-        @routing_data.routes.each_pair do |vnode, node_ids|
-          if node_ids == nil || node_ids.length == 0
+        @routing_data.routes.each_pair do |_vnode, node_ids|
+          if node_ids.nil? || node_ids.length == 0
             lost += 1
             next
           elsif node_ids[0] == ap
@@ -62,7 +53,7 @@ module Roma
         ret['routing.divide_bits'] = @divide_bits
         ret['routing.vnodes.length'] = vnodes.length
         ret['routing.primary'] = pn
-        (@redundancy-1).times{|i| ret["routing.secondary#{i+1}"] = sn[i]}
+        (@redundancy - 1).times { |i| ret["routing.secondary#{i + 1}"] = sn[i] }
         ret['routing.short_vnodes'] = short
         ret['routing.lost_vnodes'] = lost
         ret['routing.failure_count_threshold'] = @failure_count_threshold
@@ -72,10 +63,10 @@ module Roma
       end
 
       def init_merkle_tree
-        @merkle_tree = MerkleTree.new(@routing_data.digest_bits,@routing_data.divide_bits)
-        @routing_data.routes.each_pair{ |vnode, node_ids|
-          @merkle_tree.set(vnode,node_ids)
-        }
+        @merkle_tree = MerkleTree.new(@routing_data.digest_bits, @routing_data.divide_bits)
+        @routing_data.routes.each_pair do |vnode, node_ids|
+          @merkle_tree.set(vnode, node_ids)
+        end
       end
 
       def nodes
@@ -95,7 +86,7 @@ module Roma
       # +vnode+: vnode id
       def search_nodes(vnode)
         @routing_data.routes[vnode].clone
-      rescue
+      rescue StandardError
         nil
       end
 
@@ -104,13 +95,11 @@ module Roma
       def leave(node_id)
         @routing_data.nodes.delete(node_id)
         # delet node_id from list
-        @routing_data.routes.each_pair{ |vnode, node_ids|
-          node_ids.delete_if{ |other_node_id| other_node_id == node_id}
-          if node_ids.length == 0
-            @log.error("Vnode data is lost.(Vnode=#{vnode})")
-          end
-          @merkle_tree.set(vnode,node_ids)
-        }
+        @routing_data.routes.each_pair do |vnode, node_ids|
+          node_ids.delete_if { |other_node_id| other_node_id == node_id }
+          @log.error("Vnode data is lost.(Vnode=#{vnode})") if node_ids.length == 0
+          @merkle_tree.set(vnode, node_ids)
+        end
         @failure_counts.delete(node_id)
       end
 
@@ -124,8 +113,9 @@ module Roma
 
       def dump_json
         JSON.generate(
-                      [{:digest_bits=>@routing_data.digest_bits,:divide_bits=>@routing_data.divide_bits,:redundancy=>@routing_data.redundancy},
-                       @routing_data.nodes,@routing_data.routes])
+          [{ digest_bits: @routing_data.digest_bits, divide_bits: @routing_data.divide_bits, redundancy: @routing_data.redundancy },
+           @routing_data.nodes, @routing_data.routes]
+        )
       end
 
       def dump_binary
@@ -133,15 +123,13 @@ module Roma
       end
 
       def check_repetition_in_routing
-        @routing_data.routes.each_value{|value|
+        @routing_data.routes.each_value do |value|
           host = []
-          value.each{|instance|
-            host << instance.split("_")[0]
-          }
-          if host.uniq!
-            return true
+          value.each do |instance|
+            host << instance.split('_')[0]
           end
-        }
+          return true if host.uniq!
+        end
 
         false
       end
@@ -150,9 +138,7 @@ module Roma
         t = Time.now
         if t - @fail_time > @failure_count_gap
           @failure_counts[node_id] += 1
-          if @failure_counts[node_id] >= @failure_count_threshold
-            leave(node_id)
-          end
+          leave(node_id) if @failure_counts[node_id] >= @failure_count_threshold
         end
         @fail_time = t
       end
@@ -169,9 +155,7 @@ module Roma
       # Returns a new RoutingData object which replaced host name by the node_id_substitutions attribute.
       def substituted_routing_data(addr)
         node_id_substitutions.each do |mask, sub|
-          if check_netmask?(addr, mask)
-            return get_replaced_routing_data(sub[:regexp], sub[:replace])
-          end
+          return get_replaced_routing_data(sub[:regexp], sub[:replace]) if check_netmask?(addr, mask)
         end
         nil
       end
@@ -195,23 +179,21 @@ module Roma
 
       def check_netmask?(addr, mask)
         if addr =~ /(\d+)\.(\d+)\.(\d+)\.(\d+)/
-          iaddr = ($1.to_i  << 24) + ($2.to_i << 16) + ($3.to_i << 8) + $4.to_i
+          iaddr = (::Regexp.last_match(1).to_i << 24) + (::Regexp.last_match(2).to_i << 16) + (::Regexp.last_match(3).to_i << 8) + ::Regexp.last_match(4).to_i
         else
           @log.error("#{__method__}:Illigal format addr #{addr}")
           return false
         end
 
-        if mask =~ /(\d+)\.(\d+)\.(\d+)\.(\d+)\/(\d+)/
-          imask_addr = ($1.to_i  << 24) + ($2.to_i << 16) + ($3.to_i << 8) + $4.to_i
-          imask = (2 ** $5.to_i - 1) << (32 - $5.to_i)
+        if mask =~ %r{(\d+)\.(\d+)\.(\d+)\.(\d+)/(\d+)}
+          imask_addr = (::Regexp.last_match(1).to_i << 24) + (::Regexp.last_match(2).to_i << 16) + (::Regexp.last_match(3).to_i << 8) + ::Regexp.last_match(4).to_i
+          imask = ((2**::Regexp.last_match(5).to_i) - 1) << (32 - ::Regexp.last_match(5).to_i)
         else
           @log.error("#{__method__}:Illigal format mask #{mask}")
           return false
         end
         (iaddr & imask) == (imask_addr & imask)
       end
-
     end # class RoutingTable
-
   end # module Routing
 end # module Roma

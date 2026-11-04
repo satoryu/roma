@@ -20,6 +20,7 @@ class CommandPluginMapcountTest < Test::Unit::TestCase
   # Returns the single value in a reply, or nil for "END\r\n".
   def parse_value(res)
     return nil if res == "END\r\n"
+
     header, rest = res.split("\r\n", 2)
     _, key, _, len = header.split(' ')
     assert_equal 'key1', key

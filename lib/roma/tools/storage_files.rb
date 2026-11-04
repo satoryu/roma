@@ -18,6 +18,7 @@ module Roma
       def self.each_hash(path)
         dirs = Dir.glob(File.join(path, '*')).select { |dir| File.directory?(dir) }.sort
         raise Error, "#{path} has no directories of storage files." if dirs.empty?
+
         dirs.each { |dir| yield File.basename(dir), dir }
       end
 
@@ -28,6 +29,7 @@ module Roma
         unless storage_class
           file = Dir.glob(File.join(dir, '0.*')).first
           raise Error, "#{dir} has no storage files." unless file
+
           ext = File.extname(file).delete_prefix('.')
           storage_class = storage_class_of(ext, dir)
           # The files are 0.dbm, 1.dbm, ..., and maybe others such as
@@ -45,6 +47,7 @@ module Roma
       def self.storage_class_of(ext, dir)
         path, name, gem = STORAGES[ext]
         raise Error, "#{dir} has files of an unknown storage: #{ext}" unless path
+
         begin
           require path
         rescue LoadError

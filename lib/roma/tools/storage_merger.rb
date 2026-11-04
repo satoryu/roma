@@ -16,20 +16,22 @@ module Roma
       # files are divided into +division_count+. Raises Error if it fails.
       def merge(path1, path2, recent_path, digest_bits: 32, divide_bits: 9, division_count: 10)
         raise Error, "#{recent_path} exists." if File.exist?(recent_path)
-        raise Error, "The digest bits should be divide bits or more." if digest_bits < divide_bits
+        raise Error, 'The digest bits should be divide bits or more.' if digest_bits < divide_bits
+
         vnodes = Array.new(2**divide_bits) { |i| i << (digest_bits - divide_bits) }
         hashes = []
         StorageFiles.each_hash(path1) { |hash_name, dir| hashes << [hash_name, dir] }
         Dir.mkdir(recent_path)
         hashes.each do |hash_name, dir|
-          merge_hash(hash_name, [dir, File.join(path2, hash_name)], File.join(recent_path, hash_name), vnodes, division_count)
+          merge_hash(hash_name, [dir, File.join(path2, hash_name)], File.join(recent_path, hash_name), vnodes,
+                     division_count)
         end
       end
 
       private
 
-      def open_storage(dir, vnodes, **opts)
-        StorageFiles.open(dir, vnodes, **opts)
+      def open_storage(dir, vnodes, **)
+        StorageFiles.open(dir, vnodes, **)
       end
 
       def merge_hash(hash_name, dirs, recent_dir, vnodes, division_count)

@@ -5,10 +5,11 @@ module Roma
     # plugin directory to use them.
     BUNDLED = %w(storage alist map mapcount gui).freeze
 
-    @@plugins=[]
+    @@plugins = []
     def self.plugins
       @@plugins.dup
     end
+
     def self.included(mod)
       @@plugins << mod
     end

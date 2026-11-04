@@ -113,13 +113,13 @@ module RomaTestUtils
       sleep 1
       client.update_rttable
       wait_count += 1
-      fail "#{__method__} timeout" if wait_count > DEFAULT_TIMEOUT_SEC
+      raise "#{__method__} timeout" if wait_count > DEFAULT_TIMEOUT_SEC
     end
 
     while client.stats(node: node)['stats.run_join'] == 'true'
       sleep 1
       wait_count += 1
-      fail "#{__method__} timeout" if wait_count > DEFAULT_TIMEOUT_SEC
+      raise "#{__method__} timeout" if wait_count > DEFAULT_TIMEOUT_SEC
     end
   end
 
@@ -132,7 +132,7 @@ module RomaTestUtils
     while client.stats(node: stats_node)['routing.nodes'] =~ /#{down_node}/
       sleep 1
       wait_count += 1
-      fail "#{__method__} timeout" if wait_count > DEFAULT_TIMEOUT_SEC
+      raise "#{__method__} timeout" if wait_count > DEFAULT_TIMEOUT_SEC
     end
   end
 
@@ -144,7 +144,7 @@ module RomaTestUtils
     while client.stats(node: node)['stats.run_release'] == 'true'
       sleep 1
       wait_count += 1
-      fail "#{__method__} timeout" if wait_count > DEFAULT_TIMEOUT_SEC
+      raise "#{__method__} timeout" if wait_count > DEFAULT_TIMEOUT_SEC
     end
   end
 
@@ -182,6 +182,7 @@ module RomaTestUtils
     loop do
       actual = yield
       return assert_equal(expected, actual) if actual == expected || Time.now > deadline
+
       sleep 0.05
     end
   end
@@ -208,7 +209,8 @@ module RomaTestUtils
   def wait_for(what)
     deadline = Time.now + DEFAULT_TIMEOUT_SEC
     until yield
-      fail "timed out waiting for #{what}" if Time.now > deadline
+      raise "timed out waiting for #{what}" if Time.now > deadline
+
       sleep 0.05
     end
   end
@@ -256,7 +258,7 @@ module RomaTestUtils
       conn.write "#{message}\r\n"
       conn.gets
     end
-  rescue => e
+  rescue StandardError => e
     puts "#{e} #{$ERROR_POSITION}"
   ensure
     Roma::Messaging::ConPool.instance.return_connection(node, conn)

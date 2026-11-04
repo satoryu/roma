@@ -4,11 +4,10 @@ require 'roma/command/definition'
 
 module Roma
   module CommandPlugin
-
     module Map
       include Roma::CommandPlugin
       include Roma::Command::Definition
-      
+
       # map_set <key> <mapkey> <flags> <expire_time> <bytes> [forward]\r\n
       # <data block>\r\n
       #
@@ -16,10 +15,10 @@ module Roma
       def_write_command_with_key_value :map_set, 5 do |ctx|
         v = {}
         v = Marshal.load(ctx.stored.value) if ctx.stored
-          
+
         v[ctx.argv[2]] = ctx.params.value
         expire_time = chg_time_expt(ctx.argv[4].to_i)
-        
+
         # [flags, expire time, value, kind of counter(:write/:delete), result message]
         [0, expire_time, Marshal.dump(v), :write, 'STORED']
       end
@@ -47,9 +46,9 @@ module Roma
 
         v = Marshal.load(ctx.stored.value)
         next send_data("NOT_DELETED\r\n") unless v.key?(ctx.argv[2])
-        
+
         v.delete(ctx.argv[2])
-        
+
         [0, ctx.stored.expire_time, Marshal.dump(v), :delete, 'DELETED']
       end
 
@@ -61,7 +60,6 @@ module Roma
 
         [0, ctx.stored.expire_time, Marshal.dump({}), :delete, 'CLEARED']
       end
-
 
       # map_size <key> [forward]\r\n
       #
@@ -86,7 +84,7 @@ module Roma
           send_data("NOT_FOUND\r\n")
         end
       end
-      
+
       # map_value? <key> <bytes> [forward]\r\n
       # <data block>\r\n
       #
@@ -99,7 +97,7 @@ module Roma
           send_data("NOT_FOUND\r\n")
         end
       end
-      
+
       # map_empty? <key> [forward]\r\n
       #
       # (true|false|NOT_FOUND|SERVER_ERROR <error message>)\r\n
@@ -126,10 +124,10 @@ module Roma
         if ctx.stored
           v = Marshal.load(ctx.stored.value).keys
           len = v.length
-          send_data("VALUE #{ctx.params.key} 0 #{len.to_s.length}\r\n#{len.to_s}\r\n")
-          v.each{|val|
+          send_data("VALUE #{ctx.params.key} 0 #{len.to_s.length}\r\n#{len}\r\n")
+          v.each do |val|
             send_data("VALUE #{ctx.params.key} 0 #{val.length}\r\n#{val}\r\n")
-          }
+          end
         end
         send_data("END\r\n")
       end
@@ -148,10 +146,10 @@ module Roma
         if ctx.stored
           v = Marshal.load(ctx.stored.value).values
           len = v.length
-          send_data("VALUE #{ctx.params.key} 0 #{len.to_s.length}\r\n#{len.to_s}\r\n")
-          v.each{|val|
+          send_data("VALUE #{ctx.params.key} 0 #{len.to_s.length}\r\n#{len}\r\n")
+          v.each do |val|
             send_data("VALUE #{ctx.params.key} 0 #{val.length}\r\n#{val}\r\n")
-          }
+          end
         end
         send_data("END\r\n")
       end
@@ -170,9 +168,6 @@ module Roma
         end
         send_data("END\r\n")
       end
-
     end # module Map
   end # module CommandPlugin
 end # module Roma
- 
-

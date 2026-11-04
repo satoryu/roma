@@ -20,6 +20,7 @@ class CommandPluginMapForwardTest < Test::Unit::TestCase
 
     def dispatch(_line, _rest)
       raise Errno::ECONNREFUSED if @reply == :down
+
       @reply.to_s
     end
   end

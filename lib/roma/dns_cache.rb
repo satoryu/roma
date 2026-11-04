@@ -31,7 +31,7 @@ module Roma
 
     def get_stat
       ret = {}
-      ret["dns_caching"] = @@enabled_caching
+      ret['dns_caching'] = @@enabled_caching
       ret
     end
   end

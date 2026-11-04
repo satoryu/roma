@@ -12,7 +12,7 @@ class ConfigurationTest < Test::Unit::TestCase
 
   def test_defaults
     assert_equal 'ROMA', @config.name
-    assert_equal 12000, @config.port
+    assert_equal 12_000, @config.port
     assert_equal './command_plugins', @config.command_plugin_path
     assert_equal :auto_assign, @config.routing.lost_action
     assert_equal :debug, @config.log.level
@@ -31,12 +31,12 @@ class ConfigurationTest < Test::Unit::TestCase
   end
 
   def test_set
-    @config.port = 11211
+    @config.port = 11_211
     @config.log.level = :info
     @config.connection.pool.max = 10
     @config.storage.engine = Class.new
     @config.storage.option = nil
-    assert_equal 11211, @config.port
+    assert_equal 11_211, @config.port
     assert_equal :info, @config.log.level
     assert_equal 10, @config.connection.pool.max
     assert_nil @config.storage.option
@@ -49,7 +49,9 @@ class ConfigurationTest < Test::Unit::TestCase
        'boolean' => [->(c) { c.connection.use_epoll = 'yes' }, /\Aconnection.use_epoll should be one of true, false/],
        'nested' => [->(c) { c.connection.pool.max = 1.5 }, /\Aconnection.pool.max should be a valid Integer: 1.5\z/],
        'continuous limit' => [->(c) { c.connection.continuous_limit = '1:2' }, /continuous_limit should be/],
-       'engine' => [->(c) { c.storage.engine = :'my-kvs' }, /\Astorage.engine should be a valid Symbol or Class: :"my-kvs"\z/],
+       'engine' => [lambda { |c|
+         c.storage.engine = :'my-kvs'
+       }, /\Astorage.engine should be a valid Symbol or Class: :"my-kvs"\z/],
        'command plugin path' => [->(c) { c.command_plugin_path = nil }, /\Acommand_plugin_path should be/])
   def test_wrong_value(data)
     set, message = data
@@ -115,7 +117,7 @@ class ConfigurationTest < Test::Unit::TestCase
 
   def test_to_h
     h = @config.to_h
-    assert_equal 12000, h['port']
+    assert_equal 12_000, h['port']
     assert_equal :debug, h['log.level']
     assert_equal 5, h['connection.pool.max']
     assert_equal 15, h['connection.event_machine_pool.max']

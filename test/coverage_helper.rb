@@ -45,9 +45,9 @@ module CoverageHelper
       CoverageHelper.configure
       coverage_dir 'coverage'
       formatter SimpleCov::Formatter::MultiFormatter.new([
-        SimpleCov::Formatter::HTMLFormatter.new(silent: true),
-        CoverageHelper::CoberturaFormatter
-      ])
+                                                           SimpleCov::Formatter::HTMLFormatter.new(silent: true),
+                                                           CoverageHelper::CoberturaFormatter
+                                                         ])
     end
 
     total = JSON.parse(File.read('coverage/coverage.json'))['total']
@@ -57,8 +57,8 @@ module CoverageHelper
     puts "Coverage report for #{results.size} processes: coverage/index.html", lines
 
     # On GitHub Actions, show the totals on the run's summary page too.
-    if ENV['GITHUB_STEP_SUMMARY']
-      File.write(ENV['GITHUB_STEP_SUMMARY'], "## Coverage\n\n#{lines.map { |l| "- #{l}\n" }.join}", mode: 'a')
-    end
+    return unless ENV['GITHUB_STEP_SUMMARY']
+
+    File.write(ENV.fetch('GITHUB_STEP_SUMMARY', nil), "## Coverage\n\n#{lines.map { |l| "- #{l}\n" }.join}", mode: 'a')
   end
 end

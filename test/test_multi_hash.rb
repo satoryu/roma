@@ -43,13 +43,13 @@ class MultiHashTest < Test::Unit::TestCase
     assert_equal('DELETED', @rc.delete('roma'))
 
     @rc.default_hash_name = 'not_exist_hash'
-    [:get, :delete, :incr, :decr].each do |m|
+    %i(get delete incr decr).each do |m|
       assert_raise(RuntimeError.new('SERVER_ERROR not_exist_hash does not exists.')) do
         @rc.send m, 'key'
       end
     end
 
-    [:set, :add, :replace, :append, :prepend].each do |m|
+    %i(set add replace append prepend).each do |m|
       assert_raise(RuntimeError.new('SERVER_ERROR not_exist_hash does not exists.')) do
         @rc.send m, 'key', 'value'
       end

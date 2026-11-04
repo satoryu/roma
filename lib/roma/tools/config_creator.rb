@@ -4,10 +4,9 @@ require 'roma/configuration'
 
 module Roma
   module Tools
-
     class ConfigCreator
-      TREE_TOP = "menu"
-      BNUM_COEFFICIENT = 2 #reccomend1-4.
+      TREE_TOP = 'menu'
+      BNUM_COEFFICIENT = 2 # reccomend1-4.
       DIVIDED_FILES = 10
       REDUNDANCY = 2
       DEFAULT_ROMA_CONNECTION = 12
@@ -17,7 +16,7 @@ module Roma
       KB = 1024
       GB = 1024 * 1024 * 1024
       OS_MEMORY_SIZE = 1 * GB
-      END_MSG = ["exit", "quit", "balse"]
+      END_MSG = %w(exit quit balse)
 
       class Base
         attr_accessor :all
@@ -94,7 +93,7 @@ module Roma
             default: 1
             next: fd_client
           fd_client:
-            name: client_num 
+            name: client_num#{' '}
             path_name:
             message: How many machine run as ROMA client?
             default: 1
@@ -115,55 +114,55 @@ module Roma
 
         def print_question(key, out)
           target = all[key]
-          #print question
-          out.print "#{target["message"]}\n"
-          if target.key?("choice")
-            target["choice"].each_with_index do |k, i|
-              out.print "[#{i + 1}] #{k}\n"
-            end
+          # print question
+          out.print "#{target['message']}\n"
+          return unless target.key?('choice')
+
+          target['choice'].each_with_index do |k, i|
+            out.print "[#{i + 1}] #{k}\n"
           end
         end
 
-        def next (key, input)
-          target = all[key]["next"]
+        def next(key, input)
+          target = all[key]['next']
 
-          if target.class == Array
-            return target[input.to_i - 1]
-          else
-            return target
-          end
+          return target[input.to_i - 1] if target.class == Array
+
+          target
         end
       end
 
       class Input
         module InputReadline
           def get_line
-            return Readline.readline("> ", false)
+            Readline.readline('> ', false)
           end
         end
 
         module InputSimple
           def get_line
-            print ">"
-            return $stdin.gets&.chomp
+            print '>'
+            $stdin.gets&.chomp
           end
         end
 
         def initialize
           begin
-            require "readline"
+            require 'readline'
           rescue LoadError
-            self.extend InputSimple
+            extend InputSimple
+
             return
           end
-          self.extend InputReadline
+          extend InputReadline
         end
       end
 
       class ConfigStatus
         attr_accessor :name, :value, :print, :default_value
+
         def initialize(hash, input)
-          @name = hash["name"]
+          @name = hash['name']
           @value = input
           @print = true
         end
@@ -171,8 +170,8 @@ module Roma
 
       class Box
         def self.print_edge(width, out)
-          out.print "+"
-            width.times { out.print "-" }
+          out.print '+'
+          width.times { out.print '-' }
           out.print "+\n"
         end
 
@@ -180,9 +179,9 @@ module Roma
           return if arg.count == 0
 
           if arg.class == Hash
-            strs = Array.new
-            arg.each do |k, v|
-               strs << "#{k}: #{arg[k]}"
+            strs = []
+            arg.each do |k, _v|
+              strs << "#{k}: #{arg[k]}"
             end
             arg = strs
           end
@@ -193,15 +192,13 @@ module Roma
           arg.each do |s|
             out.print "|#{s}"
             (width - s.length).times do
-              out.print " "
+              out.print ' '
             end
             out.print "|\n"
           end
 
           print_edge(width, out)
         end
-
-        private
 
         def self.max_length(arg)
           max = 0
@@ -214,42 +211,38 @@ module Roma
 
       class Calculate
         def self.get_bnum(res)
-          res["server"] = res["fd_server"] if !res["server"]
-          ans = res["data"].value.to_i * BNUM_COEFFICIENT * REDUNDANCY / res["server"].value.to_i / DIVIDED_FILES
-          return ans
+          res['server'] = res['fd_server'] unless res['server']
+          res['data'].value.to_i * BNUM_COEFFICIENT * REDUNDANCY / res['server'].value.to_i / DIVIDED_FILES
         end
 
         def self.get_xmsize_max(res)
-          ans = (res["memory"].value.to_f * GB - OS_MEMORY_SIZE) / res["process"].value.to_i / DIVIDED_FILES
-          if ans <= 0
-            ans = res["memory"].value.to_f * GB / 2 / res["process"].value.to_i / DIVIDED_FILES
-          end
-          ans = ans.to_i
-          return ans
+          ans = ((res['memory'].value.to_f * GB) - OS_MEMORY_SIZE) / res['process'].value.to_i / DIVIDED_FILES
+          ans = res['memory'].value.to_f * GB / 2 / res['process'].value.to_i / DIVIDED_FILES if ans <= 0
+          ans.to_i
         end
 
         def self.get_fd(res)
-          res["fd_server"] = res["server"] if !res["fd_server"]
-          res["fd_server"].value.to_i * connection_num(res) + (res["fd_client"].value.to_i- 1) * DEFAULT_ROMA_CONNECTION * 2
+          res['fd_server'] = res['server'] unless res['fd_server']
+          (res['fd_server'].value.to_i * connection_num(res)) + ((res['fd_client'].value.to_i - 1) * DEFAULT_ROMA_CONNECTION * 2)
         end
 
         def self.connection_num(res)
-          case res["language"].value
-            when "Ruby"
-              connection = RUBY_CONNECTION
-            when "Java"
-              connection = JAVA_CONNECTION
-            when "PHP"
-              connection = PHP_CONNECTION
+          case res['language'].value
+          when 'Ruby'
+            connection = RUBY_CONNECTION
+          when 'Java'
+            connection = JAVA_CONNECTION
+          when 'PHP'
+            connection = PHP_CONNECTION
           end
 
-          return connection
+          connection
         end
       end
 
       # +input+ gives the lines typed in, +out+ is where the questions go, and
       # +path+ is the file to make.
-      def initialize(input: Input.new, out: $stdout, path: File.expand_path("config.rb"))
+      def initialize(input: Input.new, out: $stdout, path: File.expand_path('config.rb'))
         @input = input
         @out = out
         @path = path
@@ -262,14 +255,14 @@ module Roma
         # confirming overwrite
         if File.exist?(@path)
           print("Config.rb already exist in current directory. \nWill you overwrite?[y/n]")
-          if @input.get_line != "y"
-            puts "config.rb  were not created!"
+          if @input.get_line != 'y'
+            puts 'config.rb  were not created!'
             return
           end
         end
 
         @base = Base.new
-        @results = Hash::new
+        @results = {}
         @next_hash = TREE_TOP
 
         defaults = Roma::Configuration::Settings.new.to_h
@@ -283,8 +276,9 @@ module Roma
         while true
           clear_screen
 
-          skip.call if @next_hash == "menu" || @next_hash == "server" || @next_hash == "fd_server"
+          skip.call if @next_hash == 'menu' || @next_hash == 'server' || @next_hash == 'fd_server'
           break if end?(@base[@next_hash])
+
           puts "if you doesn't input anything, default value is set."
           Box.print_with_box(@defaults, @out)
           print_status(@results)
@@ -293,7 +287,7 @@ module Roma
 
           # if specific words(balse, exit, quit) was inputed, roma config create was finished.
           if END_MSG.include?(input)
-            puts "config.rb  were not created!"
+            puts 'config.rb  were not created!'
             break
 
           else
@@ -310,39 +304,39 @@ module Roma
       def skip_menu!(menu)
         # in case of "-m" or "--with_menu" option was used
         if menu == :with_menu
-          return Proc.new do
-            if @next_hash == "server" && @results["fd_server"]
-              @next_hash = @base["server"]["next"]
-            elsif @next_hash == "fd_server" && @results["server"]
-              @next_hash = "fd_client"
+          return proc do
+            if @next_hash == 'server' && @results['fd_server']
+              @next_hash = @base['server']['next']
+            elsif @next_hash == 'fd_server' && @results['server']
+              @next_hash = 'fd_client'
             end
           end
         end
 
         # in case of "-m" or "--with_menu" option was NOT used
         i = 0
-        return Proc.new do
-          if @next_hash == "menu"
-            @next_hash = @base["menu"]["next"][i]
+        proc do
+          if @next_hash == 'menu'
+            @next_hash = @base['menu']['next'][i]
             i += 1
-          elsif @next_hash == "server" && @results["fd_server"]
-            @next_hash = @base["server"]["next"]
-          elsif @next_hash == "fd_server" && @results["server"]
-            @next_hash = "fd_client"
+          elsif @next_hash == 'server' && @results['fd_server']
+            @next_hash = @base['server']['next']
+          elsif @next_hash == 'fd_server' && @results['server']
+            @next_hash = 'fd_client'
           end
         end
       end
 
-      #judge whether data inputting finish or not
+      # judge whether data inputting finish or not
       def end?(s)
-        if s == "END"
-          save_data(@results)
-          true
-        end
+        return unless s == 'END'
+
+        save_data(@results)
+        true
       end
 
       def print_status(results)
-        strs = Array.new
+        strs = []
         results.each_value do |v|
           strs << "#{v.name} : #{v.value}"
         end
@@ -350,88 +344,78 @@ module Roma
       end
 
       def get_input(hash)
-        input = ""
+        input = ''
 
-        while !correct_in?(hash,input)
+        until correct_in?(hash, input)
           # The end of the input quits.
           input = @input.get_line || END_MSG.first
-          if input == ""
-            #set defaults value
-            input = hash["default"]
+          if input == ''
+            # set defaults value
+            input = hash['default']
           end
         end
 
         input
       end
 
-      def correct_in?(hash,input)
-        if END_MSG.include?(input)
+      def correct_in?(hash, input)
+        return true if END_MSG.include?(input)
+
+        if hash.key?('choice')
+          return true if hash['choice'].count >= input.to_i && input.to_i > 0
+        elsif hash['float_flg']
+          return true if 0 < input.to_f
+        elsif 0 < input.to_i
           return true
         end
 
-        if hash.key?('choice')
-          if hash['choice'].count >= input.to_i && input.to_i > 0
-            return true
-          end
-        else
-          if hash["float_flg"]
-            if 0 < input.to_f
-              return true
-            end
-          else
-            if 0 < input.to_i
-              return true
-            end
-          end
-        end
-
-        return false
+        false
       end
 
       def store_result(results, base, hash, input)
         target = base[hash]
 
-        return results if !target["name"]
+        return results unless target['name']
 
-        if target.key?("choice")
-          results[hash] = ConfigStatus.new(target, target["choice"][input.to_i - 1])
-        else
-          results[hash] = ConfigStatus.new(target, input)
-        end
+        results[hash] = if target.key?('choice')
+                          ConfigStatus.new(target, target['choice'][input.to_i - 1])
+                        else
+                          ConfigStatus.new(target, input)
+                        end
 
-        return results
+        results
       end
 
       # Makes config.rb from the answers.
       def save_data(res)
         results = @defaults.dup
-        if res.key?("storage")
-          case res["storage"].value
-          when "Ruby Hash"
-            results["storage.engine"] = :hash
-            results["storage.option"] = ""
-          when "Groonga"
+        if res.key?('storage')
+          case res['storage'].value
+          when 'Ruby Hash'
+            results['storage.engine'] = :hash
+            results['storage.option'] = ''
+          when 'Groonga'
             bnum = Calculate.get_bnum(res)
-            bnum = 5000000 if bnum < 5000000
+            bnum = 5_000_000 if bnum < 5_000_000
             xmsiz = Calculate.get_xmsize_max(res)
-            results["storage.engine"] = :groonga
-            results["storage.option"] = "bnum=#{bnum}\#xmsiz=#{xmsiz}\#opts=d#dfunit=10"
+            results['storage.engine'] = :groonga
+            results['storage.option'] = "bnum=#{bnum}#xmsiz=#{xmsiz}#opts=d#dfunit=10"
           end
         end
 
-        if res.key?("language")
+        if res.key?('language')
           fd = Calculate.get_fd(res)
-          print "\r\nPlease set FileDescriptor bigger than #{fd}.\r\n\r\n" 
+          print "\r\nPlease set FileDescriptor bigger than #{fd}.\r\n\r\n"
         end
 
-        open(@path, "w") do |f|
+        open(@path, 'w') do |f|
           f.flock(File::LOCK_EX)
           f.puts config_body(results)
           f.truncate(f.tell)
           f.flock(File::LOCK_UN)
         end
 
-        puts "Before"
+        puts 'Before'
         Box.print_with_box(@defaults.transform_values(&:inspect), @out)
         print "\r\nAfter\r\n"
         Box.print_with_box(results.transform_values(&:inspect), @out)
@@ -459,14 +443,13 @@ module Roma
         CONFIG
       end
 
-      def print(*args)
-        @out.print(*args)
+      def print(*)
+        @out.print(*)
       end
 
-      def puts(*args)
-        @out.puts(*args)
+      def puts(*)
+        @out.puts(*)
       end
-
     end # ConfigCreator
   end # module Tools
 end # module Roma

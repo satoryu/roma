@@ -33,7 +33,7 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
     'reqpushv_timeout_count' => [:reqpushv_timeout_count, '5', 5, '-1'],
     'spushv_klength_warn' => [:spushv_klength_warn, '2048', 2048, '0'],
     'spushv_vlength_warn' => [:spushv_vlength_warn, '2048', 2048, '0'],
-    'log_shift_size' => [:log_shift_size, '4096', 4096, '0'],
+    'log_shift_size' => [:log_shift_size, '4096', 4096, '0']
   }
 
   data(STATS_SETTINGS)
@@ -67,9 +67,9 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
   end
 
   data(STATS_SETTINGS)
-  def test_wrong_number_of_arguments(data)
+  def test_wrong_number_of_arguments(_data)
     name = data_label
-    %W(set_#{name} rset_#{name} set_#{name}\s1\s2).each do |line|
+    %W[set_#{name} rset_#{name} set_#{name}\s1\s2].each do |line|
       assert_equal "CLIENT_ERROR number of arguments\r\n", @conn.request(line)
     end
     assert_equal [], @conn.broadcasts
@@ -90,7 +90,7 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
     assert_equal 4096, @conn.log.shift_size
   end
 
-  data('number' => ['7', 7], 'zero' => ['0', 0], 'name' => ['daily', 'daily'])
+  data('number' => ['7', 7], 'zero' => ['0', 0], 'name' => %w(daily daily))
   def test_set_log_shift_age(data)
     value, stored = data
     assert_equal relayed('STORED'), @conn.request("set_log_shift_age #{value}")
@@ -168,7 +168,7 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
   end
 
   def test_rwb_command_map
-    assert_equal "#{{ set: 1 }}\r\n", @conn.request('rwb_command_map {:set=>1}')
+    assert_equal "{set: 1}\r\n", @conn.request('rwb_command_map {:set=>1}')
     assert_equal({ set: 1 }, @conn.stats.wb_command_map)
   end
 
@@ -314,7 +314,7 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
       con_pool: [Roma::Messaging::ConPool.instance.maxlength, Roma::Messaging::ConPool.instance.expire_time],
       em_con_pool: [Roma::Event::EMConPool.instance.maxlength, Roma::Event::EMConPool.instance.expire_time],
       connection_expire_time: Roma::Event::Handler.connection_expire_time,
-      continuous_limit: Roma::Event::Handler.get_continuous_limit,
+      continuous_limit: Roma::Event::Handler.get_continuous_limit
     }
   end
 
@@ -337,7 +337,7 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
     'emconnection_pool_maxlength' => ['20', -> { Roma::Event::EMConPool.instance.maxlength }],
     'connection_pool_expire_time' => ['60', -> { Roma::Messaging::ConPool.instance.expire_time }],
     'emconnection_pool_expire_time' => ['60', -> { Roma::Event::EMConPool.instance.expire_time }],
-    'accepted_connection_expire_time' => ['120', -> { Roma::Event::Handler.connection_expire_time }],
+    'accepted_connection_expire_time' => ['120', -> { Roma::Event::Handler.connection_expire_time }]
   }
 
   data(POOL_SETTINGS)

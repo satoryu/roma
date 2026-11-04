@@ -7,9 +7,9 @@ require 'roma/tools/storage_files'
 class StorageFilesTest < Test::Unit::TestCase
   include ToolTestHelper
 
-  def open_storage(*files, **opts)
+  def open_storage(*files, **)
     files.each { |f| File.write(File.join(@dir, f), '') }
-    Roma::Tools::StorageFiles.open(@dir, [0], **opts)
+    Roma::Tools::StorageFiles.open(@dir, [0], **)
   end
 
   def test_each_hash

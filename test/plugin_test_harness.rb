@@ -68,7 +68,7 @@ class PluginTestHarness
   # Methods that would talk to other nodes. They are prepended so that they
   # win over the plugins' own definitions (e.g. Roma::CommandPlugin::Storage#redundant).
   module Stubs
-    def redundant(nodes, hash_name, k, d, clock, expire_time, v)
+    def redundant(nodes, hash_name, k, _d, _clock, expire_time, v)
       @redundant_calls << { nodes: nodes, hash_name: hash_name, key: k, expire_time: expire_time, value: v }
     end
 
@@ -76,6 +76,7 @@ class PluginTestHarness
     def send_cmd(node_id, cmd)
       return super if @owner
       raise "unexpected command to #{node_id}: #{cmd}" unless cmd.start_with?('rdelete ')
+
       @sent_commands << [node_id, cmd]
       'DELETED'
     end
@@ -144,6 +145,7 @@ class PluginTestHarness
 
   def get_connection(_nid)
     raise 'no connection' unless @owner
+
     NodeConnection.new(@owner)
   end
 
@@ -203,7 +205,8 @@ class PluginTestHarness
       @default_hash_name = HASH_NAME
       @used_keys = []
       @connection = Connection.new(harness)
-      @routing_table = RomaTestClient::RoutingTable.new(Roma::Routing::RoutingData.create(32, 3, 2, [NODE_ID, REPLICA_NODE_ID]))
+      @routing_table = RomaTestClient::RoutingTable.new(Roma::Routing::RoutingData.create(32, 3, 2,
+                                                                                          [NODE_ID, REPLICA_NODE_ID]))
     end
 
     private

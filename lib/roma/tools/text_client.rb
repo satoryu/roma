@@ -14,6 +14,7 @@ module Roma
       def initialize(node_ids, timeout: 5)
         @node_ids = Array(node_ids)
         raise Error, 'No node is given.' if @node_ids.empty?
+
         @timeout = timeout
         @next = 0
         @con = nil
@@ -24,7 +25,9 @@ module Roma
       # as a command, so the connection is closed.
       def set(key, value, expire_time = 0)
         value = value.to_s.b
-        request("set #{key} 0 #{expire_time} #{value.bytesize}\r\n#{value}\r\n") { |con| reply(con, "set #{key}", %w(STORED NOT_STORED)) }
+        request("set #{key} 0 #{expire_time} #{value.bytesize}\r\n#{value}\r\n") do |con|
+          reply(con, "set #{key}", %w(STORED NOT_STORED))
+        end
       end
 
       # Returns the value, or nil if there is none.
@@ -33,10 +36,13 @@ module Roma
           res = line(con)
           next nil if res == 'END'
           raise Error, "get #{key}: #{res}" unless res =~ /\AVALUE \S+ \d+ (\d+)/
-          value = con.read($1.to_i + 2)
+
+          value = con.read(::Regexp.last_match(1).to_i + 2)
           raise Error, "get #{key}: closed" unless value
+
           last = line(con)
           raise Error, "get #{key}: #{last}" unless last == 'END'
+
           value.chomp("\r\n")
         end
       end
@@ -64,11 +70,13 @@ module Roma
         node_id = @node_ids[(@next - 1) % @node_ids.size]
         close
         raise e if e.is_a?(Error)
+
         raise Error, "#{node_id}: #{e.message}"
       end
 
       def connection
         return @con if @con
+
         node_id = @node_ids[@next % @node_ids.size]
         @next += 1
         host, port = node_id.split(/[:_]/)
@@ -78,12 +86,14 @@ module Roma
       def reply(con, cmd, expected)
         res = line(con)
         raise Error, "#{cmd}: #{res}" unless expected.include?(res)
+
         res
       end
 
       def line(con)
         res = con.gets
         raise Error, 'The connection was closed.' unless res
+
         res.chomp
       end
     end

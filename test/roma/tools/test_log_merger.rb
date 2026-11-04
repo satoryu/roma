@@ -21,10 +21,12 @@ class LogMergerTest < Test::Unit::TestCase
     LOG
   end
 
-  def merged(**opts)
+  def merged(**)
     out = StringIO.new
-    Roma::Tools::LogMerger.new(out: out).merge(%w(a.log b.log).map { |f| File.join(@dir, f) }, **opts)
-    out.string.lines.map { |l| l[/\A(\w)\.log,.*: (\w+)$/] ? "#{$1}:#{$2}" : l.chomp }
+    Roma::Tools::LogMerger.new(out: out).merge(%w(a.log b.log).map { |f| File.join(@dir, f) }, **)
+    out.string.lines.map do |l|
+      l[/\A(\w)\.log,.*: (\w+)$/] ? "#{::Regexp.last_match(1)}:#{::Regexp.last_match(2)}" : l.chomp
+    end
   end
 
   # Each line is prefixed with its file. A line without a date belongs to

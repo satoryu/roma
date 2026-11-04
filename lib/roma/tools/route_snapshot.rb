@@ -17,11 +17,12 @@ module Roma
         fname = File.join(@dir, Roma::Routing::RoutingData.file_name(node_id.sub(':', '_')))
         begin
           done = Roma::Routing::RoutingData.snapshot(fname)
-        rescue => e
+        rescue StandardError => e
           raise Error, "error:#{e}"
         end
-        raise Error, "Routing-log file does not found." unless done
-        @out.puts "succeed"
+        raise Error, 'Routing-log file does not found.' unless done
+
+        @out.puts 'succeed'
       end
     end
   end

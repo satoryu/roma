@@ -49,6 +49,7 @@ module Roma
         @out.puts 'Please input value.'
         value = @input.gets
         raise Error, 'No value was given.' unless value
+
         value.chomp
       end
     end

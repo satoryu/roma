@@ -109,7 +109,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     # The client connects from 127.0.0.1, so it sees the node names replaced.
     @routing_table.node_id_substitutions['127.0.0.0/24'] = { regexp: 'localhost', replace: 'vm' }
     routing_data = Marshal.load(parse_sized_dump(@conn.request('routingdump')))
-    assert_equal ['vm_11211', 'vm_11212'], routing_data.nodes
+    assert_equal %w(vm_11211 vm_11212), routing_data.nodes
     assert_equal [@vn_nid.sub('localhost', 'vm')], routing_data.routes[VN]
     # The routing table itself doesn't change.
     assert_equal [NODE_ID, OTHER_NODE_ID], @routing_table.nodes
