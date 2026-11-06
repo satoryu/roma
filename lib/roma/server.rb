@@ -507,11 +507,7 @@ module Roma
     end
 
     def timer_event_1sec
-      if @routing_table.enabled_failover
-        nodes = @routing_table.nodes
-        nodes.delete(@stats.my_node_id)
-        nodes_check(nodes)
-      end
+      nodes_check(@routing_table.nodes - [@stats.my_node_id]) if @routing_table.enabled_failover
 
       if (@stats.run_join || @stats.run_recover || @stats.run_balance) &&
          @stats.run_storage_clean_up
@@ -524,9 +520,7 @@ module Roma
     def timer_event_10sec
       if @startup && @routing_table.enabled_failover == false
         @log.debug('nodes_check start')
-        nodes = @routing_table.nodes
-        nodes.delete(@stats.my_node_id)
-        if nodes_check(nodes)
+        if nodes_check(@routing_table.nodes - [@stats.my_node_id])
           @log.info('all nodes started')
           AsyncProcess.queue.clear
           @routing_table.enabled_failover = true
@@ -564,11 +558,10 @@ module Roma
       @log.error("#{e}\n#{$@}")
     end
 
+    # Whether every node of +nodes+ is up and has the same name. It stops at
+    # the first node that isn't.
     def nodes_check(nodes)
-      nodes.each do |node_id|
-        return false unless node_check(node_id)
-      end
-      true
+      nodes.all? { |node_id| node_check(node_id) }
     end
 
     def node_check(node_id)

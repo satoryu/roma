@@ -438,6 +438,20 @@ class ServerTimerTest < Test::Unit::TestCase
     stub_send_cmd('whoami' => nil)
     assert_false call(:node_check, OTHER_NODE_ID)
   end
+
+  # It stops at the first node that isn't up.
+  def test_nodes_check
+    server
+    set(startup: false)
+    nodes = %w(localhost_11212 localhost_11213 localhost_11214)
+    sent = stub_send_cmd('whoami' => ->(node_id, _cmd) { 'ROMA' unless node_id == 'localhost_11213' })
+    assert_false call(:nodes_check, nodes)
+    assert_equal %w(localhost_11212 localhost_11213), sent.map(&:first)
+
+    stub_send_cmd('whoami' => 'ROMA')
+    assert_true call(:nodes_check, nodes)
+    assert_true call(:nodes_check, [])
+  end
 end
 
 class ServerRoutingSyncTest < Test::Unit::TestCase
