@@ -2,7 +2,7 @@ require 'roma/cli/common'
 
 module Roma
   module Subcommands
-    # roma config: make the config file of romad.
+    # roma config: make the config file of roma server.
     class Config < Thor
       extend Common
 

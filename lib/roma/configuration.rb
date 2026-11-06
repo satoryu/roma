@@ -1,5 +1,5 @@
 module Roma
-  # The settings of romad. A config file sets them in Roma.configure:
+  # The settings of roma server. A config file sets them in Roma.configure:
   #
   #   Roma.configure do |config|
   #     config.port = 11211
@@ -184,7 +184,7 @@ module Roma
     class Settings < Group
       setting :name, 'ROMA', type: String
       setting :port, 12_000, type: Integer, check: ->(v) { (1..65_535).cover?(v) }
-      # The directory of the command plugins. romad requires the *.rb files in it.
+      # The directory of the command plugins. The server requires the *.rb files in it.
       setting :command_plugin_path, './command_plugins', type: String
       group :routing, Routing
       group :log, Log
@@ -196,7 +196,7 @@ module Roma
     end
   end
 
-  # The settings of romad.
+  # The settings of roma server.
   def self.config
     @config ||= Configuration::Settings.new
   end

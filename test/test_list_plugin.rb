@@ -598,7 +598,7 @@ module ListPluginTests
   private :push_a_vnode_stream
 end # ListPluginTests
 
-# Runs every test in-process, without romad.
+# Runs every test in-process, without a server.
 class ListPluginInProcessTest < Test::Unit::TestCase
   self.test_order = :defined
   include ListPluginTests
@@ -615,7 +615,7 @@ class ListPluginInProcessTest < Test::Unit::TestCase
   undef test_alist_spushv
 end
 
-# Runs a few tests through romad: one for each way a request is forwarded,
+# Runs a few tests through a server: one for each way a request is forwarded,
 # and alist_spushv, which streams data between nodes.
 E2E_LIST_PLUGIN_TESTS = %i(test_at test_delete test_gets test_alist_spushv)
 

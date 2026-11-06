@@ -33,7 +33,7 @@ class RedundancyChangerTest < Test::Unit::TestCase
     assert_equal routing_data.nodes.sort, changed.nodes
   end
 
-  # The nodes are added by romad later.
+  # The nodes are added by the server later.
   def test_higher
     node, routing_data = serve(1)
     changed = change(node.node_id, 3)

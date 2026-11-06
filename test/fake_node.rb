@@ -1,6 +1,6 @@
 require 'socket'
 
-# A fake node that receives vnodes pushed by romad (pushv and spushv)
+# A fake node that receives vnodes pushed by the server (pushv and spushv)
 # and keeps them by vnode id.
 class FakeNode
   attr_reader :node_id, :dat

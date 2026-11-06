@@ -2,7 +2,7 @@ require 'json'
 require 'simplecov'
 require 'simplecov-cobertura'
 
-# Measures the coverage of lib, both in the test process and in every romad
+# Measures the coverage of lib, both in the test process and in every server
 # the end-to-end tests start. Each process writes its own result under
 # coverage/results, and `rake coverage` merges them into coverage/index.html,
 # and into coverage/coverage.xml (Cobertura) for Codecov.

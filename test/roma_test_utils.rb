@@ -18,9 +18,9 @@ module RomaTestUtils
   REPLICA_NODES = REPLICA_PORTS.map { |port| "#{DEFAULT_HOST}_#{port}" }
   SHELL_LOG = 'roma_test_outputs.log'
 
-  # Extend a test class with it to start romad once for the class instead of
-  # once for each test. The tests then share the data stored in romad, so
-  # each test must not depend on what the others store.
+  # Extend a test class with it to start the servers once for the class
+  # instead of once for each test. The tests then share the data stored in
+  # them, so each test must not depend on what the others store.
   module RomaPerClass
     def self.extended(test_class)
       test_class.singleton_class.include(RomaTestUtils)
@@ -60,35 +60,35 @@ module RomaTestUtils
   # Boots the nodes at the same time and waits until they accept connections.
   def boot_nodes(nodes, conf, replication_in_host)
     pids = nodes.map do |node|
-      Process.spawn(romad_command(node, conf, replication_in_host))
+      Process.spawn(server_command(node, conf, replication_in_host))
     end
     if ENV['COVERAGE']
-      # romad runs in the foreground and writes its coverage when it stops.
+      # The server runs in the foreground and writes its coverage when it stops.
       pids.each { |pid| Process.detach(pid) }
     else
-      # Each command returns once romad daemonizes.
+      # Each command returns once the server daemonizes.
       pids.each { |pid| Process.wait(pid) }
     end
     wait_until_up(nodes)
   end
 
   def join_roma(node, conf = DEFAULT_CONFIG, replication_in_host: true)
-    do_command_romad(node, conf, replication_in_host, true)
+    start_server(node, conf, replication_in_host, true)
   end
 
-  def do_command_romad(node, conf, replication_in_host = true, is_join = false)
-    system(romad_command(node, conf, replication_in_host, is_join, daemon: true))
+  def start_server(node, conf, replication_in_host = true, is_join = false)
+    system(server_command(node, conf, replication_in_host, is_join, daemon: true))
   end
 
-  # With COVERAGE, romad runs in the foreground: when it forks to become a
-  # daemon, Ruby resets the coverage counts in the child, and the coverage of
+  # With COVERAGE, the server runs in the foreground: when it forks to become
+  # a daemon, Ruby resets the coverage counts in the child, and the coverage of
   # loading lib would be lost.
-  def romad_command(node, conf, replication_in_host, is_join = false, daemon: !ENV['COVERAGE'])
+  def server_command(node, conf, replication_in_host, is_join = false, daemon: !ENV['COVERAGE'])
     host, port = node.split('_')
     command = [ruby_path]
     command.push('-r', "#{test_dir}/start_coverage") if ENV['COVERAGE']
     command.push(
-      romad_path, host,
+      roma_path, 'server', host,
       '-p', port,
       '--verbose', '--disable-command-protection',
       '--config', "#{test_dir}/#{conf}"
@@ -198,8 +198,8 @@ module RomaTestUtils
     wait_for("#{nodes} to start") { nodes.all? { |node| listening?(node) } }
   end
 
-  # Waits until every node stops, so that the next romad can use its port.
-  # (romad exits at once if the same node is already running.)
+  # Waits until every node stops, so that the next server can use its port.
+  # (The server exits at once if the same node is already running.)
   def wait_until_down(nodes)
     wait_for("#{nodes} to stop") { nodes.none? { |node| listening?(node) } }
   end
@@ -237,10 +237,6 @@ module RomaTestUtils
 
   def roma_path
     (bin_dir + 'roma').to_s
-  end
-
-  def romad_path
-    (bin_dir + 'romad').to_s
   end
 
   def ruby_path

@@ -2,7 +2,7 @@ require 'test_helper'
 
 require 'socket'
 
-# Tests that don't change the cluster share one pair of romad processes.
+# Tests that don't change the cluster share one pair of server processes.
 class NewFuncTest < Test::Unit::TestCase
   self.test_order = :defined
   include RomaTestUtils
@@ -89,9 +89,9 @@ class NewFuncTest < Test::Unit::TestCase
     assert_equal("ROMA\n", res)
   end
 
-  def test_romad_option
-    res = `#{bin_dir}/romad -h`
-    assert_equal("usage:romad [options] address
+  def test_server_option
+    res = `#{bin_dir}/roma server -h`
+    assert_equal("usage:roma server [options] address
     -d, --daemon
     -j, --join [address:port]
     -p, --port [PORT]
@@ -110,10 +110,10 @@ class NewFuncTest < Test::Unit::TestCase
   end
 end
 
-# Tests that change settings or nodes start new romad processes each time.
+# Tests that change settings or nodes start new server processes each time.
 # Each setting command is covered by
 # test/roma/command/test_system_command_receiver.rb. The ones here check
-# that relaying to the other node works through romad.
+# that relaying to the other node works through a server.
 class NewFuncChangingClusterTest < Test::Unit::TestCase
   self.test_order = :defined
   include RomaTestUtils

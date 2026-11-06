@@ -319,7 +319,7 @@ class CLITest < Test::Unit::TestCase
     assert_equal [[:new, %w(host1_1 host2_1), {}], [:run, [modes], expected]], calls
   end
 
-  # romad parses the options, and tells its usage.
+  # The server parses the options, and tells its usage.
   data('--help' => '--help', '-h' => '-h')
   def test_server_help(option)
     out, _err, status = run_roma('server', option)

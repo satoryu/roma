@@ -2,7 +2,7 @@ require 'test_helper'
 require 'file_writer_tests'
 require 'roma/messaging/con_pool'
 
-# Checks what romad writes to the write-behind files. The replies of the
+# Checks what the server writes to the write-behind files. The replies of the
 # write-behind commands are covered by
 # test/roma/command/test_system_command_receiver*.rb.
 class WriteBehindTest < Test::Unit::TestCase
@@ -10,7 +10,7 @@ class WriteBehindTest < Test::Unit::TestCase
   include FileWriterTests
   include RomaTestUtils
 
-  # Only read_wb is used here; FileWriterTest runs these without romad.
+  # Only read_wb is used here; FileWriterTest runs these without a server.
   FileWriterTests.public_instance_methods.grep(/\Atest_/).each { |t| undef_method(t) }
 
   def setup

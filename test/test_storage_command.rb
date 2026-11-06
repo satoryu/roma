@@ -174,7 +174,7 @@ module StorageCommandTests
   end
 end
 
-# Runs every test in-process, without romad.
+# Runs every test in-process, without a server.
 class StorageCommandInProcessTest < Test::Unit::TestCase
   self.test_order = :defined
   include StorageCommandTests
@@ -191,8 +191,8 @@ class StorageCommandInProcessTest < Test::Unit::TestCase
   undef test_routingdump_bin
 end
 
-# Runs a few tests through romad: one for each kind of forwarded command
-# (fset, fget, fdelete, fgets, fcas, fincr), and the tests that need romad.
+# Runs a few tests through a server: one for each kind of forwarded command
+# (fset, fget, fdelete, fgets, fcas, fincr), and the tests that need a server.
 E2E_STORAGE_COMMAND_TESTS = %i(test_set_get_delete test_set_gets test_cas test_incr test_out test_routingdump_bin)
 
 class StorageCommandTest < Test::Unit::TestCase

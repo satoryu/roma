@@ -45,7 +45,7 @@ class ConfigCreatorTest < Test::Unit::TestCase
     assert_match(%r{^  # config.command_plugin_path = "\./command_plugins"$}, config)
   end
 
-  # romad can load the file. In another process, not to change Roma.config.
+  # The server can load the file. In another process, not to change Roma.config.
   def test_hash_config_loads
     create_config('1', '1', '', '')
     script = 'require "roma/configuration"; Roma.load_config(ARGV[0]); print Roma.config.storage.engine_class'

@@ -2,11 +2,11 @@ require 'test_helper'
 require 'open3'
 require 'roma_test_utils'
 
-# romad stops by INT and TERM, and closes its storages, whether it is a
-# daemon or not. Under load, the signal comes while romad handles a request,
-# where an error is rescued and logged, so it must not stop romad as an
-# error.
-class RomadSignalTest < Test::Unit::TestCase
+# The server stops by INT and TERM, and closes its storages, whether it is
+# a daemon or not. Under load, the signal comes while the server handles a
+# request, where an error is rescued and logged, so it must not stop the
+# server as an error.
+class ServerSignalTest < Test::Unit::TestCase
   include RomaTestUtils
 
   STOP_TIMEOUT_SEC = 10
@@ -28,28 +28,28 @@ class RomadSignalTest < Test::Unit::TestCase
 
   # Starts the nodes. The first one is a daemon if +daemon+.
   def boot(daemon:)
-    @pids << (daemon ? start_daemon(DEFAULT_NODES[0]) : spawn_romad(DEFAULT_NODES[0]))
-    @pids << spawn_romad(DEFAULT_NODES[1])
+    @pids << (daemon ? start_daemon(DEFAULT_NODES[0]) : spawn_server(DEFAULT_NODES[0]))
+    @pids << spawn_server(DEFAULT_NODES[1])
     wait_until_up(DEFAULT_NODES)
   end
 
-  def romad_args(node)
+  def server_args(node)
     host, port = node.split('_')
-    [ruby_path, romad_path, host, '-p', port, '--config', "#{test_dir}/#{DEFAULT_CONFIG}",
+    [ruby_path, roma_path, 'server', host, '-p', port, '--config', "#{test_dir}/#{DEFAULT_CONFIG}",
      '--replication_in_host']
   end
 
-  def spawn_romad(node)
-    command = romad_args(node)
+  def spawn_server(node)
+    command = server_args(node)
     command.insert(1, '-r', "#{test_dir}/start_coverage") if ENV['COVERAGE']
     pid = Process.spawn(*command, %i(out err) => [SHELL_LOG, 'a'])
     Process.detach(pid)
     pid
   end
 
-  # Returns the pid of the daemon, which romad writes to the standard error.
+  # Returns the pid of the daemon, which the server writes to the standard error.
   def start_daemon(node)
-    _, err, status = Open3.capture3(*romad_args(node), '-d')
+    _, err, status = Open3.capture3(*server_args(node), '-d')
     assert_true status.success?, err
     err[/^\d+$/].to_i
   end
@@ -91,7 +91,7 @@ class RomadSignalTest < Test::Unit::TestCase
   end
 
   def stopped_logs(node)
-    File.read("#{Roma.config.log.path}/#{node}.log").scan("Romad has stopped: #{node}").size
+    File.read("#{Roma.config.log.path}/#{node}.log").scan("The server has stopped: #{node}").size
   end
 
   data('INT' => [:INT, false], 'TERM' => [:TERM, false],
@@ -105,7 +105,7 @@ class RomadSignalTest < Test::Unit::TestCase
       Process.kill(signal, @pids[0])
       wait_exit(@pids[0])
     end
-    assert_true exited, "romad didn't stop by #{signal} in #{STOP_TIMEOUT_SEC} seconds"
+    assert_true exited, "the server didn't stop by #{signal} in #{STOP_TIMEOUT_SEC} seconds"
     # The storages are closed.
     assert_equal stopped + 1, stopped_logs(node)
   end

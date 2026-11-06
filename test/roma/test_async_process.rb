@@ -2,7 +2,7 @@ require 'test_helper'
 require 'async_process_harness'
 require 'fake_node'
 
-# Unit tests for the background processes of romad (Roma::AsyncProcess).
+# Unit tests for the background processes of the server (Roma::AsyncProcess).
 module AsyncProcessTestHelper
   NODE_ID = AsyncProcessHarness::NODE_ID
   OTHER_NODE_ID = AsyncProcessHarness::OTHER_NODE_ID
@@ -664,7 +664,7 @@ class AsyncProcessStorageTest < Test::Unit::TestCase
   end
 end
 
-# Reads the routing logs and romad's log, in Roma.config.routing.path and
+# Reads the routing logs and the server's log, in Roma.config.routing.path and
 # LOG_PATH, named after this node.
 class AsyncProcessLogTest < Test::Unit::TestCase
   include AsyncProcessTestHelper

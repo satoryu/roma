@@ -18,7 +18,7 @@ Layout/LineLength:
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/event/handler.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/routing/routing_table.rb'
@@ -28,12 +28,12 @@ Layout/LineLength:
     - 'lib/roma/write_behind/file_writer.rb'
     - 'test/optional_test/test_rich_routing.rb'
     - 'test/roma/command_plugin/test_storage.rb'
-    - 'test/roma/test_romad.rb'
+    - 'test/roma/test_server.rb'
     - 'test/roma/tools/test_log_merger.rb'
     - 'test/roma/tools/test_recover_lost.rb'
     - 'test/roma/tools/test_route_creator.rb'
     - 'test/roma_test_utils.rb'
-    - 'test/test_romad_signal.rb'
+    - 'test/test_server_signal.rb'
     - 'test/test_write_behind.rb'
 
 # Offense count: 3
@@ -52,7 +52,7 @@ Lint/AssignmentInCondition:
   Exclude:
     - 'lib/roma/async_process.rb'
     - 'lib/roma/event/handler.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/write_behind_process.rb'
     - 'test/fake_node.rb'
 
@@ -88,7 +88,7 @@ Lint/RescueException:
   Exclude:
     - 'lib/roma/command_plugin/debug.rb'
     - 'lib/roma/event/handler.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
 
 # Offense count: 10
 # Configuration parameters: AllowComments, AllowNil.
@@ -99,7 +99,7 @@ Lint/SuppressedException:
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/write_behind/file_writer.rb'
     - 'test/roma_test_client.rb'
-    - 'test/test_romad_signal.rb'
+    - 'test/test_server_signal.rb'
     - 'test/test_write_behind.rb'
 
 # Offense count: 3
@@ -164,7 +164,7 @@ Naming/MethodParameterName:
     - 'test/plugin_test_harness.rb'
     - 'test/roma/command/test_definition.rb'
     - 'test/roma/command_plugin/test_mapcount.rb'
-    - 'test/roma/test_romad.rb'
+    - 'test/roma/test_server.rb'
     - 'test/roma_test_client.rb'
     - 'test/test_list_plugin.rb'
     - 'test/test_map_count_plugin.rb'
@@ -178,7 +178,7 @@ Naming/PredicateMethod:
     - 'lib/roma/async_process.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/logging/rlogger.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/routing/routing_table.rb'
@@ -233,7 +233,7 @@ Security/MarshalLoad:
     - 'lib/roma/command_plugin/alist.rb'
     - 'lib/roma/command_plugin/map.rb'
     - 'lib/roma/command_plugin/mapcount.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/routing/routing_table.rb'
     - 'lib/roma/tools/admin_client.rb'
     - 'lib/roma/write_behind/stream_writer.rb'
@@ -328,7 +328,7 @@ Style/CommentedKeyword:
     - 'lib/roma/logging/rlogger.rb'
     - 'lib/roma/logging/stderr_wrapper.rb'
     - 'lib/roma/messaging/con_pool.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/merkle_tree.rb'
     - 'lib/roma/routing/random_balancer.rb'
@@ -374,7 +374,7 @@ Style/GlobalVars:
 Style/HashEachMethods:
   Exclude:
     - 'lib/roma/command/system_command_receiver.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/tools/config_creator.rb'
     - 'test/roma/test_async_process.rb'
@@ -403,13 +403,13 @@ Style/InfiniteLoop:
 Style/InverseMethods:
   Exclude:
     - 'lib/roma/command/system_command_receiver.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
 
 # Offense count: 1
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/LineEndConcatenation:
   Exclude:
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
 
 # Offense count: 5
 # This cop supports unsafe autocorrection (--autocorrect-all).
@@ -443,7 +443,7 @@ Style/MutableConstant:
     - 'test/roma/command_plugin/test_map_forward.rb'
     - 'test/roma/command_plugin/test_storage.rb'
     - 'test/roma/routing/test_random_partitioner.rb'
-    - 'test/roma/test_romad.rb'
+    - 'test/roma/test_server.rb'
     - 'test/roma_test_utils.rb'
     - 'test/routing_table_test_helper.rb'
     - 'test/test_list_plugin.rb'
@@ -471,7 +471,7 @@ Style/NumericPredicate:
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/logging/rlogger.rb'
     - 'lib/roma/messaging/con_pool.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/random_balancer.rb'
     - 'lib/roma/routing/random_partitioner.rb'
@@ -502,19 +502,19 @@ Style/OptionalBooleanParameter:
 # SupportedStyles: compact, exploded
 Style/RaiseArgs:
   Exclude:
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
 
 # Offense count: 13
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: Methods.
 Style/RedundantArgument:
   Exclude:
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/write_behind/stream_writer.rb'
     - 'test/fake_node.rb'
     - 'test/roma/command_plugin/test_mapcount.rb'
-    - 'test/roma/test_romad.rb'
+    - 'test/roma/test_server.rb'
     - 'test/roma_test_client.rb'
     - 'test/test_new_func.rb'
 
@@ -525,7 +525,7 @@ Style/RedundantInterpolation:
     - 'lib/roma/command/multi_hash_command_receiver.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/command/system_command_receiver.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/write_behind/file_writer.rb'
     - 'test/test_copy_data.rb'
     - 'test/test_protocol.rb'
@@ -544,7 +544,7 @@ Style/ReturnNilInPredicateMethodDefinition:
 Style/SafeNavigation:
   Exclude:
     - 'lib/roma/async_process.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/tools/admin_client.rb'
     - 'lib/roma/tools/key_access.rb'
@@ -582,7 +582,7 @@ Style/SlicingWithRange:
 Style/SpecialGlobalVars:
   Exclude:
     - 'lib/roma/async_process.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'test/fake_node.rb'
     - 'test/optional_test/test_routing_logic.rb'
     - 'test/roma_test_utils.rb'
@@ -606,7 +606,7 @@ Style/StringConcatenation:
 Style/SymbolProc:
   Exclude:
     - 'lib/roma/configuration.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/write_behind/file_writer.rb'
 
 # Offense count: 2
@@ -626,7 +626,7 @@ Style/ZeroLengthPredicate:
     - 'lib/roma/event/em_con_pool.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/messaging/con_pool.rb'
-    - 'lib/roma/romad.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/random_balancer.rb'
     - 'lib/roma/routing/random_partitioner.rb'

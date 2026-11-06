@@ -153,9 +153,9 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
   def test_set_wb_shift_size
     assert_equal relayed('STORED'), @conn.request('set_wb_shift_size 2048')
     assert_equal ["rset_wb_shift_size 2048\r\n"], @conn.broadcasts
-    assert_equal 2048, @conn.romad.wb_writer.shift_size
+    assert_equal 2048, @conn.server.wb_writer.shift_size
     assert_equal "STORED\r\n", @conn.request('rset_wb_shift_size 4096')
-    assert_equal 4096, @conn.romad.wb_writer.shift_size
+    assert_equal 4096, @conn.server.wb_writer.shift_size
     assert_equal "CLIENT_ERROR length must be greater than zero\r\n", @conn.request('set_wb_shift_size 0')
   end
 

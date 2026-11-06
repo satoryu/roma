@@ -6,7 +6,7 @@ require 'roma/command/util_command_receiver'
 require 'roma/routing/routing_data'
 require 'roma_test_client'
 
-# Runs command plugins in-process, without romad or sockets.
+# Runs command plugins in-process, without a server or sockets.
 #
 # It stands in for the event handler: commands are dispatched to ev_* methods,
 # replies are collected instead of sent, and data is stored in a
@@ -33,8 +33,8 @@ class PluginTestHarness
   Stats = Struct.new(:wb_command_map, :read_count, :write_count, :delete_count,
                      :compression_threshold, :my_node_id)
 
-  # Stands in for $roma, the running romad, which some commands look at.
-  Romad = Struct.new(:cluster_replication_writer)
+  # Stands in for $roma, the running server, which some commands look at.
+  Server = Struct.new(:cluster_replication_writer)
   ClusterReplicationWriter = Struct.new(:run_replication)
 
   class RoutingTable
@@ -92,7 +92,7 @@ class PluginTestHarness
   attr_reader :stats, :storage, :storages, :redundant_calls, :sent_commands
 
   def initialize(node_id: NODE_ID, nodes: [NODE_ID, REPLICA_NODE_ID])
-    @romad = Romad.new(ClusterReplicationWriter.new(false))
+    @server = Server.new(ClusterReplicationWriter.new(false))
     @my_node_id = node_id
     @default_hash_name = HASH_NAME
     @routing_table = RoutingTable.new(nodes)
@@ -118,12 +118,12 @@ class PluginTestHarness
     @wbuf = String.new
     s = line.split(/ /)
     # Set $roma only while the command runs, so it doesn't leak into other tests.
-    saved_romad = defined?($roma) ? $roma : nil
-    $roma = @romad
+    saved_server = defined?($roma) ? $roma : nil
+    $roma = @server
     begin
       send("ev_#{s[0]}", s)
     ensure
-      $roma = saved_romad
+      $roma = saved_server
     end
     @wbuf
   end
@@ -199,7 +199,7 @@ class PluginTestHarness
   end
 
   # A RomaTestClient whose requests go to a PluginTestHarness, so tests written
-  # for romad can run in-process.
+  # for a server can run in-process.
   class Client < RomaTestClient
     def initialize(harness)
       @default_hash_name = HASH_NAME

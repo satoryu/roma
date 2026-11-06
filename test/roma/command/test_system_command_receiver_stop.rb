@@ -2,7 +2,7 @@ require 'test_helper'
 require 'eventmachine'
 require 'command_test_harness'
 
-# Unit tests for the system commands that stop romad or restart its event
+# Unit tests for the system commands that stop the server or restart its event
 # loop: balse, shutdown, shutdown_self and restart, with their relayed
 # versions, and quit.
 class SystemCommandReceiverStopTest < Test::Unit::TestCase
@@ -36,7 +36,7 @@ class SystemCommandReceiverStopTest < Test::Unit::TestCase
     assert_equal [], @conn.broadcasts
   end
 
-  # Runs +line+ in a running EventMachine reactor, as romad does, and
+  # Runs +line+ in a running EventMachine reactor, as the server does, and
   # returns the reply after the reactor has stopped.
   def request_in_reactor(line)
     reply = nil
@@ -126,15 +126,15 @@ class SystemCommandReceiverStopTest < Test::Unit::TestCase
     @conn.relay_reply = 'RESTARTED'
     assert_equal replies('RESTARTED'), request_in_reactor('restart')
     assert_equal ["rrestart\r\n"], @conn.broadcasts
-    # romad runs the event loop again once it stops.
-    assert_true @conn.romad.eventloop
+    # The server runs the event loop again once it stops.
+    assert_true @conn.server.eventloop
     assert_false @conn.routing_table.enabled_failover
   end
 
   def test_rrestart
     assert_equal "RESTARTED\r\n", request_in_reactor('rrestart')
     assert_equal [], @conn.broadcasts
-    assert_true @conn.romad.eventloop
+    assert_true @conn.server.eventloop
     assert_false @conn.routing_table.enabled_failover
   end
 

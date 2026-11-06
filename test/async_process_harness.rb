@@ -7,7 +7,7 @@ require 'roma/messaging/con_pool'
 require 'roma/routing/churnbased_routing_table'
 require 'roma/storage/hash'
 
-# Runs the background processes of romad (Roma::AsyncProcess) in-process.
+# Runs the background processes of the server (Roma::AsyncProcess) in-process.
 #
 # - A fresh Roma::Stats and a real routing table are made for each harness.
 #   This node is NODE_ID; +nodes+ are the nodes in the routing table.

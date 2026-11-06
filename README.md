@@ -21,7 +21,7 @@ More information is [here](http://roma-kvs.org/ "ROMA").
 
 * Refer to [ROMA documentations](http://roma-kvs.org/ "ROMA")
 * [Routing](docs/routing.md): what the routing files define, how nodes route keys, and how to set it up
-* [Command plugins](docs/command_plugin.md): how romad runs plugin commands, and how to write your own
+* [Command plugins](docs/command_plugin.md): how the server runs plugin commands, and how to write your own
 
 ## Requirements
 * Ruby >= 3.4
@@ -56,7 +56,7 @@ $ roma server localhost -p 10001 -d --replication-in-host
 $ roma server localhost -p 10002 -d --replication-in-host
 ```
 
-`romad` is the same as `roma server`, such as `romad localhost -p 10001 -d`. `roma server --help` shows the options.
+`roma server --help` shows the options.
 
 Refer to [Shell Commands](http://roma-kvs.org/commands.html#dist-jump-link-shell_commands) for more detail information about Shell Commands.  
 
@@ -92,10 +92,10 @@ Roma.configure do |config|
 end
 ```
 
-Start romad with the config file by `romad localhost -p 10001 -d --config config.rb`.
+Start the server with the config file by `roma server localhost -p 10001 -d --config config.rb`.
 
-### Configure romad
-The config file sets the settings in `Roma.configure`. Each one has a default, so the file only needs what differs. A wrong value stops romad with a message such as `routing.lost_action should be one of :no_action, :auto_assign, :shutdown: :foo`.
+### Configure the server
+The config file sets the settings in `Roma.configure`. Each one has a default, so the file only needs what differs. A wrong value stops the server with a message such as `routing.lost_action should be one of :no_action, :auto_assign, :shutdown: :foo`.
 
 ```ruby
 Roma.configure do |config|
@@ -111,9 +111,9 @@ Roma.configure do |config|
 end
 ```
 
-The settings and their defaults are in [lib/roma/configuration.rb](lib/roma/configuration.rb). Without `--config`, romad runs with the defaults.
+The settings and their defaults are in [lib/roma/configuration.rb](lib/roma/configuration.rb). Without `--config`, the server runs with the defaults.
 
-The command plugins need no settings: romad loads ROMA's plugins for data, and the `*.rb` files in `./command_plugins`. See [Command plugins](docs/command_plugin.md).
+The command plugins need no settings: the server loads ROMA's plugins for data, and the `*.rb` files in `./command_plugins`. See [Command plugins](docs/command_plugin.md).
 
 ### Tools
 The `roma` command has the tools to run ROMA, such as `roma route create`, `roma node send` and `roma storage recover-lost`. `roma help` lists the commands and the groups of them, `roma help GROUP` lists the commands of a group, such as `roma help route`, and `--help` after a command tells about it, such as `roma route create --help`.
@@ -149,7 +149,7 @@ If you would like to contribute, please...
 3. Make changes in a branch & add unit tests.
 4. Run Unit Test
   * `bundle exec rake` (if unit test fails, run it again - it's fickle).
-  * `bundle exec rake coverage` also measures the coverage of `lib`, including the romad processes that the tests start. Open `coverage/index.html` for the report. CI uploads it to Codecov.
+  * `bundle exec rake coverage` also measures the coverage of `lib`, including the server processes that the tests start. Open `coverage/index.html` for the report. CI uploads it to Codecov.
 5. Run RuboCop by `bundle exec rubocop`. CI runs it on pull requests too. `bundle exec rubocop -a` corrects what it can safely. `.rubocop_todo.yml` lists the offenses that the code had when RuboCop came in; when you fix them in a file, remove the file from the list.
 6. Create a pull request.
 
