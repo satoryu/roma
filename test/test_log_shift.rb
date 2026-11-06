@@ -3,7 +3,7 @@ require 'test_helper'
 require 'socket'
 require 'test/unit'
 
-# Checks that set_log_shift_size reaches both nodes through romad.
+# Checks that set_log_shift_size reaches both nodes through a server.
 # The log shift commands are covered by test/roma/command/test_system_command_receiver.rb.
 class LogShiftTest < Test::Unit::TestCase
   self.test_order = :defined

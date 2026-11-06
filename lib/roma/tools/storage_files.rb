@@ -2,7 +2,7 @@ require 'roma/tools/error'
 
 module Roma
   module Tools
-    # The storage files that romad keeps for a node: a directory for each
+    # The storage files that the server keeps for a node: a directory for each
     # hash, which has the divided files 0.dbm, 1.dbm, ...
     module StorageFiles
       # The storages by the extension of their files: the file to require,

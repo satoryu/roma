@@ -45,10 +45,10 @@ task :coverage do
   rescue StandardError => e
   end
 
-  # The last romad processes may still be writing their results.
-  romad = File.expand_path('bin/romad', __dir__)
+  # The last servers may still be writing their results.
+  server = "#{File.expand_path('bin/roma', __dir__)} server"
   deadline = Time.now + 30
-  sleep 0.1 while system('pgrep', '-f', romad, out: File::NULL) && Time.now < deadline
+  sleep 0.1 while system('pgrep', '-f', server, out: File::NULL) && Time.now < deadline
 
   require_relative 'test/coverage_helper'
   CoverageHelper.report

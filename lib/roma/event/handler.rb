@@ -197,7 +197,7 @@ module Roma
         send_data("SERVER_ERROR #{e} in storage engine\r\n")
         close_connection_after_writing
         if Roma.config.storage.exception_action == :shutdown
-          @log.error('Romad will stop')
+          @log.error('The server will stop')
           @stop_event_loop = true
         end
       rescue Exception => e

@@ -14,7 +14,7 @@ The tools in `bin/` are subcommands of the new `roma` command now, and the old c
 
 | Before | After |
 | --- | --- |
-| `romad` | `roma server` (`romad` stays as its alias) [#39](https://github.com/satoryu/roma/pull/39) |
+| `romad` | `roma server` [#39](https://github.com/satoryu/roma/pull/39). `romad` is removed. |
 | `mkroute`, `ssroute`, `log_merger`, `mkconfig` | `roma route create`, `roma route snapshot`, `roma log merge`, `roma config create` [#24](https://github.com/satoryu/roma/pull/24) [#25](https://github.com/satoryu/roma/pull/25) [#26](https://github.com/satoryu/roma/pull/26) |
 | `chg_redundancy`, `multi_commander` | `roma route change-redundancy NUM NODE_ID`, `roma cluster send` [#29](https://github.com/satoryu/roma/pull/29) |
 | `recoverlost`, `recoverlost_alist`, `recoverlost_alist_all`, `recoverlost_alist_keys` | `roma storage recover-lost [--since TIME] [--all] [--keys FILE] [--alist]` [#30](https://github.com/satoryu/roma/pull/30) |
@@ -25,7 +25,7 @@ The tools in `bin/` are subcommands of the new `roma` command now, and the old c
 
 Some options are words too: `--hash`, `--divide` and `--redundant` of `roma route create` are `--digest-bits`, `--divide-bits` and `--redundancy` (`-h` is for the help, and `-d` and `-r` stay), the same in `roma storage merge`, and `--num` and `--rand` of `roma benchmark` are `--key-count` and `--random`.
 
-`--disabled_cmd_protect` of romad (`roma server`) is `--disable-command-protection`, and `--enabled_repeathost`, which was deprecated, is removed: use `--replication-in-host`. romad takes the options with underscores too, such as `--replication_in_host`. `stats.enabled_repetition_host_in_routing` of the `stats` command is `stats.replication_in_host`.
+`--disabled_cmd_protect` of romad (`roma server`) is `--disable-command-protection`, and `--enabled_repeathost`, which was deprecated, is removed: use `--replication-in-host`. `roma server` takes the options with underscores too, such as `--replication_in_host`. `stats.enabled_repetition_host_in_routing` of the `stats` command is `stats.replication_in_host`.
 
 The tools print errors on the standard error and exit with 1.
 
@@ -35,7 +35,7 @@ These tools are removed, as they are not needed [#51](https://github.com/satoryu
 * `roma_watcher`, which mails by sendmail. `roma cluster check` exits with 1 when the nodes are wrong, so a monitoring tool can call it instead.
 
 ### The config file
-The config file sets the settings in `Roma.configure`, instead of the constants of `Roma::Config` [#53](https://github.com/satoryu/roma/issues/53). The settings have defaults, and a wrong value stops romad with a message. romad doesn't read the old format, and tells so. `roma config create` makes the new format.
+The config file sets the settings in `Roma.configure`, instead of the constants of `Roma::Config` [#53](https://github.com/satoryu/roma/issues/53). The settings have defaults, and a wrong value stops the server with a message. The server doesn't read the old format, and tells so. `roma config create` makes the new format.
 
 ```ruby
 # Before
@@ -77,7 +77,7 @@ end
 The `stats` command shows the settings by these names, such as `config.log.path` (`config.LOG_PATH` before). `stats.stream_copy_wait_param`, `stats.stream_show_wait_param` and `stats.size_of_zredundant` are `stats.stream_copy_wait`, `stats.stream_show_wait` and `stats.compression_threshold` [#60](https://github.com/satoryu/roma/issues/60). The option `--divnum` of `roma storage merge` is `--division-count` (`-n` stays).
 
 ### Routing names
-The abbreviated names of the routing are words now [#60](https://github.com/satoryu/roma/issues/60). ROMA 2.0 doesn't read a routing file of 1.x: make it again by `roma route create`. The routing file is `<node-id>.route.yml` (`<node-id>.route` before), as it is YAML. Its logs are `<node-id>.route.1` and so on as before. The file is a plain YAML of the keys below, without the tag `!ruby/object:Roma::Routing::RoutingData`, and romad reads it by `YAML.safe_load`, which makes no Ruby object. `routingdump yaml` and `roma route change-redundancy` write the same YAML.
+The abbreviated names of the routing are words now [#60](https://github.com/satoryu/roma/issues/60). ROMA 2.0 doesn't read a routing file of 1.x: make it again by `roma route create`. The routing file is `<node-id>.route.yml` (`<node-id>.route` before), as it is YAML. Its logs are `<node-id>.route.1` and so on as before. The file is a plain YAML of the keys below, without the tag `!ruby/object:Roma::Routing::RoutingData`, and the server reads it by `YAML.safe_load`, which makes no Ruby object. `routingdump yaml` and `roma route change-redundancy` write the same YAML.
 
 | Before | After |
 | --- | --- |
@@ -93,6 +93,8 @@ The internal names are words, too, such as `@routing_table`, `node_id`, `vnode`,
 ### File names
 The files in `lib` are named after the classes they define, such as `roma/command/system_command_receiver.rb` and `roma/routing/churnbased_routing_table.rb`. `roma/command/command_definition.rb`, which plugins required, is `roma/command/definition.rb` [#47](https://github.com/satoryu/roma/pull/47)
 
+The class of a ROMA node is `Roma::Server` in `roma/server.rb` (`Roma::Romad` in `roma/romad.rb` before), as it is a server, and a daemon only with `-d`. `Roma::Server.run` runs it as `roma server` does. The log says "The server has stopped" and "The server will stop" ("Romad has stopped" and "Romad will stop" before).
+
 The plugins are in `roma/command_plugin/`, after their namespace `Roma::CommandPlugin`, and named after their files with no `plugin_` prefix [#49](https://github.com/satoryu/roma/pull/49):
 
 | Before | After |
@@ -107,20 +109,20 @@ The plugins are in `roma/command_plugin/`, after their namespace `Roma::CommandP
 The old files and names are removed, with no aliases. [Porting a plugin from ROMA 1.x](docs/command_plugin.md#porting-a-plugin-from-roma-1x) lists what a 1.x plugin needs to change.
 
 ### Command plugins
-romad loads the command plugins by a convention, instead of a list in the config file. `PLUGIN_FILES` is removed, and there is no setting to list the plugins. See [Command plugins](docs/command_plugin.md).
+The server loads the command plugins by a convention, instead of a list in the config file. `PLUGIN_FILES` is removed, and there is no setting to list the plugins. See [Command plugins](docs/command_plugin.md).
 
 * The plugins of ROMA for data, `storage.rb`, `alist.rb`, `map.rb`, `mapcount.rb` and `gui.rb`, are always loaded.
 * `debug.rb` and `test.rb` are not, since `eval` of debug runs any Ruby code. To use one, put a file that requires it, such as `require 'roma/command_plugin/debug'`, in the plugin directory.
-* romad requires the `*.rb` files in `./command_plugins`, by their names, after ROMA's plugins. `config.command_plugin_path` sets another directory. The `stats` command shows it as `config.command_plugin_path` (`config.plugins` before).
+* The server requires the `*.rb` files in `./command_plugins`, by their names, after ROMA's plugins. `config.command_plugin_path` sets another directory. The `stats` command shows it as `config.command_plugin_path` (`config.plugins` before).
 * `plugin_cmd_aliases.rb`, which had no commands, is removed.
 * `roma config create` doesn't ask for the plugins.
 
 ### Fixes
-* A romad that isn't a daemon stops by TERM and HUP [#39](https://github.com/satoryu/roma/pull/39)
-* romad stops by INT and TERM under load too [#43](https://github.com/satoryu/roma/pull/43)
+* A server that isn't a daemon stops by TERM and HUP [#39](https://github.com/satoryu/roma/pull/39)
+* The server stops by INT and TERM under load too [#43](https://github.com/satoryu/roma/pull/43)
 * A daemon closes its storages when it stops by INT, TERM or HUP, instead of exiting at once [#44](https://github.com/satoryu/roma/pull/44)
-* romad doesn't log "Is a directory" at start with a file storage [#42](https://github.com/satoryu/roma/pull/42)
-* The bundled config.rb had an old version, with which romad didn't boot [#28](https://github.com/satoryu/roma/pull/28)
+* The server doesn't log "Is a directory" at start with a file storage [#42](https://github.com/satoryu/roma/pull/42)
+* The bundled config.rb had an old version, with which the server didn't boot [#28](https://github.com/satoryu/roma/pull/28)
 * Bugs found by the unit tests: zredundant retry, routing and system commands, plugins [#10](https://github.com/satoryu/roma/pull/10) [#12](https://github.com/satoryu/roma/pull/12) [#18](https://github.com/satoryu/roma/pull/18) [#20](https://github.com/satoryu/roma/pull/20) [#21](https://github.com/satoryu/roma/pull/21)
 
 ## 1.3.1 (Not Released Yet)

@@ -2,7 +2,7 @@ require 'roma/routing/churnbased_routing_table'
 
 # Helpers of the unit tests for the routing tables and the vnode selection
 # used by join, recover, release and balance. They build small routing data
-# by hand, so no romad is started.
+# by hand, so no server is started.
 module RoutingTableTestHelper
   A1 = 'hosta_11211'
   A2 = 'hosta_11212'

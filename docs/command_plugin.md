@@ -1,7 +1,7 @@
 # Command plugins
 
 This document is for developers who add commands to ROMA. It explains what a
-command plugin is, how romad loads and runs it, and how to write, run and test
+command plugin is, how the server loads and runs it, and how to write, run and test
 your first one.
 
 - [Concepts](#concepts)
@@ -33,15 +33,15 @@ runs `ev_get`.
 
 ### Command plugins
 
-A **command plugin** is a Ruby module that defines such methods. romad adds the
+A **command plugin** is a Ruby module that defines such methods. The server adds the
 plugin modules to `Roma::Command::Receiver`, so their methods become commands.
 
-Plugins follow a convention instead of settings: romad loads every `*.rb` file
+Plugins follow a convention instead of settings: the server loads every `*.rb` file
 in the `command_plugins` directory of the current directory. There is no list
 of plugins to keep in config.rb.
 
 ROMA's own commands for data are plugins too. They are in
-[lib/roma/command_plugin/](../lib/roma/command_plugin/), and romad always loads
+[lib/roma/command_plugin/](../lib/roma/command_plugin/), and the server always loads
 the ones marked **bundled**:
 
 | File | Module | Commands | Bundled |
@@ -74,8 +74,8 @@ flowchart TD
 
 ### Loading
 
-When romad starts, it does these steps in `Romad#initialize_plugin`
-([lib/roma/romad.rb](../lib/roma/romad.rb)):
+When the server starts, it does these steps in `Server#initialize_plugin`
+([lib/roma/server.rb](../lib/roma/server.rb)):
 
 1. It requires the bundled plugins, `Roma::CommandPlugin::BUNDLED` in
    [lib/roma/command_plugin.rb](../lib/roma/command_plugin.rb).
@@ -85,11 +85,11 @@ When romad starts, it does these steps in `Romad#initialize_plugin`
    plugins.
 3. Each plugin module includes `Roma::CommandPlugin`. Its `included` hook adds
    the module to `Roma::CommandPlugin.plugins`.
-4. romad includes every module in that list into `Roma::Command::Receiver`, in
+4. The server includes every module in that list into `Roma::Command::Receiver`, in
    the order they were added.
 
 The plugin directory is `./command_plugins`, relative to the directory where
-romad starts, as the other paths of romad are. When romad starts in another
+the server starts, as its other paths are. When the server starts in another
 directory, such as from systemd, set another one in config.rb:
 
 ```ruby
@@ -140,8 +140,8 @@ up. When they are, it logs `all nodes started` and adds all the commands to the
 event list. These also add them:
 
 - the `forcedly_start` command,
-- starting romad with `--join`,
-- starting romad with `--disable-command-protection`.
+- starting the server with `--join`,
+- starting the server with `--disable-command-protection`.
 
 ## Getting started
 
@@ -222,8 +222,8 @@ end
 
 ### 2. Start a node
 
-Make a routing table for one node with no replicas, and start romad in the same
-directory. It needs no config.rb: romad finds the plugin in `command_plugins`.
+Make a routing table for one node with no replicas, and start the server in the
+same directory. It needs no config.rb: the server finds the plugin in `command_plugins`.
 
 ```sh
 cd hello
@@ -273,7 +273,7 @@ To stop the node, send `balse` and then `yes`.
 
 The ROMA repository has a test harness,
 [test/plugin_test_harness.rb](../test/plugin_test_harness.rb). It runs plugin
-commands in the test process, without romad or sockets: it stores data in a
+commands in the test process, without a server or sockets: it stores data in a
 hash storage, and records replication instead of sending it to other nodes.
 `request(line, data)` runs a command and returns what it replied.
 
@@ -467,7 +467,7 @@ expect and reply with an error line.
 
 ### Don't block the node
 
-romad runs on EventMachine in one thread. All the connections share it, and
+The server runs on EventMachine in one thread. All the connections share it, and
 each connection runs in a Fiber. `read_bytes` and `send_cmd` let the other
 connections run while they wait, but `sleep`, a slow loop or a blocking call to
 another server stops the whole node until it ends.

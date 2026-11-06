@@ -9,7 +9,7 @@ require 'roma/routing/churnbased_routing_table'
 require 'roma/storage/hash'
 
 # Runs ROMA's own commands (stat, balse, set_*/rset_*, the routing, vnode,
-# background and multi-hash commands and so on) in-process, without romad
+# background and multi-hash commands and so on) in-process, without a server
 # or sockets.
 #
 # It stands in for Roma::Command::Receiver, the event handler that mixes in
@@ -21,7 +21,7 @@ require 'roma/storage/hash'
 #   answered with +relay_reply+.
 # - A fresh Roma::Stats and a real routing table of two nodes are made for
 #   each harness, so tests don't share settings.
-# - $roma (the running romad) and the command lists of Roma::Event::Handler
+# - $roma (the running server) and the command lists of Roma::Event::Handler
 #   are replaced only while a command runs.
 #
 #   conn = CommandTestHarness.new
@@ -90,8 +90,8 @@ class CommandTestHarness
     end
   end
 
-  # Stands in for $roma, the running romad.
-  class Romad
+  # Stands in for $roma, the running server.
+  class Server
     attr_accessor :wb_writer, :cluster_replication_writer, :eventloop, :startup
     # Write-behind files open now, by hash name.
     attr_reader :wb_current_files, :rotated
@@ -129,7 +129,7 @@ class CommandTestHarness
     end
   end
 
-  attr_reader :stats, :routing_table, :log, :romad, :broadcasts, :storage, :storages
+  attr_reader :stats, :routing_table, :log, :server, :broadcasts, :storage, :storages
   # How the last command closed the connection: :after_writing, :now or nil.
   attr_reader :closed
   # What the other node answers to relayed commands.
@@ -142,7 +142,7 @@ class CommandTestHarness
     @addr = CLIENT_ADDR
     @default_hash_name = 'roma'
     @log = Log.new
-    @romad = Romad.new
+    @server = Server.new
     @dir = Dir.mktmpdir('roma_command')
     @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = [0]
@@ -195,7 +195,7 @@ class CommandTestHarness
     @closed = :now
   end
 
-  # Whether romad would stop when this connection closes.
+  # Whether the server would stop when this connection closes.
   def stop_event_loop?
     !!@stop_event_loop
   end
@@ -213,15 +213,15 @@ class CommandTestHarness
   private
 
   def with_globals
-    saved_romad = defined?($roma) ? $roma : nil
+    saved_server = defined?($roma) ? $roma : nil
     saved_event_list = Roma::Event::Handler.event_list.dup
     saved_system_commands = Roma::Event::Handler.system_commands.dup
-    $roma = @romad
+    $roma = @server
     Roma::Event::Handler.event_list.replace(EVENT_LIST)
     Roma::Event::Handler.system_commands.replace(SYSTEM_COMMANDS)
     yield
   ensure
-    $roma = saved_romad
+    $roma = saved_server
     Roma::Event::Handler.event_list.replace(saved_event_list)
     Roma::Event::Handler.system_commands.replace(saved_system_commands)
   end

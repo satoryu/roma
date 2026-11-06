@@ -2,9 +2,9 @@ require 'test_helper'
 require 'zlib'
 require 'command_test_harness'
 
-# Unit tests for the system commands that work on this node's romad: the
+# Unit tests for the system commands that work on this node's server: the
 # write-behind files, cluster replication, storages and node information.
-class SystemCommandReceiverRomadTest < Test::Unit::TestCase
+class SystemCommandReceiverServerTest < Test::Unit::TestCase
   NODE_ID = CommandTestHarness::NODE_ID
   OTHER_NODE_ID = CommandTestHarness::OTHER_NODE_ID
 
@@ -51,11 +51,11 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   end
 
   def test_writebehind_rotate
-    @conn.romad.wb_current_files['roma'] = 'wb/0.wb'
+    @conn.server.wb_current_files['roma'] = 'wb/0.wb'
     @conn.relay_reply = 'ROTATED'
     assert_equal replies('ROTATED', other: 'ROTATED'), @conn.request('writebehind_rotate roma')
     assert_equal ["rwritebehind_rotate roma\r\n"], @conn.broadcasts
-    assert_equal ['roma'], @conn.romad.rotated
+    assert_equal ['roma'], @conn.server.rotated
 
     # Nothing to rotate once the file is closed.
     assert_equal "NOT_OPEND\r\n", @conn.request('rwritebehind_rotate roma')
@@ -72,7 +72,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   def test_writebehind_get_current_file
     @conn.relay_reply = 'NOT_OPEND'
     assert_equal replies('NOT_OPEND', other: 'NOT_OPEND'), @conn.request('writebehind_get_current_file roma')
-    @conn.romad.wb_current_files['roma'] = 'wb/0.wb'
+    @conn.server.wb_current_files['roma'] = 'wb/0.wb'
     assert_equal replies('wb/0.wb', other: 'NOT_OPEND'), @conn.request('writebehind_get_current_file roma')
     assert_equal "wb/0.wb\r\n", @conn.request('rwritebehind_get_current_file roma')
   end
@@ -87,7 +87,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   end
 
   def test_switch_replication_on_and_off
-    cr = @conn.romad.cluster_replication_writer
+    cr = @conn.server.cluster_replication_writer
     @conn.relay_reply = 'ACTIVATED'
     assert_equal replies('ACTIVATED', other: 'ACTIVATED'), @conn.request('switch_replication true localhost_21211')
     assert_equal ["rswitch_replication true localhost_21211 \r\n"], @conn.broadcasts
@@ -108,7 +108,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   def test_switch_replication_with_existing_data
     @conn.relay_reply = 'ACTIVATED'
     @conn.request('switch_replication true localhost_21211 all')
-    assert_true @conn.romad.cluster_replication_writer.run_existing_data_replication
+    assert_true @conn.server.cluster_replication_writer.run_existing_data_replication
     assert_equal 1, Roma::AsyncProcess.queue.size
     msg = Roma::AsyncProcess.queue.pop
     assert_equal 'start_replicate_existing_data_process', msg.event
@@ -116,7 +116,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
   end
 
   def test_rswitch_replication
-    cr = @conn.romad.cluster_replication_writer
+    cr = @conn.server.cluster_replication_writer
     assert_equal "ACTIVATED\r\n", @conn.request('rswitch_replication true localhost_21211')
     assert_true cr.run_replication
     assert_equal "DEACTIVATED\r\n", @conn.request('rswitch_replication false')
@@ -132,7 +132,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
     assert_equal reply, @conn.request("switch_replication #{args}")
     assert_equal reply, @conn.request("rswitch_replication #{args}")
     assert_equal [], @conn.broadcasts
-    assert_false @conn.romad.cluster_replication_writer.run_replication
+    assert_false @conn.server.cluster_replication_writer.run_replication
   end
 
   # priority => [stream_copy_wait, each_vn_dump_sleep, each_vn_dump_sleep_count]
@@ -234,7 +234,7 @@ class SystemCommandReceiverRomadTest < Test::Unit::TestCase
     Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_join_process'))
     assert_equal "STARTED\r\n", @conn.request('forcedly_start')
     assert_true @conn.routing_table.enabled_failover
-    assert_false @conn.romad.startup
+    assert_false @conn.server.startup
     assert_true Roma::AsyncProcess.queue.empty?
   end
 end

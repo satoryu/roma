@@ -3,13 +3,13 @@ require 'roma/tools/log_merger'
 
 module Roma
   module Subcommands
-    # roma log: work with the log files of romad.
+    # roma log: work with the log files of roma server.
     class Log < Thor
       extend Common
 
       check_unknown_options!
 
-      desc 'merge LOG_FILE...', 'Merge the log files of romad in time order'
+      desc 'merge LOG_FILE...', 'Merge the log files of roma server in time order'
       option :output, aliases: '-o', banner: 'FILE', desc: 'Write into FILE instead of the standard output'
       option :level, aliases: '-l', enum: Roma::Tools::LogMerger::LEVEL_LETTERS.keys, default: 'TRACE',
                      desc: 'The lowest level to write'

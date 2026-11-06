@@ -87,7 +87,7 @@ module Roma
         @log.error("#{e.inspect} #{$@}")
         close_connection
         if Roma.config.storage.exception_action == :shutdown
-          @log.error("#{__method__}:Romad will be stop.")
+          @log.error("#{__method__}:The server will stop.")
           @stop_event_loop = true
         end
       rescue StandardError => e

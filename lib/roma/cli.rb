@@ -12,7 +12,7 @@ module Roma
   class CLI < Thor
     extend Subcommands::Common
 
-    # romad parses the options of server.
+    # Roma::Server parses the options of server.
     check_unknown_options! except: [:server]
     stop_on_unknown_option! :server
 
@@ -29,10 +29,10 @@ module Roma
       super
     end
 
-    desc 'server ADDRESS [OPTIONS]', 'Run romad. romad ADDRESS [OPTIONS] is the same. See roma server --help'
+    desc 'server ADDRESS [OPTIONS]', 'Run a ROMA node. See roma server --help'
     def server(*args)
       require 'roma/server'
-      Roma::Server.run(args, program: 'roma server')
+      Roma::Server.run(args)
     end
 
     desc 'benchmark NODE_ID...', 'Send requests to the nodes, and write the queries per second every 10 seconds'
@@ -57,7 +57,7 @@ module Roma
     desc 'route SUBCOMMAND', 'Make and change the routing tables'
     subcommand 'route', Subcommands::Route
 
-    desc 'config SUBCOMMAND', 'Make the config file of romad'
+    desc 'config SUBCOMMAND', 'Make the config file of roma server'
     subcommand 'config', Subcommands::Config
 
     desc 'node SUBCOMMAND', 'Send a command to a node'
@@ -69,7 +69,7 @@ module Roma
     desc 'storage SUBCOMMAND', 'Read, merge and recover the data in the storage files'
     subcommand 'storage', Subcommands::Storage
 
-    desc 'log SUBCOMMAND', 'Merge the log files of romad'
+    desc 'log SUBCOMMAND', 'Merge the log files of roma server'
     subcommand 'log', Subcommands::Log
   end
 end

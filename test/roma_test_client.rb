@@ -67,7 +67,7 @@ class RomaTestClient
   end
 
   # Deletes every key this client has sent a command for, so that tests
-  # sharing romad don't see each other's data.
+  # sharing a server don't see each other's data.
   def delete_used_keys
     keys = @used_keys.dup
     keys.each { |key| delete(key) }

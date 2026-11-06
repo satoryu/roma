@@ -30,7 +30,7 @@ class VnodeCommandReceiverTest < Test::Unit::TestCase
     assert_nil @conn.storage.get(0, 'key2', 0)
     assert_not_nil @conn.storage.db_get(0, 'key2')
     # It stops the storage clean up, and is no longer receiving the vnode.
-    assert_equal 1, @conn.romad.clean_up_stops
+    assert_equal 1, @conn.server.clean_up_stops
     assert_equal({}, @conn.stats.run_receive_a_vnode)
   end
 

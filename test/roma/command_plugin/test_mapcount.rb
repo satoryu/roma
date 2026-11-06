@@ -5,7 +5,8 @@ require 'plugin_test_harness'
 require 'roma/command_plugin/mapcount'
 
 # Unit tests for the mapcount plugin commands. They run in-process, so no
-# romad is started. test/test_map_count_plugin.rb checks them through romad.
+# server is started. test/test_map_count_plugin.rb checks them through a
+# server.
 class CommandPluginMapcountTest < Test::Unit::TestCase
   DATE_FORMAT = Roma::CommandPlugin::Mapcount::DATE_FORMAT
 

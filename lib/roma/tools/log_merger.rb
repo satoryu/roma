@@ -1,6 +1,6 @@
 module Roma
   module Tools
-    # Merges the log files of romad in time order. Each line is prefixed with
+    # Merges the log files of roma server in time order. Each line is prefixed with
     # the name of its file.
     class LogMerger
       # The first letters of the lines of each level and above.

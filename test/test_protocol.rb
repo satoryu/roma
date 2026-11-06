@@ -170,7 +170,7 @@ module ProtocolTests
   end
 end # ProtocolTests
 
-# Runs every test in-process, without romad.
+# Runs every test in-process, without a server.
 class ProtocolInProcessTest < Test::Unit::TestCase
   self.test_order = :defined
   include ProtocolTests
@@ -181,7 +181,7 @@ class ProtocolInProcessTest < Test::Unit::TestCase
   end
 end
 
-# Runs a few tests through a socket to romad.
+# Runs a few tests through a socket to a server.
 class ProtocolTest < Test::Unit::TestCase
   self.test_order = :defined
   extend RomaTestUtils::RomaPerClass

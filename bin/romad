@@ -1,6 +1,0 @@
-#!/usr/bin/env ruby
-# An alias of roma server.
-$LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
-
-require 'roma/server'
-Roma::Server.run(ARGV)
