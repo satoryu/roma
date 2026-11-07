@@ -430,7 +430,7 @@ module Roma
       end
 
       fname = File.join(Roma.config.routing.path, Roma::Routing::RoutingData.file_name(@stats.my_node_id))
-      unless routing_data = get_routedump(@stats.join_node_id)
+      unless routing_data = fetch_routedump(@stats.join_node_id)
         raise "It failed in getting the routing table data from #{@stats.join_node_id}."
       end
 
@@ -453,7 +453,7 @@ module Roma
       @routing_table.add_node(@stats.my_node_id)
     end
 
-    def get_routedump(node_id)
+    def fetch_routedump(node_id)
       received = receive_routing_dump(node_id, "routingdump bin\r\n")
       if received
         routing_data = Routing::RoutingData.decode_binary(received)

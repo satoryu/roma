@@ -68,7 +68,7 @@ class AsyncEventHarness
   # the vnode.
   def store(key, value, expire_time: 0x7fffffff)
     d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-    vnode = @routing_table.get_vnode_id(d)
+    vnode = @routing_table.vnode_id(d)
     @storage.set(vnode, key, d, expire_time, value)
     vnode
   end

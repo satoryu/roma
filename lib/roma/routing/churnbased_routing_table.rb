@@ -70,7 +70,7 @@ module Roma
       end
 
       def open_log
-        log_list = @routing_data.get_file_list(@fname)
+        log_list = @routing_data.log_files(@fname)
         prefix = RoutingData.log_prefix(@fname)
         @log_name = if log_list.length == 0
                       "#{prefix}.1"

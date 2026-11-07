@@ -31,7 +31,7 @@ module Roma
         if all
           vnodes = routing_data.routes.keys
         else
-          vnodes = routing_data.get_lost_vnodes
+          vnodes = routing_data.lost_vnodes
           vnodes |= history_of_lost(node_id, since) if since
           @out.puts "#{vnodes.length} vnodes where data was lost."
           return if vnodes.empty?

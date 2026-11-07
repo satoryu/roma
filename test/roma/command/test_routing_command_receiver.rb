@@ -346,7 +346,7 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
 
   def test_get_key_info
     d = Digest::SHA1.hexdigest('key1').hex % @routing_table.hash_space_size
-    vnode = @routing_table.get_vnode_id(d)
+    vnode = @routing_table.vnode_id(d)
     expected = "d = #{d} 0x#{d.to_s(16)}\r\n" \
                "vn = #{vnode} 0x#{vnode.to_s(16)}\r\n" \
                "nodes = #{@routing_table.search_nodes(vnode).inspect}\r\n" \

@@ -8,7 +8,7 @@ module Roma
 
       # get_routing_history
       def ev_get_routing_history(_s)
-        routing_path = get_config_stat['config.routing.path']
+        routing_path = config_stat['config.routing.path']
         contents = String.new
         Dir.glob("#{routing_path}/*").each do |fname|
           contents << File.read(fname) if !FileTest.directory?(fname) && fname =~ /#{@stats.my_node_id}\.route*/

@@ -26,7 +26,7 @@ class CopyDataTest < Test::Unit::TestCase
     n = 1000
     n.times do |i|
       d = Digest::SHA1.hexdigest(i.to_s).hex % @rc.routing_table.hash_space_size
-      vnode = @rc.routing_table.get_vnode_id(d)
+      vnode = @rc.routing_table.vnode_id(d)
       keys << i.to_s if vnode == 0
     end
     node_id = @rc.routing_table.search_nodes(0)

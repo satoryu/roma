@@ -1346,7 +1346,7 @@ module Roma
         k, hash_name = key.split("\e")
         hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(k).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         [hash_name, k, d, vnode, nodes]
       end

@@ -14,9 +14,9 @@ module Roma
         send_data("#{e}\r\n")
       end
 
-      def get_key_info(key)
+      def key_info(key)
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         s = format("d = %s 0x%x\r\n", d, d)
         send_data(s)

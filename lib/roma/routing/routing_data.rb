@@ -71,7 +71,7 @@ module Roma
 
       def self.snapshot(fname)
         routing_data = load_snapshot(fname)
-        loglist = routing_data.get_file_list(fname)
+        loglist = routing_data.log_files(fname)
         return false if loglist.length < 2
 
         loglist.delete(loglist.last)
@@ -157,7 +157,7 @@ module Roma
       end
 
       def each_log_all(fname, &)
-        loglist = get_file_list(fname)
+        loglist = log_files(fname)
         loglist.each do |_i, f|
           each_log_one(f, &)
         end
@@ -230,7 +230,7 @@ module Roma
       end
 
       # Returns the losted vnode-id list.
-      def get_lost_vnodes
+      def lost_vnodes
         ret = []
         routes.each_pair do |vnode, node_ids|
           ret << vnode if node_ids.length == 0
@@ -251,7 +251,7 @@ module Roma
         end
 
         # vnode balanceing process
-        rlist = ret.get_balanced_vnode_replacement_list(replication_in_host)
+        rlist = ret.balanced_vnode_replacements(replication_in_host)
         ret.balance!(rlist, replication_in_host) if rlist
 
         ret
@@ -261,7 +261,7 @@ module Roma
       # +fname+:: The routing file.(ex.roma0_3300.route.yml)
       # One of the following example:
       #   [[1, "roma0_3300.route.1"], [2, "roma0_3300.route.2"]]
-      def get_file_list(fname)
+      def log_files(fname)
         prefix = RoutingData.log_prefix(fname)
         l = {}
         files = Dir.glob("#{prefix}.*")
@@ -272,7 +272,7 @@ module Roma
         l.to_a.sort { |a, b| a[0] <=> b[0] }
       end
 
-      def get_histogram
+      def histogram
         ret = {}
         nodes.each do |node_id|
           ret[node_id] = Array.new(redundancy, 0)
@@ -305,8 +305,8 @@ module Roma
         def list(n)
           ret = []
           hosts = []
-          proc_other_one = :get_other_one
-          proc_other_one = :get_other_one_repethost if @replication_in_host
+          proc_other_one = :other_one
+          proc_other_one = :other_one_repethost if @replication_in_host
           n.times do
             node_id = send(proc_other_one, hosts, ret)
             break unless node_id
@@ -319,7 +319,7 @@ module Roma
 
         # +exp_hosts+:: ignore
         # +exp_nodes+:: exceptional nodes(ex.['roma0_11211'])
-        def get_other_one_repethost(_exp_hosts, exp_nodes)
+        def other_one_repethost(_exp_hosts, exp_nodes)
           buf = @nodes.clone
           buf.delete_if { |node_id| exp_nodes.include?(node_id) }
           buf[rand(buf.length)]
@@ -327,7 +327,7 @@ module Roma
 
         # +exp_hosts+:: exceptional hosts(ex.['roma0','roma1'])
         # +exp_nodes+:: ignore
-        def get_other_one(exp_hosts, _exp_nodes)
+        def other_one(exp_hosts, _exp_nodes)
           hidx = @host_idx.clone
           exp_hosts.each { |h| hidx.delete(h) }
           return nil if hidx.length == 0

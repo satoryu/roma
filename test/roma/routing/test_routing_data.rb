@@ -211,13 +211,13 @@ class RoutingDataTest < Test::Unit::TestCase
   end
 
   # A backup of a log, such as roma0_3300.route.1~, is not a log.
-  def test_get_file_list
+  def test_log_files
     write_log(2, 'join roma1_3300')
     write_log(10, 'join roma2_3300')
     File.write("#{@log_prefix}.1~", '')
     File.write("#{@fname}~", '')
     assert_equal [[2, "#{@log_prefix}.2"], [10, "#{@log_prefix}.10"]],
-                 Roma::Routing::RoutingData.new(32, 3, 1).get_file_list(@fname)
+                 Roma::Routing::RoutingData.new(32, 3, 1).log_files(@fname)
   end
 
   def test_snapshot_without_enough_logs
@@ -226,11 +226,11 @@ class RoutingDataTest < Test::Unit::TestCase
     assert_false Roma::Routing::RoutingData.snapshot(@fname)
   end
 
-  def test_get_lost_vnodes
+  def test_lost_vnodes
     routing_data = Roma::Routing::RoutingData.create(32, 3, 1, ['roma0_3300'])
-    assert_equal [], routing_data.get_lost_vnodes
+    assert_equal [], routing_data.lost_vnodes
     routing_data.routes[0] = []
-    assert_equal [0], routing_data.get_lost_vnodes
+    assert_equal [0], routing_data.lost_vnodes
   end
 
   # With replication in a host, both copies may be on one host.

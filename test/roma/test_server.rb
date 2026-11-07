@@ -583,17 +583,17 @@ class ServerSendCmdTest < Test::Unit::TestCase
   def test_receive_routing_dump
     routing_data = @server.routing_table.instance_variable_get(:@routing_data)
     @node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
-    got = call(:get_routedump, @node.node_id)
+    got = call(:fetch_routedump, @node.node_id)
     assert_equal routing_data.routes, got.routes
   end
 
-  def test_get_routedump_falls_back_to_marshal
+  def test_fetch_routedump_falls_back_to_marshal
     routing_data = @server.routing_table.instance_variable_get(:@routing_data)
     dump = Marshal.dump(routing_data)
     @node.replies['routingdump'] = lambda do |line|
       line.include?('bin') ? "0\r\n" : "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
     end
-    assert_equal routing_data.routes, call(:get_routedump, @node.node_id).routes
+    assert_equal routing_data.routes, call(:fetch_routedump, @node.node_id).routes
   end
 
   def test_stop
