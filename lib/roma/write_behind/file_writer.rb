@@ -18,7 +18,7 @@ module Roma
         @rotation_time = Time.now
       end
 
-      def get_stat
+      def stat
         ret = {}
         ret['write-behind.path'] = File.expand_path(@path)
         ret['write-behind.shift_size'] = @shift_size

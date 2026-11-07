@@ -32,7 +32,7 @@ module Roma
         open_log
       end
 
-      def get_stat(ap)
+      def stat(ap)
         ret = super
         ret['routing.lost_action'] = @lost_action.to_s
         ret['routing.auto_recover'] = @auto_recover.to_s

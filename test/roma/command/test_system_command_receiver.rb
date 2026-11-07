@@ -177,6 +177,16 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
     assert_equal "CLIENT_ERROR number of arguments\r\n", @conn.request('wb_command_map')
     assert_equal({}, @conn.stats.wb_command_map)
   end
+
+  def test_stat_of_storages
+    def (@conn.storage).database_stats = [{ 'rnum' => 3 }, { 'rnum' => 4 }]
+    ret = @conn.request('stat storages')
+    assert_include ret, "storages[roma].storage.storage_path #{File.expand_path(@conn.storage.storage_path)}\r\n"
+    assert_include ret, "storages[roma].storage.st_class HashStorage\r\n"
+    assert_include ret, "storages[roma].storage.safecopy_stats #{@conn.storage.dbs.inspect}\r\n"
+    assert_include ret, "storages[roma].storage[0].rnum 3\r\nstorages[roma].storage[1].rnum 4\r\n"
+    assert_true ret.end_with?("END\r\n")
+  end
 end
 
 # Commands that change the latency measurement.
@@ -396,7 +406,7 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
     @conn.relay_reply = reply
     assert_equal "#{{ OTHER_NODE_ID => reply, NODE_ID => reply }}\r\n", @conn.request("switch_dns_caching #{value}")
     assert_equal ["rswitch_dns_caching #{value}\r\n"], @conn.broadcasts
-    assert_equal enabled, Roma::DNSCache.instance.get_stat['dns_caching']
+    assert_equal enabled, Roma::DNSCache.instance.stat['dns_caching']
     assert_equal "#{reply}\r\n", @conn.request("rswitch_dns_caching #{value}")
   end
 end

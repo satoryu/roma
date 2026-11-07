@@ -29,8 +29,8 @@ class RoutingTableTest < Test::Unit::TestCase
     assert_equal [2, [2], 1, 0], @rt.count_vnodes(B1)
   end
 
-  def test_get_stat
-    stat = @rt.get_stat(A1)
+  def test_stat
+    stat = @rt.stat(A1)
     assert_equal 2, stat['routing.primary']
     assert_equal 1, stat['routing.secondary1']
     assert_equal 1, stat['routing.short_vnodes']

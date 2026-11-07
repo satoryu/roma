@@ -43,7 +43,7 @@ module Roma
         [pn, sn, short, lost]
       end
 
-      def get_stat(ap)
+      def stat(ap)
         pn, sn, short, lost = count_vnodes(ap)
         ret = {}
         ret['routing.redundant'] = @redundancy
