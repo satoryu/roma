@@ -140,7 +140,7 @@ module Roma
 
         if @stats.wb_command_map.key?(:delete__prev)
           data = @storages[hash_name].get(vnode, key, d)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:delete__prev], key, data) if data
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:delete__prev], key, data) if data
         end
 
         res = @storages[hash_name].delete(vnode, key, d)
@@ -150,7 +150,7 @@ module Roma
         return send_data("NOT_FOUND\r\n") if res == :deletemark
 
         if @stats.wb_command_map.key?(:delete)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:delete], key, res[4])
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:delete], key, res[4])
         end
 
         nodes[1..-1].each do |node_id|
@@ -164,7 +164,7 @@ module Roma
 
         if $roma.cluster_replication_writer.run_replication
           fnc = 'delete'
-          Roma::WriteBehindProcess.push(nil, "#{fnc} #{s[1]}\r\n", s[1], nil)
+          Roma::WriteBehind::Process.push(nil, "#{fnc} #{s[1]}\r\n", s[1], nil)
         end
 
         send_data("DELETED\r\n")
@@ -188,7 +188,7 @@ module Roma
 
         if @stats.wb_command_map.key?(:delete__prev)
           data = @storages[hash_name].get(vnode, key, d)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:delete__prev], key, data) if data
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:delete__prev], key, data) if data
         end
 
         res = @storages[hash_name].delete(vnode, key, d)
@@ -198,7 +198,7 @@ module Roma
         return send_data("NOT_FOUND\r\n") if res == :deletemark
 
         if @stats.wb_command_map.key?(:delete)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:delete], key, res[4])
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:delete], key, res[4])
         end
 
         nodes.delete(@my_node_id)
@@ -213,7 +213,7 @@ module Roma
 
         if $roma.cluster_replication_writer.run_replication
           fnc = 'delete'
-          Roma::WriteBehindProcess.push(nil, "#{fnc} #{s[1]}\r\n", s[1], nil)
+          Roma::WriteBehind::Process.push(nil, "#{fnc} #{s[1]}\r\n", s[1], nil)
         end
 
         send_data("DELETED\r\n")
@@ -332,7 +332,7 @@ module Roma
           @log.debug(':set_export__prev')
           # [vnode, t, clock, expire_time, val]
           data = @storages[hash_name].get_raw(vnode, key, d)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
         end
 
         expire_time = chg_time_expt(s[2].to_i)
@@ -342,12 +342,12 @@ module Roma
 
         if @stats.wb_command_map.key?(:set_expt)
           @log.debug(':set_export')
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:set_expt], key, expire_time.to_s)
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt], key, expire_time.to_s)
         end
         redundant(nodes[1..-1], hash_name, key, d, ret[2], ret[3], ret[4])
         if $roma.cluster_replication_writer.run_replication
           fnc = 'set_expt'
-          Roma::WriteBehindProcess.push(nil, "#{fnc} #{s[1]} #{expire_time}\r\n", s[1], expire_time)
+          Roma::WriteBehind::Process.push(nil, "#{fnc} #{s[1]} #{expire_time}\r\n", s[1], expire_time)
         end
         send_data("STORED\r\n")
       end
@@ -372,7 +372,7 @@ module Roma
         if @stats.wb_command_map.key?(:set_expt__prev)
           # [vnode, t, clock, expire_time, val]
           data = @storages[hash_name].get_raw(vnode, key, d)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
         end
 
         expire_time = chg_time_expt(s[2].to_i)
@@ -381,12 +381,12 @@ module Roma
         return send_data("NOT_STORED\r\n") unless ret
 
         if @stats.wb_command_map.key?(:set_expt)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:set_expt], key, expire_time.to_s)
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt], key, expire_time.to_s)
         end
         redundant(nodes[1..-1], hash_name, key, d, ret[2], ret[3], ret[4])
         if $roma.cluster_replication_writer.run_replication
           fnc = 'set_expt'
-          Roma::WriteBehindProcess.push(nil, "#{fnc} #{s[1]} #{expire_time}\r\n", s[1], expire_time)
+          Roma::WriteBehind::Process.push(nil, "#{fnc} #{s[1]} #{expire_time}\r\n", s[1], expire_time)
         end
         send_data("STORED\r\n")
       end
@@ -534,7 +534,7 @@ module Roma
 
         if @stats.wb_command_map.key?(:"#{fnc}__prev")
           data = @storages[hash_name].get(vnode, k, d)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:"#{fnc}__prev"], k, data) if data
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:"#{fnc}__prev"], k, data) if data
         end
 
         ret = @storages[hash_name].send(fnc, vnode, k, d, expire_time, v)
@@ -542,12 +542,12 @@ module Roma
 
         if ret
           if @stats.wb_command_map.key?(fnc)
-            Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[fnc], k, ret[4])
+            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[fnc], k, ret[4])
           end
           redundant(nodes, hash_name, k, d, ret[2], expire_time, ret[4])
           if $roma.cluster_replication_writer.run_replication
             k = "#{k}\e#{hash_name}" if hash_name != @default_hash_name
-            Roma::WriteBehindProcess.push(nil, "#{fnc} #{k} 1 #{expire_time} #{v.length} \r\n#{v}\r\n", k, v)
+            Roma::WriteBehind::Process.push(nil, "#{fnc} #{k} 1 #{expire_time} #{v.length} \r\n#{v}\r\n", k, v)
           end
           send_data("STORED\r\n")
         else
@@ -565,7 +565,7 @@ module Roma
 
         if @stats.wb_command_map.key?(:cas__prev)
           data = @storages[hash_name].get(vnode, k, d)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:cas__prev], k, data) if data
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:cas__prev], k, data) if data
         end
 
         ret = @storages[hash_name].cas(vnode, k, d, clock, expire_time, v)
@@ -581,12 +581,12 @@ module Roma
           send_data("EXISTS\r\n")
         else
           if @stats.wb_command_map.key?(:cas)
-            Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:cas], k, ret[4])
+            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:cas], k, ret[4])
           end
           if $roma.cluster_replication_writer.run_replication
             rk = hash_name == @default_hash_name ? k : "#{k}\e#{hash_name}"
             fnc = 'set' # To restrain a defference between main and replica cluster due to clock
-            Roma::WriteBehindProcess.push(nil, "#{fnc} #{rk} 0 #{expire_time} #{v.length} \r\n#{v}\r\n", rk, v)
+            Roma::WriteBehind::Process.push(nil, "#{fnc} #{rk} 0 #{expire_time} #{v.length} \r\n#{v}\r\n", rk, v)
           end
           redundant(nodes, hash_name, k, d, ret[2], expire_time, ret[4])
           send_data("STORED\r\n")
@@ -677,7 +677,7 @@ module Roma
 
         if @stats.wb_command_map.key?(:"#{fnc}__prev")
           data = @storages[hash_name].get(vnode, k, d)
-          Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[:"#{fnc}__prev"], k, data) if data
+          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:"#{fnc}__prev"], k, data) if data
         end
 
         res = @storages[hash_name].send(fnc, vnode, k, d, v)
@@ -685,11 +685,11 @@ module Roma
 
         if res
           if @stats.wb_command_map.key?(fnc)
-            Roma::WriteBehindProcess.push(hash_name, @stats.wb_command_map[fnc], k, res[4])
+            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[fnc], k, res[4])
           end
           if $roma.cluster_replication_writer.run_replication
             rk = hash_name == @default_hash_name ? k : "#{k}\e#{hash_name}"
-            Roma::WriteBehindProcess.push(nil, "#{fnc} #{rk} #{v}\r\n", rk, v)
+            Roma::WriteBehind::Process.push(nil, "#{fnc} #{rk} #{v}\r\n", rk, v)
           end
           redundant(nodes, hash_name, k, d, res[2], res[3], res[4])
           send_data("#{res[4]}\r\n")
