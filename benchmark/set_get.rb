@@ -4,7 +4,8 @@
 #
 # For each target it starts a server in a temporary directory, sets keys from
 # client processes, gets the same keys, stops the server and writes the
-# results as a Markdown table. A ROMA node runs alone with redundancy 1, so it
+# results as Markdown tables: how fast, and how much memory and disk the
+# server uses for the keys. A ROMA node runs alone with redundancy 1, so it
 # does no replication, and Redis keeps nothing on disk.
 #
 # The clients talk to ROMA (the memcached text protocol) and to Redis (RESP)
@@ -93,13 +94,30 @@ module SetGetBenchmark
     end
 
     def run(keep: false)
-      dir = Dir.mktmpdir("set_get_#{name}_")
-      @pid = Process.spawn(*command(dir), chdir: dir, out: File.join(dir, 'server.out'), err: %i(child out))
+      @dir = Dir.mktmpdir("set_get_#{name}_")
+      @pid = Process.spawn(*command(@dir), chdir: @dir, out: File.join(@dir, 'server.out'), err: %i(child out))
       wait_until_ready
       yield
     ensure
       stop
-      keep ? warn("#{name}: kept #{dir}") : FileUtils.rm_rf(dir)
+      keep ? warn("#{name}: kept #{@dir}") : FileUtils.rm_rf(@dir)
+    end
+
+    # The resident memory of the server. It includes the pages of the files
+    # that the server maps and has touched.
+    def rss_bytes
+      Integer(IO.popen(['ps', '-o', 'rss=', '-p', @pid.to_s], &:read).strip) * 1024
+    end
+
+    # The disk space of the data, or nil if the server keeps none.
+    def disk_bytes
+      dir = data_dir
+      return nil unless dir
+
+      Dir.glob('**/*', base: dir).sum do |f|
+        stat = File.stat(File.join(dir, f))
+        stat.file? ? stat.blocks * 512 : 0
+      end
     end
 
     private
@@ -170,6 +188,12 @@ module SetGetBenchmark
 
     private
 
+    # The storage files are in NODE_ID/HASH_NAME under storage.path. The
+    # hash storage has none.
+    def data_dir
+      File.join(@dir, "localhost_#{port}") unless @engine == 'hash'
+    end
+
     def command(dir)
       File.write(File.join(dir, 'config.rb'), <<~CONFIG)
         Roma.configure do |config|
@@ -203,6 +227,10 @@ module SetGetBenchmark
 
     private
 
+    def data_dir
+      nil
+    end
+
     def command(_dir)
       [@redis_server, '--port', port.to_s, '--bind', '127.0.0.1', '--save', '', '--appendonly', 'no']
     end
@@ -220,6 +248,13 @@ module SetGetBenchmark
     end
   end
 
+  # How much memory and disk a target used for +keys+ keys.
+  Usage = Struct.new(:target, :keys, :rss_before, :rss_after, :disk) do
+    def rss_per_key
+      (rss_after - rss_before).fdiv(keys)
+    end
+  end
+
   # Sends +requests+ set or get requests from each of +clients+ processes,
   # and measures how fast.
   class Runner
@@ -230,9 +265,13 @@ module SetGetBenchmark
       @warmup = warmup
     end
 
+    # Returns the Results of set and get, and the Usage after the set.
     def run(server)
       warm_up(server)
-      %i(set get).map { |command| measure(server, command) }
+      rss_before = server.rss_bytes
+      set = measure(server, :set)
+      usage = Usage.new(server.name, @clients * @requests, rss_before, server.rss_bytes, server.disk_bytes)
+      [[set, measure(server, :get)], usage]
     end
 
     private
@@ -339,17 +378,24 @@ module SetGetBenchmark
     options = parse(argv)
     runner = Runner.new(**options.slice(:clients, :requests, :value_size, :warmup))
     results = []
+    usages = []
     versions = []
     options[:targets].each do |target|
       server = server(target, options)
       warn "Measuring #{target} ..."
-      server.run(keep: options[:keep]) { results.concat(runner.run(server)) }
+      server.run(keep: options[:keep]) do
+        target_results, usage = runner.run(server)
+        results.concat(target_results)
+        usages << usage
+      end
       versions << server.version
     end
-    puts report(results, options, versions.uniq)
+    puts report(results, usages, options, versions.uniq)
   end
 
-  def report(results, options, versions)
+  MB = 1024.0 * 1024
+
+  def report(results, usages, options, versions)
     lines = []
     lines << "Ruby #{RUBY_VERSION}, #{versions.join(', ')}, #{RbConfig::CONFIG['host_os']}"
     lines << "#{options[:clients]} clients x #{options[:requests]} requests, values of #{options[:value_size]} bytes"
@@ -359,6 +405,14 @@ module SetGetBenchmark
     results.each do |r|
       lines << format('| %s | %s | %.0f | %.3f | %.3f | %.3f | %d |', r.target, r.command, r.ops_per_second,
                       r.percentile(50), r.percentile(99), r.percentile(100), r.errors)
+    end
+    lines << ''
+    lines << '| target | keys | RSS before set (MB) | RSS after set (MB) | RSS per key (bytes) | disk (MB) |'
+    lines << '|---|--:|--:|--:|--:|--:|'
+    usages.each do |u|
+      disk = u.disk ? format('%.1f', u.disk / MB) : '-'
+      lines << format('| %s | %d | %.1f | %.1f | %.0f | %s |', u.target, u.keys, u.rss_before / MB,
+                      u.rss_after / MB, u.rss_per_key, disk)
     end
     lines.join("\n")
   end
