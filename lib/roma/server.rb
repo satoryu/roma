@@ -200,7 +200,7 @@ module Roma
 
     def initialize_connection
       connection = Roma.config.connection
-      unless Event::Handler.set_continuous_limit(connection.continuous_limit)
+      unless Event::Handler.update_continuous_limit(connection.continuous_limit)
         raise 'config parse error : connection.continuous_limit'
       end
 
@@ -395,20 +395,20 @@ module Roma
       @routing_table.auto_recover = routing.auto_recover
 
       @routing_table.enabled_failover = false
-      @routing_table.set_leave_proc do |node_id|
+      @routing_table.on_leave do |node_id|
         Roma::Messaging::ConnectionPool.instance.close_same_host(node_id)
         Roma::Event::EMConnectionPool.instance.close_same_host(node_id)
         Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('broadcast_cmd',
                                                            ["leave #{node_id}", [@stats.my_node_id, node_id, 5]]))
       end
-      @routing_table.set_lost_proc do
+      @routing_table.on_lost do
         if @routing_table.lost_action == :shutdown
           async_broadcast_cmd("rbalse lose_data\r\n")
           EventMachine.stop_event_loop
           @log.error('The server has stopped, so that lose data.')
         end
       end
-      @routing_table.set_recover_proc do |action|
+      @routing_table.on_recover do |action|
         if %i(shutdown auto_assign).include?(@routing_table.lost_action) && @routing_table.auto_recover == true
           Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new("#{action}"))
         else
@@ -592,7 +592,7 @@ module Roma
 
         if /VERSION\s(?:ROMA-)?(\d+)\.(\d+)\.(\d+)/ =~ vs
           ver = (::Regexp.last_match(1).to_i << 16) + (::Regexp.last_match(2).to_i << 8) + ::Regexp.last_match(3).to_i
-          @routing_table.set_version(node_id, ver)
+          @routing_table.update_version(node_id, ver)
         end
       end
     end
@@ -663,7 +663,7 @@ module Roma
       return if res.nil? || res.start_with?('ERROR')
 
       clock, *node_ids = res.split(' ')
-      clock = @routing_table.set_route(vnode, clock.to_i, node_ids)
+      clock = @routing_table.update_route(vnode, clock.to_i, node_ids)
 
       return unless clock.is_a?(Integer) == false
 

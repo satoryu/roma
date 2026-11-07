@@ -74,7 +74,7 @@ class RLoggerTest < Test::Unit::TestCase
 
   def test_set_log_shift_size
     logger(2, 1_000_000)
-    @logger.set_log_shift_size(200)
+    @logger.shift_size = 200
     5.times { @logger.info('x' * 100) }
     assert_equal %w(roma.log roma.log.0), files
   end
@@ -92,7 +92,7 @@ class RLoggerTest < Test::Unit::TestCase
 
   def test_set_log_shift_age_to_a_period
     logger(2, 1_000_000)
-    @logger.set_log_shift_age('min')
+    @logger.shift_age = 'min'
     @logger.info('old')
     make_old
     @logger.info('new')
@@ -117,7 +117,7 @@ class RLoggerTest < Test::Unit::TestCase
   def test_previous_period_end(data)
     age, expected = data
     logger('daily')
-    @logger.set_log_shift_age(age)
+    @logger.shift_age = age
     # Wednesday
     assert_equal expected, logdev.send(:previous_period_end, Time.local(2026, 3, 4, 5, 6, 7))
   end

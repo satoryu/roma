@@ -696,7 +696,7 @@ module Roma
 
         res = broadcast_cmd("rset_continuous_limit #{s[1]}\r\n")
 
-        res[@stats.my_node_id] = if Event::Handler.set_continuous_limit(s[1])
+        res[@stats.my_node_id] = if Event::Handler.update_continuous_limit(s[1])
                                    'STORED'
                                  else
                                    'NOT_STORED'
@@ -707,7 +707,7 @@ module Roma
       def ev_rset_continuous_limit(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        if Event::Handler.set_continuous_limit(s[1])
+        if Event::Handler.update_continuous_limit(s[1])
           send_data("STORED\r\n")
         else
           send_data("NOT_STORED\r\n")
@@ -1137,7 +1137,7 @@ module Roma
         end
 
         res = broadcast_cmd("rset_log_shift_size #{s[1]}\r\n")
-        @log.set_log_shift_size(s[1].to_i)
+        @log.shift_size = s[1].to_i
         @stats.log_shift_size = s[1].to_i
         res[@stats.my_node_id] = 'STORED'
         send_data("#{res}\r\n")
@@ -1150,7 +1150,7 @@ module Roma
           return send_data("CLIENT_ERROR length must be greater than zero\r\n")
         end
 
-        @log.set_log_shift_size(s[1].to_i)
+        @log.shift_size = s[1].to_i
         @stats.log_shift_size = s[1].to_i
         send_data("STORED\r\n")
       end
@@ -1166,10 +1166,10 @@ module Roma
         res = broadcast_cmd("rset_log_shift_age #{s[1]}\r\n")
 
         if s[1].to_i > 0 || s[1] == '0'
-          @log.set_log_shift_age(s[1].to_i)
+          @log.shift_age = s[1].to_i
           @stats.log_shift_age = s[1].to_i
         else
-          @log.set_log_shift_age(s[1])
+          @log.shift_age = s[1]
           @stats.log_shift_age = s[1]
         end
         res[@stats.my_node_id] = 'STORED'
@@ -1184,10 +1184,10 @@ module Roma
         end
 
         if s[1].to_i > 0 || s[1] == '0'
-          @log.set_log_shift_age(s[1].to_i)
+          @log.shift_age = s[1].to_i
           @stats.log_shift_age = s[1].to_i
         else
-          @log.set_log_shift_age(s[1])
+          @log.shift_age = s[1]
           @stats.log_shift_age = s[1]
         end
         send_data("STORED\r\n")

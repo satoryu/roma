@@ -26,33 +26,33 @@ module Roma
 
           @logdev.extend(ExtCheckShift)
           @logdev.extend(ExtShiftAge)
-          @logdev.extend(AddSetShiftAge)
-          @logdev.extend(AddSetShiftSize)
+          @logdev.extend(WritableShiftAge)
+          @logdev.extend(WritableShiftSize)
         end
 
-        def set_shift_age(age)
+        def shift_age=(age)
           return unless @logdev
 
-          @logdev.set_shift_age(age)
+          @logdev.shift_age = age
         end
 
-        def set_shift_size(size)
+        def shift_size=(size)
           return unless @logdev
 
-          @logdev.set_shift_size(size)
+          @logdev.shift_size = size
         end
       end
 
-      module AddSetShiftAge
-        def set_shift_age(age)
+      module WritableShiftAge
+        def shift_age=(age)
           return unless @shift_age
 
           @shift_age = age
         end
       end
 
-      module AddSetShiftSize
-        def set_shift_size(size)
+      module WritableShiftSize
+        def shift_size=(size)
           return unless @shift_size
 
           @shift_size = size
@@ -148,7 +148,7 @@ module Roma
         @wrap_logger.extend(ExtTrace)
         @wrap_logger.extend(ExtLogDev)
         @wrap_logger.extendLogDev
-        @wrap_logger.set_shift_age(shift_age) if logger_shift_age != shift_age
+        @wrap_logger.shift_age = shift_age if logger_shift_age != shift_age
       end
 
       def level=(severity)
@@ -197,12 +197,12 @@ module Roma
 
       def close = @wrap_logger.close
 
-      def set_log_shift_size(size)
-        @wrap_logger.set_shift_size(size)
+      def shift_size=(size)
+        @wrap_logger.shift_size = size
       end
 
-      def set_log_shift_age(age)
-        @wrap_logger.set_shift_age(age)
+      def shift_age=(age)
+        @wrap_logger.shift_age = age
       end
     end # class RLogger
   end # module Logging

@@ -491,7 +491,7 @@ class ServerRoutingSyncTest < Test::Unit::TestCase
       File.join(@dir, 'other.route.yml')
     )
     vnode = other.routes.keys[3]
-    other.set_route(vnode, 0, [OTHER_NODE_ID])
+    other.update_route(vnode, 0, [OTHER_NODE_ID])
     sent = stub_send_cmd(
       'mklhash' => ->(_nid, cmd) { other.merkle_tree.get(cmd.split(' ')[1].chomp) },
       'getroute' => lambda { |_nid, _cmd|
@@ -509,7 +509,7 @@ class ServerRoutingSyncTest < Test::Unit::TestCase
   def test_sync_routing_with_an_older_route
     server
     vnode = @server.routing_table.routes.keys[0]
-    @server.routing_table.set_route(vnode, 0, [NODE_ID])
+    @server.routing_table.update_route(vnode, 0, [NODE_ID])
     # The other node's route is older than ours (clock 1); send it ours, with
     # the clock to give setroute.
     sent = stub_send_cmd('getroute' => "0 #{OTHER_NODE_ID}", 'setroute' => 'STORED')

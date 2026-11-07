@@ -314,7 +314,7 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
       connection_pool: [Roma::Messaging::ConnectionPool.instance.maxlength, Roma::Messaging::ConnectionPool.instance.expire_time],
       em_connection_pool: [Roma::Event::EMConnectionPool.instance.maxlength, Roma::Event::EMConnectionPool.instance.expire_time],
       connection_expire_time: Roma::Event::Handler.connection_expire_time,
-      continuous_limit: Roma::Event::Handler.get_continuous_limit
+      continuous_limit: Roma::Event::Handler.continuous_limit
     }
   end
 
@@ -325,7 +325,7 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
     em_pool = Roma::Event::EMConnectionPool.instance
     em_pool.maxlength, em_pool.expire_time = @saved[:em_connection_pool]
     Roma::Event::Handler.connection_expire_time = @saved[:connection_expire_time]
-    Roma::Event::Handler.set_continuous_limit(@saved[:continuous_limit])
+    Roma::Event::Handler.update_continuous_limit(@saved[:continuous_limit])
     Roma::DNSCache.instance.disable_dns_cache
   end
 
@@ -376,17 +376,17 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
   def test_set_continuous_limit
     assert_equal replies('STORED'), @conn.request('set_continuous_limit 100:20:200')
     assert_equal ["rset_continuous_limit 100:20:200\r\n"], @conn.broadcasts
-    assert_equal '100:20:200', Roma::Event::Handler.get_continuous_limit
+    assert_equal '100:20:200', Roma::Event::Handler.continuous_limit
     assert_equal "STORED\r\n", @conn.request('rset_continuous_limit 10:5:20')
-    assert_equal '10:5:20', Roma::Event::Handler.get_continuous_limit
+    assert_equal '10:5:20', Roma::Event::Handler.continuous_limit
   end
 
   data('format' => '100:20', 'rate over 100' => '1:101:2', 'start over full' => '300:20:200')
   def test_set_continuous_limit_with_invalid_value(value)
-    before = Roma::Event::Handler.get_continuous_limit
+    before = Roma::Event::Handler.continuous_limit
     assert_equal replies('NOT_STORED'), @conn.request("set_continuous_limit #{value}")
     assert_equal "NOT_STORED\r\n", @conn.request("rset_continuous_limit #{value}")
-    assert_equal before, Roma::Event::Handler.get_continuous_limit
+    assert_equal before, Roma::Event::Handler.continuous_limit
   end
 
   data('on' => ['on', true], 'true' => ['true', true], 'off' => ['off', false], 'false' => ['false', false])

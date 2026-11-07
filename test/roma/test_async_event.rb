@@ -274,7 +274,7 @@ class AsyncEventAcquireTest < Test::Unit::TestCase
 
       node_ids = @routing_table.search_nodes(vnode) - [@stats.my_node_id]
       is_primary || @always_primary ? node_ids.unshift(@stats.my_node_id) : node_ids.push(@stats.my_node_id)
-      @routing_table.set_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], node_ids)
+      @routing_table.update_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], node_ids)
       true
     end
   end
@@ -452,7 +452,7 @@ class AsyncEventPushTest < Test::Unit::TestCase
   def test_req_push_a_vnode_time_out
     @h.stats.reqpushv_timeout_count = 3
     other = @h.routing_table.routes.keys.find { |vnode| vnode != @vnode }
-    @h.routing_table.set_route(other, 0, [OTHER_NODE_ID])
+    @h.routing_table.update_route(other, 0, [OTHER_NODE_ID])
     assert_equal :timeout, @h.call(:req_push_a_vnode, other, @node.node_id, false)
     assert_equal [0.1] * 3, @h.slept
   end
@@ -494,7 +494,7 @@ class AsyncEventReleaseTest < Test::Unit::TestCase
       @moves << [vnode, to_node_id]
       return @move_reply unless @move_reply == true
 
-      @routing_table.set_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], new_node_ids)
+      @routing_table.update_route(vnode, @routing_table.search_nodes_with_clk(vnode)[0], new_node_ids)
       true
     end
   end

@@ -501,7 +501,7 @@ module Roma
           return false
         end
 
-        clock = @routing_table.set_route(vnode, clock, new_node_ids)
+        clock = @routing_table.update_route(vnode, clock, new_node_ids)
         clock, new_node_ids = @routing_table.search_nodes_with_clk(vnode) if clock.is_a?(Integer) == false
 
         cmd = "setroute #{vnode} #{clock - 1}"
@@ -543,7 +543,7 @@ module Roma
         end
 
         node_ids = edit_nodes(node_ids, to_node_id, is_primary)
-        clock = @routing_table.set_route(vnode, clock, node_ids)
+        clock = @routing_table.update_route(vnode, clock, node_ids)
         clock, node_ids = @routing_table.search_nodes_with_clk(vnode) if clock.is_a?(Integer) == false
 
         cmd = "setroute #{vnode} #{clock - 1}"
