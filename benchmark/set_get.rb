@@ -12,6 +12,9 @@
 # with the same small socket code, so only the servers differ. Each client is
 # a process with its own connection, and sends a request after the reply of
 # the last one.
+#
+# --yjit runs the ROMA nodes with YJIT, or both without and with it; the
+# clients are the same either way.
 require 'optparse'
 require 'rbconfig'
 require 'socket'
@@ -109,6 +112,12 @@ module SetGetBenchmark
       Integer(IO.popen(['ps', '-o', 'rss=', '-p', @pid.to_s], &:read).strip) * 1024
     end
 
+    # The CPU time that the server has used, from ps: [[H:]M]M:SS[.ss].
+    def cpu_seconds
+      IO.popen(['ps', '-o', 'time=', '-p', @pid.to_s], &:read).strip.split(':').map(&:to_f)
+        .inject { |sum, part| (sum * 60) + part }
+    end
+
     # The disk space of the data, or nil if the server keeps none.
     def disk_bytes
       dir = data_dir
@@ -170,11 +179,12 @@ module SetGetBenchmark
     end
   end
 
-  # A ROMA node with a storage engine.
+  # A ROMA node with a storage engine, run with YJIT if +yjit+.
   class RomaServer < Server
-    def initialize(engine, port)
-      super
+    def initialize(engine, port, yjit: false)
+      super(yjit ? "#{engine}+yjit" : engine, port)
       @engine = engine
+      @yjit = yjit
     end
 
     def client_class
@@ -206,7 +216,7 @@ module SetGetBenchmark
                   chdir: dir, out: File::NULL)
       raise "roma route create #{node_id} failed" unless ok
 
-      [RbConfig.ruby, ROMA, 'server', 'localhost', '-p', port.to_s, '--config', 'config.rb']
+      [RbConfig.ruby, *('--yjit' if @yjit), ROMA, 'server', 'localhost', '-p', port.to_s, '--config', 'config.rb']
     end
   end
 
@@ -237,9 +247,15 @@ module SetGetBenchmark
   end
 
   # The results of a command on a target.
-  Result = Struct.new(:target, :command, :requests, :seconds, :latencies, :errors) do
+  Result = Struct.new(:target, :command, :requests, :seconds, :latencies, :errors, :cpu_seconds) do
     def ops_per_second
       requests / seconds
+    end
+
+    # The CPU time of the server for a request, in microseconds. Unlike
+    # ops/s, it doesn't depend on whether the clients keep the server busy.
+    def cpu_per_request
+      cpu_seconds / requests * 1_000_000
     end
 
     # The latency at +percent+ in milliseconds.
@@ -302,6 +318,7 @@ module SetGetBenchmark
       end
       start_r.close
       sleep 0.5 # Let the clients connect.
+      cpu = server.cpu_seconds
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       start_w.write('x' * @clients)
       start_w.close
@@ -312,8 +329,10 @@ module SetGetBenchmark
         report
       end
       seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+      cpu = server.cpu_seconds - cpu
       latencies = reports.flat_map { |report| report[:latencies] }.sort
-      Result.new(server.name, command, latencies.size, seconds, latencies, reports.sum { |report| report[:errors] })
+      errors = reports.sum { |report| report[:errors] }
+      Result.new(server.name, command, latencies.size, seconds, latencies, errors, cpu)
     end
 
     # Client +n+ uses its own keys. A get fails if the value isn't the one set.
@@ -344,7 +363,7 @@ module SetGetBenchmark
 
   def parse(argv)
     options = { targets: TARGETS, clients: 4, requests: 10_000, value_size: 100, warmup: 1000,
-                port: 21_300, redis_server: 'redis-server', keep: false }
+                port: 21_300, redis_server: 'redis-server', keep: false, yjit: 'off' }
     OptionParser.new do |opts|
       opts.banner = 'Usage: BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb [options]'
       opts.on('-t', '--targets LIST', Array, "Targets to measure (default: #{TARGETS.join(',')})") do |v|
@@ -361,16 +380,25 @@ module SetGetBenchmark
       opts.on('-w', '--warmup NUM', Integer, 'Sets before measuring (default: 1000)') { |v| options[:warmup] = v }
       opts.on('-p', '--port PORT', Integer, 'Port of the servers (default: 21300)') { |v| options[:port] = v }
       opts.on('--redis-server PATH', 'redis-server to run (default: redis-server)') { |v| options[:redis_server] = v }
+      opts.on('--yjit MODE', %w(off on both), 'Run the ROMA nodes with YJIT: off, on or both (default: off)') do |v|
+        abort 'This Ruby has no YJIT.' unless defined?(RubyVM::YJIT)
+
+        options[:yjit] = v
+      end
       opts.on('--keep', 'Keep the directories of the servers, with their output') { options[:keep] = true }
     end.parse!(argv)
     options
   end
 
-  def server(target, options)
-    if target == 'redis'
-      RedisServer.new(options[:port], options[:redis_server])
-    else
-      RomaServer.new(target, options[:port])
+  # The servers to measure, in order. Redis runs once whatever --yjit is.
+  def servers(options)
+    yjits = { 'off' => [false], 'on' => [true], 'both' => [false, true] }.fetch(options[:yjit])
+    options[:targets].flat_map do |target|
+      if target == 'redis'
+        [RedisServer.new(options[:port], options[:redis_server])]
+      else
+        yjits.map { |yjit| RomaServer.new(target, options[:port], yjit: yjit) }
+      end
     end
   end
 
@@ -380,9 +408,8 @@ module SetGetBenchmark
     results = []
     usages = []
     versions = []
-    options[:targets].each do |target|
-      server = server(target, options)
-      warn "Measuring #{target} ..."
+    servers(options).each do |server|
+      warn "Measuring #{server.name} ..."
       server.run(keep: options[:keep]) do
         target_results, usage = runner.run(server)
         results.concat(target_results)
@@ -400,11 +427,11 @@ module SetGetBenchmark
     lines << "Ruby #{RUBY_VERSION}, #{versions.join(', ')}, #{RbConfig::CONFIG['host_os']}"
     lines << "#{options[:clients]} clients x #{options[:requests]} requests, values of #{options[:value_size]} bytes"
     lines << ''
-    lines << '| target | command | ops/s | p50 (ms) | p99 (ms) | max (ms) | errors |'
-    lines << '|---|---|--:|--:|--:|--:|--:|'
+    lines << '| target | command | ops/s | p50 (ms) | p99 (ms) | max (ms) | server CPU (us/req) | errors |'
+    lines << '|---|---|--:|--:|--:|--:|--:|--:|'
     results.each do |r|
-      lines << format('| %s | %s | %.0f | %.3f | %.3f | %.3f | %d |', r.target, r.command, r.ops_per_second,
-                      r.percentile(50), r.percentile(99), r.percentile(100), r.errors)
+      lines << format('| %s | %s | %.0f | %.3f | %.3f | %.3f | %.1f | %d |', r.target, r.command, r.ops_per_second,
+                      r.percentile(50), r.percentile(99), r.percentile(100), r.cpu_per_request, r.errors)
     end
     lines << ''
     lines << '| target | keys | RSS before set (MB) | RSS after set (MB) | RSS per key (bytes) | disk (MB) |'

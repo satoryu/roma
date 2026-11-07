@@ -28,7 +28,20 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb
 | `-w`, `--warmup` | 1000 | Sets before measuring |
 | `-p`, `--port` | 21300 | Port of the servers |
 | `--redis-server` | `redis-server` | redis-server to run |
+| `--yjit` | `off` | Run the ROMA nodes with YJIT: `off`, `on` or `both` |
 | `--keep` | | Keep the directories of the servers, with their output |
+
+### Server CPU
+The first table also tells the CPU time (user and system, from `ps`) that the server used for a request. ops/s depends on whether the clients keep the server busy, while this doesn't, so it shows better how much work a request costs the server.
+
+### YJIT
+`--yjit both` runs each ROMA node twice, without and with YJIT, as `hash` and `hash+yjit` and so on. Redis runs once, and the clients are the same.
+
+```
+BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb --yjit both -c 16
+```
+
+With few clients the node waits for them, and ops/s hardly changes even if YJIT makes the node faster. Compare the server CPU per request, or use enough clients (`-c`) to keep the node busy.
 
 ### Memory and disk
 The second table tells, for each target, the resident memory (RSS) of the server before and after the sets, the growth per key, and the disk space of the storage files after the sets.
