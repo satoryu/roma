@@ -53,7 +53,7 @@ Lint/AssignmentInCondition:
     - 'lib/roma/async_process.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/server.rb'
-    - 'lib/roma/write_behind_process.rb'
+    - 'lib/roma/write_behind/process.rb'
     - 'test/fake_node.rb'
 
 # Offense count: 2
@@ -287,7 +287,7 @@ Style/ClassVars:
     - 'lib/roma/dns_cache.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/logging/rlogger.rb'
-    - 'lib/roma/write_behind_process.rb'
+    - 'lib/roma/write_behind/process.rb'
     - 'test/roma/logging/test_rlogger.rb'
 
 # Offense count: 3
@@ -338,7 +338,7 @@ Style/CommentedKeyword:
     - 'lib/roma/tools/config_creator.rb'
     - 'lib/roma/write_behind/file_writer.rb'
     - 'lib/roma/write_behind/stream_writer.rb'
-    - 'lib/roma/write_behind_process.rb'
+    - 'lib/roma/write_behind/process.rb'
     - 'test/test_list_plugin.rb'
     - 'test/test_map_count_plugin.rb'
     - 'test/test_map_plugin.rb'

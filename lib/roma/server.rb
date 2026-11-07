@@ -18,7 +18,7 @@ module Roma
   # and works with the other nodes. roma server runs it.
   class Server
     include AsyncProcess
-    include WriteBehindProcess
+    include WriteBehind::Process
 
     # +argv+ is the arguments of roma server, such as ["localhost", "-p",
     # "11211", "-d"]. +program+ is the name in the usage. With -d, the server
