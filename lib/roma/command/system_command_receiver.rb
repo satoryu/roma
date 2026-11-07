@@ -117,14 +117,14 @@ module Roma
         h['version'] = Roma::VERSION
         send_stat_result(nil, h, regexp)
         send_stat_result(nil, config_stat, regexp)
-        send_stat_result(nil, @stats.get_stat, regexp)
+        send_stat_result(nil, @stats.stat, regexp)
         @storages.each do |hash_name, st|
-          send_stat_result("storages[#{hash_name}].", st.get_stat, regexp)
+          send_stat_result("storages[#{hash_name}].", storage_stat(st), regexp)
         end
         send_stat_result(nil, $roma.write_behind_stat, regexp)
-        send_stat_result(nil, @routing_table.get_stat(@stats.my_node_id), regexp)
-        send_stat_result(nil, conn_get_stat, regexp)
-        send_stat_result(nil, DNSCache.instance.get_stat, regexp)
+        send_stat_result(nil, @routing_table.stat(@stats.my_node_id), regexp)
+        send_stat_result(nil, connection_stat, regexp)
+        send_stat_result(nil, DNSCache.instance.stat, regexp)
         send_data("END\r\n")
       end
 
@@ -1249,6 +1249,25 @@ module Roma
         ret['config.write_behind.path'] = File.expand_path(config.write_behind.path)
         ret['config.write_behind.shift_size'] = config.write_behind.shift_size
         ret['config.connection.descriptor_table_size'] = config.connection.descriptor_table_size
+        ret
+      end
+
+      def storage_stat(st)
+        ret = {}
+        ret['storage.storage_path'] = File.expand_path(st.storage_path)
+        ret['storage.st_class'] = st.st_class.to_s.match(/Roma::Storage::(.*)/)[1]
+        ret['storage.divnum'] = st.divnum
+        ret['storage.option'] = st.option
+        ret['storage.each_vn_dump_sleep'] = st.each_vn_dump_sleep
+        ret['storage.each_vn_dump_sleep_count'] = st.each_vn_dump_sleep_count
+        ret['storage.each_vn_dump_files'] = st.each_vn_dump_files.inspect
+        ret['storage.each_clean_up_sleep'] = st.each_clean_up_sleep
+        ret['storage.cleanup_regexp'] = st.cleanup_regexp
+        ret['storage.logic_clock_expire'] = st.logic_clock_expire
+        ret['storage.safecopy_stats'] = st.dbs.inspect
+        st.database_stats.each_with_index do |db, i|
+          db.each { |k, v| ret["storage[#{i}].#{k}"] = v }
+        end
         ret
       end
     end # module SystemCommandReceiver

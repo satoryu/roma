@@ -18,7 +18,7 @@ module Roma
         @do_transmit = false
       end
 
-      def get_stat
+      def stat
         ret = {}
         ret['write-behind.run_replication'] = @run_replication
         ret['write-behind.run_existing_data_replication'] = @run_existing_data_replication

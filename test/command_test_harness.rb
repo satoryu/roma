@@ -199,7 +199,7 @@ class CommandTestHarness
   end
 
   # The real one, in Event::Handler, asks EventMachine about connections.
-  def conn_get_stat
+  def connection_stat
     { 'connection.count' => 0 }
   end
 

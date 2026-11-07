@@ -24,7 +24,7 @@ module Roma
       end
 
       def write_behind_stat
-        @wb_writer.get_stat.merge(@cluster_replication_writer.get_stat)
+        @wb_writer.stat.merge(@cluster_replication_writer.stat)
       end
 
       def process_loop

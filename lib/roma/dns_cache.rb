@@ -29,7 +29,7 @@ module Roma
       @@enabled_caching = true
     end
 
-    def get_stat
+    def stat
       ret = {}
       ret['dns_caching'] = @@enabled_caching
       ret

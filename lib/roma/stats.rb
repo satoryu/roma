@@ -90,7 +90,7 @@ module Roma
       "#{@address}_#{port}"
     end
 
-    def get_stat
+    def stat
       ret = {}
       ret['stats.config_path'] = @config_path
       ret['stats.address'] = @address

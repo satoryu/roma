@@ -253,7 +253,7 @@ module Roma
         Socket.for_fd(detach)
       end
 
-      def conn_get_stat
+      def connection_stat
         ret = {}
         ret['connection.count'] = EM.connection_count
         ret['connection.descriptor_table_size'] = EM.set_descriptor_table_size
