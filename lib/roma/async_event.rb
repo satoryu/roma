@@ -406,18 +406,18 @@ module Roma
     end
 
     def req_push_a_vnode(vnode, src_node_id, is_primary)
-      con = Roma::Messaging::ConnectionPool.instance.get_connection(src_node_id)
+      con = Roma::Messaging::ConnectionPool.instance.checkout(src_node_id)
       con.write("reqpushv #{vnode} #{@stats.my_node_id} #{is_primary}\r\n")
       res = con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n' | 'ERROR\r\n'
       if res == "REJECTED\r\n"
         @log.warn("#{__method__}:request was rejected from #{src_node_id}.")
-        Roma::Messaging::ConnectionPool.instance.return_connection(src_node_id, con)
+        Roma::Messaging::ConnectionPool.instance.checkin(src_node_id, con)
         return :rejected
       elsif res != "PUSHED\r\n"
         @log.warn("#{__method__}:#{res}")
         return :rejected
       end
-      Roma::Messaging::ConnectionPool.instance.return_connection(src_node_id, con)
+      Roma::Messaging::ConnectionPool.instance.checkin(src_node_id, con)
       # waiting for pushv
       count = 0
       while @routing_table.search_nodes(vnode).include?(@stats.my_node_id) == false && count < @stats.reqpushv_timeout_count
@@ -604,7 +604,7 @@ module Roma
 
       stop_clean_up
 
-      con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
+      con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
 
       @do_push_a_vnode_stream = true
 
@@ -629,7 +629,7 @@ module Roma
       con.write("\0" * 20) # end of stream
 
       res = con.gets # STORED\r\n or error string
-      Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
+      Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
       res.chomp! if res
       if res_dump == false
         @log.error("#{__method__}:each_vn_dump in hash_name=#{hash_name} vnode=#{vnode} node_id=#{node_id}")

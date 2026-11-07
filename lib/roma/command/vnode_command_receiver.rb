@@ -118,10 +118,10 @@ module Roma
       end
 
       def req_push_a_vnode(vnode, src_node_id, is_primary)
-        con = Roma::Messaging::ConnectionPool.instance.get_connection(src_node_id)
+        con = Roma::Messaging::ConnectionPool.instance.checkout(src_node_id)
         con.write("reqpushv #{vnode} #{@my_node_id} #{is_primary}\r\n")
         con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n'
-        Roma::Messaging::ConnectionPool.instance.return_connection(src_node_id, con)
+        Roma::Messaging::ConnectionPool.instance.checkin(src_node_id, con)
         # waiting for pushv
         count = 0
         while @routing_table.search_nodes(vnode).include?(@my_node_id) == false && count < 300

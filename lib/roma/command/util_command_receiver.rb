@@ -4,7 +4,7 @@ module Roma
   module Command
     module UtilCommandReceiver
       def send_cmd(node_id, cmd)
-        con = get_connection(node_id)
+        con = checkout_connection(node_id)
         con.send(cmd)
         res = con.gets
         if res.nil?
@@ -12,7 +12,7 @@ module Roma
           return nil
         elsif res.start_with?('ERROR') == false
           @routing_table.proc_succeed(node_id)
-          return_connection(node_id, con)
+          checkin_connection(node_id, con)
         end
         res.chomp
       rescue StandardError => e
@@ -30,10 +30,10 @@ module Roma
       end
 
       def async_send_cmd(node_id, cmd)
-        con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
+        con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
         con.write(cmd)
         res = con.gets
-        Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
+        Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
         if res
           res.chomp!
           @routing_table.proc_succeed(node_id)

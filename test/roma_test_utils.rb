@@ -245,7 +245,7 @@ module RomaTestUtils
   end
 
   def send_message(messages: [], node: DEFAULT_NODES[0])
-    conn = Roma::Messaging::ConnectionPool.instance.get_connection(node)
+    conn = Roma::Messaging::ConnectionPool.instance.checkout(node)
     return false unless conn
 
     messages = [messages] if messages.class == String
@@ -257,6 +257,6 @@ module RomaTestUtils
   rescue StandardError => e
     puts "#{e} #{$ERROR_POSITION}"
   ensure
-    Roma::Messaging::ConnectionPool.instance.return_connection(node, conn)
+    Roma::Messaging::ConnectionPool.instance.checkin(node, conn)
   end
 end

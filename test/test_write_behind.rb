@@ -274,7 +274,7 @@ class WriteBehindTest < Test::Unit::TestCase
   end
 
   def send_cmd(host, cmd)
-    con = Roma::Messaging::ConnectionPool.instance.get_connection(host)
+    con = Roma::Messaging::ConnectionPool.instance.checkout(host)
     con.write("#{cmd}\r\n")
     ret = con.gets
     con.close

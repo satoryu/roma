@@ -460,7 +460,7 @@ module Roma
       private
 
       def forward_get(node_id, k, _d)
-        con = get_connection(node_id)
+        con = checkout_connection(node_id)
         con.send("fget #{k}\r\n")
         res = con.gets
         if res.nil?
@@ -478,7 +478,7 @@ module Roma
           res << con.read_bytes(s[3].to_i + 2)
           res << con.gets
         end
-        return_connection(node_id, con)
+        checkin_connection(node_id, con)
         @routing_table.proc_succeed(node_id)
         res
       rescue StandardError => e
@@ -489,7 +489,7 @@ module Roma
       end
 
       def forward_gets(node_id, keys)
-        con = get_connection(node_id)
+        con = checkout_connection(node_id)
         con.send("gets #{keys.join(' ')}\r\n")
         res = {}
         while (line = con.gets) != "END\r\n"
@@ -497,7 +497,7 @@ module Roma
           res[s[1]] = [s[4], con.read_bytes(s[3].to_i)]
           con.read_bytes(2)
         end
-        return_connection(node_id, con)
+        checkin_connection(node_id, con)
         @routing_table.proc_succeed(node_id)
         res
       rescue StandardError
@@ -507,7 +507,7 @@ module Roma
       end
 
       def forward_get_expt(node_id, _vnode, key, is_unix = nil)
-        con = get_connection(node_id)
+        con = checkout_connection(node_id)
         con.send("get_expt #{key} #{is_unix}\r\n")
         res = +''
         while (line = con.gets) != "END\r\n"
@@ -516,7 +516,7 @@ module Roma
           res << line
         end
         res << line
-        return_connection(node_id, con)
+        checkin_connection(node_id, con)
         @routing_table.proc_succeed(node_id)
         res
       rescue StandardError

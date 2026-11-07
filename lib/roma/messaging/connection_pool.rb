@@ -16,7 +16,7 @@ module Roma
         @lock = Mutex.new
       end
 
-      def get_connection(ap)
+      def checkout(ap)
         ret, last = @pool[ap].shift if @pool.key?(ap) && @pool[ap].length > 0
         if ret && @expire_time != 0 && last < Time.now - @expire_time
           ret.close
@@ -45,7 +45,7 @@ module Roma
         Logging::RLogger.instance.error("#{__FILE__}:#{__LINE__}:#{e}")
       end
 
-      def return_connection(ap, con)
+      def checkin(ap, con)
         if select([con], nil, nil, 0.0001)
           con.gets
           con.close

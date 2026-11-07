@@ -28,10 +28,10 @@ module Roma
       end
 
       def change_mklhash?
-        con = Roma::Messaging::ConnectionPool.instance.get_connection(@replica_nodelist[0])
+        con = Roma::Messaging::ConnectionPool.instance.checkout(@replica_nodelist[0])
         con.write("mklhash 0\r\n")
         current_mklhash = con.gets.chomp
-        Roma::Messaging::ConnectionPool.instance.return_connection(@replica_nodelist[0], con)
+        Roma::Messaging::ConnectionPool.instance.checkin(@replica_nodelist[0], con)
 
         return false if current_mklhash == @replica_mklhash
 
@@ -48,10 +48,10 @@ module Roma
 
       def update_mklhash(node_id)
         Timeout.timeout(1) do
-          con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
+          con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
           con.write("mklhash 0\r\n")
           @replica_mklhash = con.gets.chomp
-          Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
+          Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
           @log.debug("replica_mklhash has updated: [#{@replica_mklhash}]")
         end
       rescue StandardError => e
@@ -60,10 +60,10 @@ module Roma
 
       def update_nodelist(node_id)
         Timeout.timeout(1) do
-          con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
+          con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
           con.write("nodelist\r\n")
           @replica_nodelist = con.gets.chomp.split("\s")
-          Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
+          Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
           @log.debug("replica_nodelist has updated: #{@replica_nodelist}")
         end
       rescue StandardError => e
@@ -72,7 +72,7 @@ module Roma
 
       def update_rttable(node_id)
         Timeout.timeout(1) do
-          con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
+          con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
           con.write "routingdump\r\n"
           routes_length = con.gets.to_i
           if routes_length <= 0
@@ -86,7 +86,7 @@ module Roma
           con.read(2) # "\r\n"
           con.gets
           routing_data = Marshal.load(routes)
-          Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
+          Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
           @replica_rttable = routing_data
           @log.debug("replica_rttable has updated: [#{@replica_rttable}]")
         end
@@ -108,10 +108,10 @@ module Roma
         Timeout.timeout(5) do
           @do_transmit = true
           node_id = search_replica_primary_node(key)
-          con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
+          con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
           con.write(cmd)
           con.gets # for return connection
-          Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
+          Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
         end
       rescue StandardError => e
         @log.error("#{e}\n#{$@}")
