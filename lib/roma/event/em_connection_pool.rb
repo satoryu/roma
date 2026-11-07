@@ -1,5 +1,5 @@
 #
-# File: em_con_pool.rb
+# File: em_connection_pool.rb
 #
 require 'singleton'
 require 'socket'
@@ -10,7 +10,7 @@ require 'roma/event/em_connection'
 
 module Roma
   module Event
-    class EMConPool
+    class EMConnectionPool
       include Singleton
 
       attr_reader :pool
@@ -85,6 +85,6 @@ module Roma
           @pool.delete(ap)
         end
       end
-    end # class EMConPool
+    end # class EMConnectionPool
   end # module Event
 end # module Roma

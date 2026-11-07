@@ -1,5 +1,5 @@
 require 'roma/async_event'
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 require 'roma/command/vnode_command_receiver'
 
 module Roma

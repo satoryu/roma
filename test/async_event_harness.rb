@@ -3,7 +3,7 @@ require 'tmpdir'
 require 'fileutils'
 require 'roma/stats'
 require 'roma/async_event'
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 require 'roma/routing/churnbased_routing_table'
 require 'roma/storage/hash'
 

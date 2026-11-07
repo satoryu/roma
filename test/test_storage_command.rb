@@ -1,6 +1,6 @@
 require 'test_helper'
 
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 require 'roma/configuration'
 require 'roma/command_plugin/storage'
 require 'plugin_test_harness'
@@ -14,7 +14,7 @@ module StorageCommandTests
 
   def teardown
     @rc.delete_used_keys
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 
   def test_set_expt_and_get
@@ -157,7 +157,7 @@ module StorageCommandTests
   end
 
   def test_routingdump_bin
-    con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
+    con = Roma::Messaging::ConnectionPool.instance.get_connection('localhost_11211')
     con.write("routingdump bin\r\n")
     len = con.gets
     bin = con.read(len.to_i)

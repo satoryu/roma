@@ -311,8 +311,8 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
   def setup
     @conn = CommandTestHarness.new
     @saved = {
-      con_pool: [Roma::Messaging::ConPool.instance.maxlength, Roma::Messaging::ConPool.instance.expire_time],
-      em_con_pool: [Roma::Event::EMConPool.instance.maxlength, Roma::Event::EMConPool.instance.expire_time],
+      connection_pool: [Roma::Messaging::ConnectionPool.instance.maxlength, Roma::Messaging::ConnectionPool.instance.expire_time],
+      em_connection_pool: [Roma::Event::EMConnectionPool.instance.maxlength, Roma::Event::EMConnectionPool.instance.expire_time],
       connection_expire_time: Roma::Event::Handler.connection_expire_time,
       continuous_limit: Roma::Event::Handler.get_continuous_limit
     }
@@ -320,8 +320,10 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
 
   def teardown
     @conn.close
-    Roma::Messaging::ConPool.instance.maxlength, Roma::Messaging::ConPool.instance.expire_time = @saved[:con_pool]
-    Roma::Event::EMConPool.instance.maxlength, Roma::Event::EMConPool.instance.expire_time = @saved[:em_con_pool]
+    pool = Roma::Messaging::ConnectionPool.instance
+    pool.maxlength, pool.expire_time = @saved[:connection_pool]
+    em_pool = Roma::Event::EMConnectionPool.instance
+    em_pool.maxlength, em_pool.expire_time = @saved[:em_connection_pool]
     Roma::Event::Handler.connection_expire_time = @saved[:connection_expire_time]
     Roma::Event::Handler.set_continuous_limit(@saved[:continuous_limit])
     Roma::DNSCache.instance.disable_dns_cache
@@ -333,10 +335,10 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
 
   #   name => [value, how to read the setting]
   POOL_SETTINGS = {
-    'connection_pool_maxlength' => ['20', -> { Roma::Messaging::ConPool.instance.maxlength }],
-    'emconnection_pool_maxlength' => ['20', -> { Roma::Event::EMConPool.instance.maxlength }],
-    'connection_pool_expire_time' => ['60', -> { Roma::Messaging::ConPool.instance.expire_time }],
-    'emconnection_pool_expire_time' => ['60', -> { Roma::Event::EMConPool.instance.expire_time }],
+    'connection_pool_maxlength' => ['20', -> { Roma::Messaging::ConnectionPool.instance.maxlength }],
+    'emconnection_pool_maxlength' => ['20', -> { Roma::Event::EMConnectionPool.instance.maxlength }],
+    'connection_pool_expire_time' => ['60', -> { Roma::Messaging::ConnectionPool.instance.expire_time }],
+    'emconnection_pool_expire_time' => ['60', -> { Roma::Event::EMConnectionPool.instance.expire_time }],
     'accepted_connection_expire_time' => ['120', -> { Roma::Event::Handler.connection_expire_time }]
   }
 
@@ -368,7 +370,7 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
   def test_set_emconnection_pool_expire_time_zero_means_no_expiry
     @conn.request('set_emconnection_pool_expire_time 0')
     assert_equal ["rset_emconnection_pool_expire_time 2147483647\r\n"], @conn.broadcasts
-    assert_equal 2_147_483_647, Roma::Event::EMConPool.instance.expire_time
+    assert_equal 2_147_483_647, Roma::Event::EMConnectionPool.instance.expire_time
   end
 
   def test_set_continuous_limit

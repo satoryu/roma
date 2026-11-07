@@ -1,6 +1,6 @@
 require 'test_helper'
 require 'file_writer_tests'
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 
 # Checks what the server writes to the write-behind files. The replies of the
 # write-behind commands are covered by
@@ -21,7 +21,7 @@ class WriteBehindTest < Test::Unit::TestCase
 
   def teardown
     stop_roma
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 
   def test_wb2_set
@@ -274,7 +274,7 @@ class WriteBehindTest < Test::Unit::TestCase
   end
 
   def send_cmd(host, cmd)
-    con = Roma::Messaging::ConPool.instance.get_connection(host)
+    con = Roma::Messaging::ConnectionPool.instance.get_connection(host)
     con.write("#{cmd}\r\n")
     ret = con.gets
     con.close

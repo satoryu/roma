@@ -1,5 +1,5 @@
 require 'test_helper'
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 require 'roma/configuration'
 require 'pathname'
 

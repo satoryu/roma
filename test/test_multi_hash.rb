@@ -1,5 +1,5 @@
 require 'test_helper'
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 require 'roma/configuration'
 
 class MultiHashTest < Test::Unit::TestCase
@@ -13,11 +13,11 @@ class MultiHashTest < Test::Unit::TestCase
 
   def teardown
     stop_roma
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 
   def test_createhash
-    con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
+    con = Roma::Messaging::ConnectionPool.instance.get_connection('localhost_11211')
     con.write("hashlist\r\n")
     ret = con.gets
     assert_equal('roma', ret.chomp)
@@ -67,7 +67,7 @@ class MultiHashTest < Test::Unit::TestCase
 
   def test_createhash2
     # add 'test' hash
-    con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
+    con = Roma::Messaging::ConnectionPool.instance.get_connection('localhost_11211')
     con.write("hashlist\r\n")
     ret = con.gets
     assert_equal('roma', ret.chomp)
@@ -89,7 +89,7 @@ class MultiHashTest < Test::Unit::TestCase
   end
 
   def test_createhash3
-    con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
+    con = Roma::Messaging::ConnectionPool.instance.get_connection('localhost_11211')
 
     # delete hash to a nothing hash
     con.write("deletehash test\r\n")
@@ -107,7 +107,7 @@ class MultiHashTest < Test::Unit::TestCase
   end
 
   def test_defhash
-    con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
+    con = Roma::Messaging::ConnectionPool.instance.get_connection('localhost_11211')
     con.write("defhash\r\n")
     ret = parse_node_replies(con.gets)
     assert_equal 2, ret.length

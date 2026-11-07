@@ -18,7 +18,7 @@ class MapCountPluginTest < Test::Unit::TestCase
 
   def teardown
     @rc.delete_used_keys
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 
   def check_roma_value(h, res)

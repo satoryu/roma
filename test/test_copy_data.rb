@@ -1,6 +1,6 @@
 require 'test_helper'
 
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 require 'fake_node'
 
 # test of copying vnode
@@ -17,7 +17,7 @@ class CopyDataTest < Test::Unit::TestCase
   def teardown
     stop_roma
     @node.close
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 
   def test_spushv
@@ -40,7 +40,7 @@ class CopyDataTest < Test::Unit::TestCase
   end
 
   def push_a_vnode_stream(hash_name, vnode, node_id, keys)
-    con = Roma::Messaging::ConPool.instance.get_connection(node_id)
+    con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
     con.write("spushv #{hash_name} #{vnode}\r\n")
 
     res = con.gets # READY\r\n or error string
@@ -57,7 +57,7 @@ class CopyDataTest < Test::Unit::TestCase
     con.write("\0" * 20) # end of steram
 
     res = con.gets # STORED\r\n or error string
-    Roma::Messaging::ConPool.instance.return_connection(node_id, con)
+    Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
     res.chomp! if res
     res
   rescue StandardError => e
@@ -103,7 +103,7 @@ class CopyDataTest < Test::Unit::TestCase
 
   def reqpushv(_hname, vnode, is_primary = false)
     @node.dat.delete(vnode)
-    con = Roma::Messaging::ConPool.instance.get_connection('localhost_11211')
+    con = Roma::Messaging::ConnectionPool.instance.get_connection('localhost_11211')
     res = nil
     10.times do
       con.write("reqpushv #{vnode} #{@node.node_id} #{is_primary}\r\n")

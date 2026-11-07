@@ -4,7 +4,7 @@ require 'roma/dns_cache'
 
 module Roma
   module Messaging
-    class ConPool
+    class ConnectionPool
       include Singleton
 
       attr_accessor :maxlength, :expire_time
@@ -100,6 +100,6 @@ module Roma
           @pool.delete(ap)
         end
       end
-    end # class ConPool
+    end # class ConnectionPool
   end # module Messaging
 end # module Roma
