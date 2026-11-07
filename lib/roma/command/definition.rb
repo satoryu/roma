@@ -72,7 +72,7 @@ module Roma
               end
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
-                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+                @storages[params.hash_name].raw(params.vnode, params.key, params.digest)
               stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
               instance_exec(ctx, &)
@@ -112,7 +112,7 @@ module Roma
               end
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
-                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+                @storages[params.hash_name].raw(params.vnode, params.key, params.digest)
               stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
               if stored && @stats.wb_command_map.key?(:"#{cmd}__prev")
                 Roma::WriteBehind::Process.push(params.hash_name,
@@ -184,7 +184,7 @@ module Roma
               end
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
-                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+                @storages[params.hash_name].raw(params.vnode, params.key, params.digest)
               stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
               instance_exec(ctx, &)
@@ -225,7 +225,7 @@ module Roma
               end
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
-                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+                @storages[params.hash_name].raw(params.vnode, params.key, params.digest)
               stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
 
               if stored && @stats.wb_command_map.key?(:"#{cmd}__prev")
@@ -301,7 +301,7 @@ module Roma
               end
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
-                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+                @storages[params.hash_name].raw(params.vnode, params.key, params.digest)
               stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
 
@@ -344,7 +344,7 @@ module Roma
               end
 
               stored.vnode, stored.last, stored.clock, stored.expire_time, stored.value =
-                @storages[params.hash_name].get_raw(params.vnode, params.key, params.digest)
+                @storages[params.hash_name].raw(params.vnode, params.key, params.digest)
               stored = nil if stored.vnode.nil? || Time.now.to_i > stored.expire_time
               ctx = CommandContext.new(s, params, stored)
               instance_exec(ctx, &)

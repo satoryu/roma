@@ -91,7 +91,7 @@ module Roma
             hash_name ||= @default_hash_name
             next unless @storages.key?(hash_name)
 
-            _vn, _t, clock, expire_time, val = @storages[hash_name].get_raw(kvn[key], key, 0)
+            _vn, _t, clock, expire_time, val = @storages[hash_name].raw(kvn[key], key, 0)
             @stats.read_count += 1
             res[key] = [clock, val] if val && Time.now.to_i <= expire_time
           end
@@ -331,7 +331,7 @@ module Roma
         if @stats.wb_command_map.key?(:set_expt__prev)
           @log.debug(':set_export__prev')
           # [vnode, t, clock, expire_time, val]
-          data = @storages[hash_name].get_raw(vnode, key, d)
+          data = @storages[hash_name].raw(vnode, key, d)
           Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
         end
 
@@ -371,7 +371,7 @@ module Roma
 
         if @stats.wb_command_map.key?(:set_expt__prev)
           # [vnode, t, clock, expire_time, val]
-          data = @storages[hash_name].get_raw(vnode, key, d)
+          data = @storages[hash_name].raw(vnode, key, d)
           Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
         end
 

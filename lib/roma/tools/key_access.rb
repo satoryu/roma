@@ -37,7 +37,7 @@ module Roma
 
       def get(dir, key)
         storage = open_storage(dir)
-        storage.get_raw2(key)
+        storage.find_raw(key)
       ensure
         storage.closedb if storage
       end

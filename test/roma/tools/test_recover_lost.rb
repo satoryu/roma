@@ -47,7 +47,7 @@ class RecoverLostTest < Test::Unit::TestCase
     d = Digest::SHA1.hexdigest(key).hex % (2**32)
     vnode = d & @routing_data.search_mask
     2.times { @storage.set(vnode, key, d, 0x7fffffff, value) }
-    assert_equal 1, @storage.get_raw(vnode, key, d)[2]
+    assert_equal 1, @storage.raw(vnode, key, d)[2]
     vnode
   end
 

@@ -114,7 +114,7 @@ module Roma
       end
 
       def recover_key(routing_data, hash_name, storage, key)
-        data = storage.get_raw2(key)
+        data = storage.find_raw(key)
         return unless data
 
         @out.puts "hit => #{key}"
