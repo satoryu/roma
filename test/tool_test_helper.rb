@@ -14,7 +14,7 @@ module ToolTestHelper
 
   def teardown
     @nodes.each(&:close)
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
     FileUtils.rm_rf(@dir)
   end
 

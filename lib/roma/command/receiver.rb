@@ -1,7 +1,7 @@
 require 'roma/stats'
 require 'roma/version'
 require 'roma/event/handler'
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 require 'roma/command/background_command_receiver'
 require 'roma/command/routing_command_receiver'
 require 'roma/command/util_command_receiver'

@@ -10,7 +10,7 @@ module AsyncEventTestHelper
   def teardown
     @h&.close
     @node&.close
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 
   # Waits for a process started in a thread.

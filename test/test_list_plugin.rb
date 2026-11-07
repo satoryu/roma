@@ -1,6 +1,6 @@
 require 'test_helper'
 require 'roma/command_plugin/alist'
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 require 'roma/command_plugin/storage'
 require 'plugin_test_harness'
 
@@ -13,7 +13,7 @@ module ListPluginTests
 
   def teardown
     @rc.delete_used_keys
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 
   def test_error_case
@@ -585,7 +585,7 @@ module ListPluginTests
   private :create_storage_and_calc_vn
 
   def push_a_vnode_stream(st, vnode, node_id)
-    con = Roma::Messaging::ConPool.instance.get_connection(node_id)
+    con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
     con.write("alist_spushv roma #{vnode}\r\n")
     con.gets # READY
     st.each_vn_dump(vnode) do |data|
@@ -593,7 +593,7 @@ module ListPluginTests
     end
     con.write("\0" * 20) # end of steram
     con.gets # STORED\r\n or error string
-    Roma::Messaging::ConPool.instance.return_connection(node_id, con)
+    Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
   end
   private :push_a_vnode_stream
 end # ListPluginTests

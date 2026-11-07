@@ -1,7 +1,7 @@
 require 'test_helper'
 require 'logger'
 require 'roma/write_behind'
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 
 module StreamWriterTests
   def setup
@@ -16,11 +16,11 @@ module StreamWriterTests
     stop_roma
   ensure
     stop_roma_replica
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 
   def send_cmd(host, cmd)
-    con = Roma::Messaging::ConPool.instance.get_connection(host)
+    con = Roma::Messaging::ConnectionPool.instance.get_connection(host)
     con.write("#{cmd}\r\n")
     ret = con.gets
     con.close

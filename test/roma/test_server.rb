@@ -24,7 +24,7 @@ module ServerTestHelper
   def teardown
     @server&.routing_table&.close_log
     @nodes&.each(&:close)
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
     Roma::AsyncEvent.queue.clear
     Roma::Event::Handler.event_list.replace(@saved_event_list)
     Roma::Event::Handler.system_commands.replace(@saved_system_commands)

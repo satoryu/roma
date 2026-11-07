@@ -303,8 +303,8 @@ module Roma
         res = broadcast_cmd("rrestart\r\n")
         $roma.eventloop = true
         @routing_table.enabled_failover = false
-        Messaging::ConPool.instance.close_all
-        Event::EMConPool.instance.close_all
+        Messaging::ConnectionPool.instance.close_all
+        Event::EMConnectionPool.instance.close_all
         EventMachine.stop_event_loop
         res[@stats.my_node_id] = 'RESTARTED'
         send_data("#{res}\r\n")
@@ -313,8 +313,8 @@ module Roma
       def ev_rrestart(_s)
         $roma.eventloop = true
         @routing_table.enabled_failover = false
-        Messaging::ConPool.instance.close_all
-        Event::EMConPool.instance.close_all
+        Messaging::ConnectionPool.instance.close_all
+        Event::EMConnectionPool.instance.close_all
         EventMachine.stop_event_loop
         send_data("RESTARTED\r\n")
       end
@@ -427,8 +427,8 @@ module Roma
 
         res = broadcast_cmd("rswitch_failover #{s[1]}\r\n")
         if s[1] == 'on'
-          Messaging::ConPool.instance.close_all
-          Event::EMConPool.instance.close_all
+          Messaging::ConnectionPool.instance.close_all
+          Event::EMConnectionPool.instance.close_all
           @routing_table.enabled_failover = true
           @log.info('failover enabled')
           res[@stats.my_node_id] = 'ENABLED'
@@ -447,8 +447,8 @@ module Roma
         return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
 
         if s[1] == 'on'
-          Messaging::ConPool.instance.close_all
-          Event::EMConPool.instance.close_all
+          Messaging::ConnectionPool.instance.close_all
+          Event::EMConnectionPool.instance.close_all
           @routing_table.enabled_failover = true
           @log.info('failover enabled')
           send_data("ENABLED\r\n")
@@ -721,7 +721,7 @@ module Roma
         return send_data("CLIENT_ERROR length must be greater than zero\r\n") if s[1].to_i < 1
 
         res = broadcast_cmd("rset_connection_pool_maxlength #{s[1]}\r\n")
-        Messaging::ConPool.instance.maxlength = s[1].to_i
+        Messaging::ConnectionPool.instance.maxlength = s[1].to_i
         res[@stats.my_node_id] = 'STORED'
         send_data("#{res}\r\n")
       end
@@ -731,7 +731,7 @@ module Roma
         return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
         return send_data("CLIENT_ERROR length must be greater than zero\r\n") if s[1].to_i < 1
 
-        Messaging::ConPool.instance.maxlength = s[1].to_i
+        Messaging::ConnectionPool.instance.maxlength = s[1].to_i
         send_data("STORED\r\n")
       end
 
@@ -742,7 +742,7 @@ module Roma
         return send_data("CLIENT_ERROR length must be greater than zero\r\n") if s[1].to_i < 1
 
         res = broadcast_cmd("rset_emconnection_pool_maxlength #{s[1]}\r\n")
-        Event::EMConPool.instance.maxlength = s[1].to_i
+        Event::EMConnectionPool.instance.maxlength = s[1].to_i
         res[@stats.my_node_id] = 'STORED'
         send_data("#{res}\r\n")
       end
@@ -752,7 +752,7 @@ module Roma
         return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
         return send_data("CLIENT_ERROR length must be greater than zero\r\n") if s[1].to_i < 1
 
-        Event::EMConPool.instance.maxlength = s[1].to_i
+        Event::EMConnectionPool.instance.maxlength = s[1].to_i
         send_data("STORED\r\n")
       end
 
@@ -781,7 +781,7 @@ module Roma
         return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
 
         res = broadcast_cmd("rset_connection_pool_expire_time #{s[1]}\r\n")
-        Messaging::ConPool.instance.expire_time = s[1].to_i
+        Messaging::ConnectionPool.instance.expire_time = s[1].to_i
         res[@stats.my_node_id] = 'STORED'
         send_data("#{res}\r\n")
       end
@@ -790,7 +790,7 @@ module Roma
       def ev_rset_connection_pool_expire_time(s)
         return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
 
-        Messaging::ConPool.instance.expire_time = s[1].to_i
+        Messaging::ConnectionPool.instance.expire_time = s[1].to_i
         send_data("STORED\r\n")
       end
 
@@ -802,7 +802,7 @@ module Roma
         # if ARGV is 0, expire time become infinity(NOT happen expire)
         s[1] = '2147483647' if s[1].to_i == 0
         res = broadcast_cmd("rset_emconnection_pool_expire_time #{s[1]}\r\n")
-        Event::EMConPool.instance.expire_time = s[1].to_i
+        Event::EMConnectionPool.instance.expire_time = s[1].to_i
         res[@stats.my_node_id] = 'STORED'
         send_data("#{res}\r\n")
       end
@@ -811,7 +811,7 @@ module Roma
       def ev_rset_emconnection_pool_expire_time(s)
         return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
 
-        Event::EMConPool.instance.expire_time = s[1].to_i
+        Event::EMConnectionPool.instance.expire_time = s[1].to_i
         send_data("STORED\r\n")
       end
 

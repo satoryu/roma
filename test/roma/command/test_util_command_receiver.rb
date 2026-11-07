@@ -19,7 +19,7 @@ class UtilCommandReceiverTest < Test::Unit::TestCase
     assert_nil @conn.async_send_cmd('localhost_1', "whoami\r\n")
   ensure
     node&.close
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 
   def test_async_broadcast_cmd
@@ -29,6 +29,6 @@ class UtilCommandReceiverTest < Test::Unit::TestCase
     assert_equal({ node.node_id => 'ROMA' }, res)
   ensure
     node&.close
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
   end
 end

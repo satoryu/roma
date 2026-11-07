@@ -3,7 +3,7 @@ require 'fileutils'
 require 'rbconfig'
 require 'socket'
 require 'roma/configuration'
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 require 'roma/logging/rlogger'
 require 'roma_test_client'
 
@@ -152,7 +152,7 @@ module RomaTestUtils
     balse_message = %w(balse yes)
     send_message(messages: balse_message)
     RomaTestClient.close_all
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
     wait_until_down(DEFAULT_NODES)
   end
 
@@ -160,14 +160,14 @@ module RomaTestUtils
     balse_message = %w(balse yes)
     send_message(messages: balse_message, node: REPLICA_NODES[0])
     RomaTestClient.close_all
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
     wait_until_down(REPLICA_NODES)
   end
 
   def stop_roma_node(node)
     send_message(messages: 'rbalse', node: node)
     RomaTestClient.close_all
-    Roma::Messaging::ConPool.instance.close_all
+    Roma::Messaging::ConnectionPool.instance.close_all
     wait_until_down([node])
   end
 
@@ -245,7 +245,7 @@ module RomaTestUtils
   end
 
   def send_message(messages: [], node: DEFAULT_NODES[0])
-    conn = Roma::Messaging::ConPool.instance.get_connection(node)
+    conn = Roma::Messaging::ConnectionPool.instance.get_connection(node)
     return false unless conn
 
     messages = [messages] if messages.class == String
@@ -257,6 +257,6 @@ module RomaTestUtils
   rescue StandardError => e
     puts "#{e} #{$ERROR_POSITION}"
   ensure
-    Roma::Messaging::ConPool.instance.return_connection(node, conn)
+    Roma::Messaging::ConnectionPool.instance.return_connection(node, conn)
   end
 end

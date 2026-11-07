@@ -2,7 +2,7 @@
 # File: handler.rb
 #
 require 'eventmachine'
-require 'roma/event/em_con_pool'
+require 'roma/event/em_connection_pool'
 require 'roma/event/distance'
 require 'roma/logging/rlogger'
 require 'roma/stats'
@@ -136,13 +136,13 @@ module Roma
       private
 
       def get_connection(ap)
-        con = Roma::Event::EMConPool.instance.get_connection(ap)
+        con = Roma::Event::EMConnectionPool.instance.get_connection(ap)
         con.fiber = @fiber
         con
       end
 
       def return_connection(ap, con)
-        Roma::Event::EMConPool.instance.return_connection(ap, con)
+        Roma::Event::EMConnectionPool.instance.return_connection(ap, con)
       end
 
       def dispatcher
@@ -260,10 +260,10 @@ module Roma
         ret['connection.continuous_limit'] = Handler.get_continuous_limit
         ret['connection.accepted_connection_expire_time'] = Handler.connection_expire_time
         ret['connection.handler_instance_count'] = Handler.connections.length
-        ret['connection.pool_maxlength'] = Messaging::ConPool.instance.maxlength
-        ret['connection.pool_expire_time'] = Messaging::ConPool.instance.expire_time
-        ret['connection.EMpool_maxlength'] = Event::EMConPool.instance.maxlength
-        ret['connection.EMpool_expire_time'] = Event::EMConPool.instance.expire_time
+        ret['connection.pool_maxlength'] = Messaging::ConnectionPool.instance.maxlength
+        ret['connection.pool_expire_time'] = Messaging::ConnectionPool.instance.expire_time
+        ret['connection.EMpool_maxlength'] = Event::EMConnectionPool.instance.maxlength
+        ret['connection.EMpool_expire_time'] = Event::EMConnectionPool.instance.expire_time
         ret
       end
     end # class Handler < EventMachine::Connection

@@ -1,4 +1,4 @@
-require 'roma/messaging/con_pool'
+require 'roma/messaging/connection_pool'
 
 module Roma
   module Command
@@ -30,10 +30,10 @@ module Roma
       end
 
       def async_send_cmd(node_id, cmd)
-        con = Roma::Messaging::ConPool.instance.get_connection(node_id)
+        con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
         con.write(cmd)
         res = con.gets
-        Roma::Messaging::ConPool.instance.return_connection(node_id, con)
+        Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
         if res
           res.chomp!
           @routing_table.proc_succeed(node_id)

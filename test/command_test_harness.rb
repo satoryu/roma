@@ -4,7 +4,7 @@ require 'fileutils'
 require 'stringio'
 require 'roma/stats'
 require 'roma/command/receiver'
-require 'roma/event/em_con_pool'
+require 'roma/event/em_connection_pool'
 require 'roma/routing/churnbased_routing_table'
 require 'roma/storage/hash'
 
