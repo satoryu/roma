@@ -71,11 +71,11 @@ class CommandTestHarness
       !!@current_files.delete(hash_name)
     end
 
-    def get_path(hash_name)
+    def path(hash_name)
       "wb/#{NODE_ID}/#{hash_name}"
     end
 
-    def get_current_file_path(hash_name)
+    def current_file_path(hash_name)
       @current_files[hash_name]
     end
   end

@@ -78,7 +78,7 @@ module Roma
       end
 
       # get vnode id from hash value
-      def get_vnode_id(d)
+      def vnode_id(d)
         d & @search_mask
       end
 
@@ -155,14 +155,14 @@ module Roma
       # Returns a new RoutingData object which replaced host name by the node_id_substitutions attribute.
       def substituted_routing_data(addr)
         node_id_substitutions.each do |mask, sub|
-          return get_replaced_routing_data(sub[:regexp], sub[:replace]) if check_netmask?(addr, mask)
+          return replaced_routing_data(sub[:regexp], sub[:replace]) if check_netmask?(addr, mask)
         end
         nil
       end
 
       private
 
-      def get_replaced_routing_data(regexp, replace)
+      def replaced_routing_data(regexp, replace)
         routing_data = Marshal.load(dump)
 
         routing_data.nodes.map! do |node_id|

@@ -843,14 +843,14 @@ module Roma
     def asyncev_start_get_routing_event(args)
       @log.debug("#{__method__} #{args}")
       t = Thread.new do
-        get_routing_event
+        load_routing_events
       rescue StandardError => e
         @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       end
       t[:name] = __method__
     end
 
-    def get_routing_event
+    def load_routing_events
       @log.info("#{__method__}:start.")
 
       routing_path = Roma.config.routing.path
@@ -874,7 +874,7 @@ module Roma
     def asyncev_start_get_logs(args)
       @log.debug("#{__method__} #{args}")
       t = Thread.new do
-        get_logs(args)
+        load_logs(args)
       rescue StandardError => e
         @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       ensure
@@ -883,7 +883,7 @@ module Roma
       t[:name] = __method__
     end
 
-    def get_logs(args)
+    def load_logs(args)
       @log.debug("#{__method__}:start.")
 
       log_path = Roma.config.log.path
@@ -891,8 +891,8 @@ module Roma
 
       target_logs = []
       File.open(log_file) do |f|
-        start_point = get_point(f, args[0], 'start')
-        end_point = get_point(f, args[1], 'end')
+        start_point = find_point(f, args[0], 'start')
+        end_point = find_point(f, args[1], 'end')
 
         ## read target logs
         f.seek(start_point, IO::SEEK_SET)
@@ -913,7 +913,7 @@ module Roma
       @stats.gui_run_gather_logs = false
     end
 
-    def get_point(f, target_time, type, latency_time = Time.now, current_pos = 0, new_pos = f.size / 2)
+    def find_point(f, target_time, type, latency_time = Time.now, current_pos = 0, new_pos = f.size / 2)
       # hilatency check
       ps = Time.now - latency_time
       if ps > 5
@@ -993,7 +993,7 @@ module Roma
         target_pos = new_pos + ((new_pos - current_pos).abs / 2)
       end
 
-      get_point(f, target_time, type, latency_time, new_pos, target_pos)
+      find_point(f, target_time, type, latency_time, new_pos, target_pos)
     end
 
     def asyncev_start_replicate_existing_data_process(args)

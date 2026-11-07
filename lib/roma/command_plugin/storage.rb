@@ -26,7 +26,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes(vnode)
 
         unless nodes.include?(@my_node_id)
@@ -51,7 +51,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes(vnode)
 
         unless nodes.include?(@my_node_id)
@@ -76,7 +76,7 @@ module Roma
         s[1..-1].each do |kh|
           key, = kh.split("\e") # split a hash-name
           d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-          kvn[key] = vnode = @routing_table.get_vnode_id(d)
+          kvn[key] = vnode = @routing_table.vnode_id(d)
           nodes = @routing_table.search_nodes(vnode)
           unless nodes.empty? # check the node existence
             nk[nodes[0]] = [] unless nk.key?(nodes[0])
@@ -119,7 +119,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
 
         if nodes[0] != @my_node_id
@@ -175,7 +175,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
           @log.error("fdelete failed delete key=#{s[1]} vnode=#{vnode}")
@@ -224,7 +224,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         unless @storages.key?(hash_name)
           send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
@@ -269,7 +269,7 @@ module Roma
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
         v = read_bytes(s[4].to_i)
         read_bytes(2)
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
           @log.warn("forward cas key=#{key} vnode=#{vnode} to #{nodes[0]}")
@@ -289,7 +289,7 @@ module Roma
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
           @log.error("fcas failed key = #{s[1]} vnode = #{vnode}")
@@ -313,7 +313,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
           @log.warn("forward set_expt key=#{key} vnode=#{vnode} to #{nodes[0]}")
@@ -357,7 +357,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
           @log.error("fset_expt failed key = #{s[1]} vnode = #{vnode}")
@@ -417,7 +417,7 @@ module Roma
         end
 
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
 
         nodes = @routing_table.search_nodes(vnode)
         unless nodes.include?(@my_node_id)
@@ -638,7 +638,7 @@ module Roma
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
         v = read_bytes(bytes)
         read_bytes(2)
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
           @log.warn("forward #{fnc} key=#{key} vnode=#{vnode} to #{nodes[0]}")
@@ -658,7 +658,7 @@ module Roma
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
           @log.error("f#{fnc} failed key = #{s[1]} vnode = #{vnode}")
@@ -703,7 +703,7 @@ module Roma
         hash_name ||= @default_hash_name
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
         v = s[2].to_i
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
           @log.debug("forward #{fnc} key=#{s[1]} vnode=#{vnode} to #{nodes[0]}")
@@ -722,7 +722,7 @@ module Roma
         d = s[2].to_i
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         v = s[3].to_i
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
           @log.debug("f#{fnc} failed key = #{s[1]} vnode = #{vnode}")

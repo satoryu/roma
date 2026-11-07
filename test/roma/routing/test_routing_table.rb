@@ -8,11 +8,11 @@ class RoutingTableTest < Test::Unit::TestCase
     @rt = Roma::Routing::RoutingTable.new(make_routing_data([[A1, B1], [B1, A1], [A1, B1], [B1]]))
   end
 
-  def test_get_vnode_id
-    assert_equal VN[0], @rt.get_vnode_id(0)
-    assert_equal VN[0], @rt.get_vnode_id(VN[1] - 1)
-    assert_equal VN[1], @rt.get_vnode_id(VN[1])
-    assert_equal VN[3], @rt.get_vnode_id((2**32) - 1)
+  def test_vnode_id
+    assert_equal VN[0], @rt.vnode_id(0)
+    assert_equal VN[0], @rt.vnode_id(VN[1] - 1)
+    assert_equal VN[1], @rt.vnode_id(VN[1])
+    assert_equal VN[3], @rt.vnode_id((2**32) - 1)
   end
 
   def test_search_nodes_returns_a_copy

@@ -55,9 +55,9 @@ class GuiAndDebugPluginsTest < Test::Unit::TestCase
     assert_equal "boom\r\n", @conn.request("eval raise 'boom'")
   end
 
-  def test_get_key_info
+  def test_key_info
     @conn.instance_variable_set(:@wbuf, String.new)
-    assert_equal 'END', @conn.get_key_info('key1')
+    assert_equal 'END', @conn.key_info('key1')
     assert_match(/\Ad = \d+ 0x\h+\r\nvn = \d+ 0x\h+\r\nnodes = \[.*\]\r\n\z/, @conn.instance_variable_get(:@wbuf))
   end
 

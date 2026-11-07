@@ -573,7 +573,7 @@ module ListPluginTests
   def create_storage_and_calc_vn(_k)
     # calc vnode
     node_id, d = @rc.routing_table.search_node('aa')
-    vnode = @rc.routing_table.get_vnode_id(d)
+    vnode = @rc.routing_table.vnode_id(d)
 
     st = Roma::Storage::HashStorage.new
     st.vn_list = [vnode]

@@ -132,29 +132,29 @@ module FileWriterTests
     assert(!File.exist?("#{path}/3.wb"))
   end
 
-  def test_wb_get_current_file_path
+  def test_current_file_path
     system('rm -rf wb_test')
     fw = Roma::WriteBehind::FileWriter.new('wb_test', 900, Logger.new(nil))
 
-    assert_nil(fw.get_current_file_path('roma'))
+    assert_nil(fw.current_file_path('roma'))
 
     fw.write('roma', 0, 'key', 'val')
 
     path = File.expand_path("./wb_test/roma0_11211/roma/#{Time.now.strftime('%Y%m%d')}/")
-    assert_equal(File.join(path, '0.wb'), fw.get_current_file_path('roma'))
+    assert_equal(File.join(path, '0.wb'), fw.current_file_path('roma'))
 
     fw.rotate('roma')
-    assert_nil(fw.get_current_file_path('roma'))
+    assert_nil(fw.current_file_path('roma'))
 
     fw.write('roma', 0, 'key', 'val')
-    assert_equal(File.join(path, '1.wb'), fw.get_current_file_path('roma'))
+    assert_equal(File.join(path, '1.wb'), fw.current_file_path('roma'))
   end
 
-  def test_get_path
+  def test_path
     system('rm -rf wb_test')
     fw = Roma::WriteBehind::FileWriter.new('wb_test', 900, Logger.new(nil))
     path = File.expand_path('./wb_test/roma0_11211/roma')
-    assert_equal(path, fw.get_path('roma'))
+    assert_equal(path, fw.path('roma'))
   end
 
   def read_wb(fname)

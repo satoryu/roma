@@ -49,7 +49,7 @@ class PluginTestHarness
       2**32
     end
 
-    def get_vnode_id(_digest)
+    def vnode_id(_digest)
       0
     end
 

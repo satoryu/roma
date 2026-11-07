@@ -28,7 +28,7 @@ class RomaTestClient
       @routing_data.nodes.clone
     end
 
-    def get_vnode_id(d)
+    def vnode_id(d)
       d & @search_mask
     end
 
@@ -38,7 +38,7 @@ class RomaTestClient
 
     def search_node(key)
       d = Digest::SHA1.hexdigest(key).hex % @hash_space_size
-      nodes = @routing_data.routes[get_vnode_id(d)]
+      nodes = @routing_data.routes[vnode_id(d)]
       [@force_forward ? nodes[1] : nodes[0], d]
     end
   end

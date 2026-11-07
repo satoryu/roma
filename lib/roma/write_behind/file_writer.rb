@@ -86,14 +86,14 @@ module Roma
         @file_handles[hash_name] = fd
       end
 
-      def get_path(hash_name)
+      def path(hash_name)
         File.expand_path("#{@path}/#{@stats.my_node_id}/#{hash_name}")
       end
 
-      def get_current_file_path(hash_name)
-        @log.info("WriteBehind:get_current_file_path #{hash_name}")
+      def current_file_path(hash_name)
+        @log.info("WriteBehind:current_file_path #{hash_name}")
         unless @file_names[hash_name]
-          @log.info("WriteBehind:get_current_file_path #{hash_name} not opend")
+          @log.info("WriteBehind:current_file_path #{hash_name} not opend")
           return nil
         end
         File.expand_path("#{@file_names[hash_name]}")

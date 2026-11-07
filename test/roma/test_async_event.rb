@@ -688,7 +688,7 @@ class AsyncEventLogTest < Test::Unit::TestCase
     File.write(path, text)
   end
 
-  def test_get_routing_event
+  def test_load_routing_events
     # The storage files of the node are in a directory with the same name,
     # in the same directory by default.
     @files << "#{Roma.config.routing.path}/#{@h.stats.my_node_id}"
@@ -697,13 +697,13 @@ class AsyncEventLogTest < Test::Unit::TestCase
           "2026-01-02T03:00:00.1 join hosta_1\n" \
           "2026-01-02T03:00:01.1 setroute 0 1 hosta_1\n" \
           "2026-01-02T03:00:02.1 leave hosta_1\n")
-    @h.call(:get_routing_event)
+    @h.call(:load_routing_events)
     assert_equal ['2026-01-02T03:00:00.1 join hosta_1', '2026-01-02T03:00:02.1 leave hosta_1'],
                  @h.routing_table.event
 
     @h.routing_table.event.clear
     @h.routing_table.event_limit_line = 1
-    @h.call(:get_routing_event)
+    @h.call(:load_routing_events)
     assert_equal ['2026-01-02T03:00:02.1 leave hosta_1'], @h.routing_table.event
   end
 
@@ -721,36 +721,36 @@ class AsyncEventLogTest < Test::Unit::TestCase
     @h.routing_table.logs[1..]
   end
 
-  def test_get_logs
+  def test_load_logs
     lines = write_log
     @h.stats.gui_run_gather_logs = true
-    @h.call(:get_logs, ['2026-01-02T03:01:00', '2026-01-02T03:02:00'])
+    @h.call(:load_logs, ['2026-01-02T03:01:00', '2026-01-02T03:02:00'])
     assert_equal lines[60...120], gathered_logs
     assert_false @h.stats.gui_run_gather_logs
   end
 
-  def test_get_logs_from_before_the_log_to_the_end
+  def test_load_logs_from_before_the_log_to_the_end
     lines = write_log
-    @h.call(:get_logs, ['2026-01-01T00:00:00', 'current'])
+    @h.call(:load_logs, ['2026-01-01T00:00:00', 'current'])
     assert_equal lines, gathered_logs
   end
 
-  def test_get_logs_to_after_the_log
+  def test_load_logs_to_after_the_log
     lines = write_log
-    @h.call(:get_logs, ['2026-01-02T03:04:00', '2026-01-03T00:00:00'])
+    @h.call(:load_logs, ['2026-01-02T03:04:00', '2026-01-03T00:00:00'])
     assert_equal lines[240..], gathered_logs
   end
 
   data('start after the log' => ['2026-01-03T00:00:00', 'current'],
        'end before the log' => ['2026-01-02T03:00:10', '2026-01-01T00:00:00'])
-  def test_get_logs_out_of_range(range)
+  def test_load_logs_out_of_range(range)
     write_log
-    @h.call(:get_logs, range)
+    @h.call(:load_logs, range)
     assert_equal [], @h.routing_table.logs
   end
 
-  def test_get_logs_without_a_log
-    @h.call(:get_logs, ['2026-01-02T03:01:00', 'current'])
+  def test_load_logs_without_a_log
+    @h.call(:load_logs, ['2026-01-02T03:01:00', 'current'])
     assert_equal [], @h.routing_table.logs
   end
 

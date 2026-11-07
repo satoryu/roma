@@ -29,8 +29,8 @@ module Roma
 
       # Returns min/max values and correspondent node-id of the histogram.
       # +idx+:: As for 0 is primary, 1 or more are secondary.
-      def get_min_max_histogram(idx)
-        h = get_histogram
+      def min_max_histogram(idx)
+        h = histogram
         min_node_id = max_node_id = nil
         min = routes.length
         max = 0
@@ -48,12 +48,12 @@ module Roma
       end
 
       # Returns a replacement list for balanced routing.
-      def get_balanced_vnode_replacement_list(replication_in_host = false)
+      def balanced_vnode_replacements(replication_in_host = false)
         routing_data = clone
         ret = []
         @redundancy.times do |idx| # primary, secondary1, ...
           loop do # until balanced
-            min, min_node_id, max, max_node_id = routing_data.get_min_max_histogram(idx)
+            min, min_node_id, max, max_node_id = routing_data.min_max_histogram(idx)
             break if max - min < 2 || min_node_id == max_node_id
 
             vnode = routing_data.randomly_change_node_id!(idx, max_node_id, min_node_id, replication_in_host)

@@ -116,7 +116,7 @@ module Roma
         h = {}
         h['version'] = Roma::VERSION
         send_stat_result(nil, h, regexp)
-        send_stat_result(nil, get_config_stat, regexp)
+        send_stat_result(nil, config_stat, regexp)
         send_stat_result(nil, @stats.get_stat, regexp)
         @storages.each do |hash_name, st|
           send_stat_result("storages[#{hash_name}].", st.get_stat, regexp)
@@ -175,7 +175,7 @@ module Roma
 
         res = broadcast_cmd("rwritebehind_get_path #{s[1]}\r\n")
 
-        ret = $roma.wb_writer.get_path(s[1])
+        ret = $roma.wb_writer.path(s[1])
         res[@stats.my_node_id] = ret
 
         send_data("#{res}\r\n")
@@ -185,7 +185,7 @@ module Roma
       def ev_rwritebehind_get_path(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        ret = $roma.wb_writer.get_path(s[1])
+        ret = $roma.wb_writer.path(s[1])
         send_data("#{ret}\r\n")
       end
 
@@ -195,7 +195,7 @@ module Roma
 
         res = broadcast_cmd("rwritebehind_get_current_file #{s[1]}\r\n")
 
-        ret = $roma.wb_writer.get_current_file_path(s[1])
+        ret = $roma.wb_writer.current_file_path(s[1])
         res[@stats.my_node_id] = (ret || 'NOT_OPEND')
         send_data("#{res}\r\n")
       end
@@ -204,7 +204,7 @@ module Roma
       def ev_rwritebehind_get_current_file(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        ret = $roma.wb_writer.get_current_file_path(s[1])
+        ret = $roma.wb_writer.current_file_path(s[1])
         if ret
           send_data("#{ret}\r\n")
         else
@@ -349,7 +349,7 @@ module Roma
           vnode = s[2].to_i
         else
           d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
-          vnode = @routing_table.get_vnode_id(d)
+          vnode = @routing_table.vnode_id(d)
         end
         res = @storages[hash_name].out(vnode, key, 0)
         @stats.out_message_count += 1
@@ -369,7 +369,7 @@ module Roma
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         data = read_bytes(s[5].to_i)
         read_bytes(2)
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         unless @storages.key?(hash_name)
           send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
@@ -392,7 +392,7 @@ module Roma
         d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
         zdata = read_bytes(s[5].to_i)
         read_bytes(2)
-        vnode = @routing_table.get_vnode_id(d)
+        vnode = @routing_table.vnode_id(d)
         unless @storages.key?(hash_name)
           send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
           return
@@ -1234,7 +1234,7 @@ module Roma
         'STORED'
       end
 
-      def get_config_stat
+      def config_stat
         config = Roma.config
         ret = {}
         ret['config.routing.lost_action'] = config.routing.lost_action

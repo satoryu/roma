@@ -57,7 +57,7 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.vnode = @routing_table.vnode_id(params.digest)
               params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
@@ -97,7 +97,7 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.vnode = @routing_table.vnode_id(params.digest)
               params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
@@ -169,7 +169,7 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.vnode = @routing_table.vnode_id(params.digest)
               params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
@@ -208,7 +208,7 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.vnode = @routing_table.vnode_id(params.digest)
               params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               params.value = read_bytes(s[idx_of_val_len].to_i)
               read_bytes(2)
@@ -284,7 +284,7 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.vnode = @routing_table.vnode_id(params.digest)
               params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               params.value = read_bytes(s[idx_of_val_len].to_i)
               read_bytes(2)
@@ -327,7 +327,7 @@ module Roma
               params.key, params.hash_name = s[1].split("\e")
               params.hash_name ||= @default_hash_name
               params.digest = Digest::SHA1.hexdigest(params.key).hex % @routing_table.hash_space_size
-              params.vnode = @routing_table.get_vnode_id(params.digest)
+              params.vnode = @routing_table.vnode_id(params.digest)
               params.nodes = @routing_table.search_nodes_for_write(params.vnode)
               params.value = read_bytes(s[idx_of_val_len].to_i)
               read_bytes(2)
