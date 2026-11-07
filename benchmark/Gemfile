@@ -1,0 +1,9 @@
+source 'https://rubygems.org'
+
+# ROMA itself, from this repository.
+gemspec path: '..'
+
+# The storage engines that set_get.rb compares with the hash storage.
+gem 'roma-storage-dbm'
+gem 'roma-storage-groonga'
+gem 'roma-storage-sqlite3'
