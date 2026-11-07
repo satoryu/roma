@@ -35,11 +35,11 @@ module Roma
           @f.close unless @f.closed?
         end
 
-        def get_line
+        def line
           @buff
         end
 
-        def get_date
+        def date
           @s_date
         end
 
@@ -68,20 +68,20 @@ module Roma
         r = files.map do |file|
           log = ReadLog.new(file)
           log.read_line
-          log.read_line while !log.get_date.nil? && start_date > log.get_date
+          log.read_line while !log.date.nil? && start_date > log.date
           log
         end
 
         loop do
           tmp = {}
           files.each_index do |i|
-            tmp[i] = r[i].get_date unless r[i].get_line.nil?
+            tmp[i] = r[i].date unless r[i].line.nil?
           end
           break if tmp.empty?
 
           i, date = tmp.min_by { |_, d| d }
-          if /^[#{e_lv}],.+/ =~ r[i].get_line && start_date <= date && end_date >= date
-            @out.write("#{File.basename(files[i])},#{r[i].get_line}")
+          if /^[#{e_lv}],.+/ =~ r[i].line && start_date <= date && end_date >= date
+            @out.write("#{File.basename(files[i])},#{r[i].line}")
           end
           r[i].read_line
         end
