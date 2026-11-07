@@ -157,7 +157,7 @@ module StorageCommandTests
   end
 
   def test_routingdump_bin
-    con = Roma::Messaging::ConnectionPool.instance.get_connection('localhost_11211')
+    con = Roma::Messaging::ConnectionPool.instance.checkout('localhost_11211')
     con.write("routingdump bin\r\n")
     len = con.gets
     bin = con.read(len.to_i)

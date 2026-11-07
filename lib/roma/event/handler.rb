@@ -135,14 +135,14 @@ module Roma
 
       private
 
-      def get_connection(ap)
-        con = Roma::Event::EMConnectionPool.instance.get_connection(ap)
+      def checkout_connection(ap)
+        con = Roma::Event::EMConnectionPool.instance.checkout(ap)
         con.fiber = @fiber
         con
       end
 
-      def return_connection(ap, con)
-        Roma::Event::EMConnectionPool.instance.return_connection(ap, con)
+      def checkin_connection(ap, con)
+        Roma::Event::EMConnectionPool.instance.checkin(ap, con)
       end
 
       def dispatcher

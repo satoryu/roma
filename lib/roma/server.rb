@@ -442,11 +442,11 @@ module Roma
       nodes = @routing_table.nodes
 
       nodes.each do |node_id|
-        con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
+        con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
         con.write("join #{@stats.my_node_id}\r\n")
         raise "Hotscale initialize failed.\n#{node_id} is busy." if con.gets != "ADDED\r\n"
 
-        Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
+        Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
       rescue StandardError
         raise "Hotscale initialize failed.\n#{node_id} unreachable connection."
       end
@@ -467,7 +467,7 @@ module Roma
     end
 
     def receive_routing_dump(node_id, cmd)
-      con = Messaging::ConnectionPool.instance.get_connection(node_id)
+      con = Messaging::ConnectionPool.instance.checkout(node_id)
       con.write(cmd)
       unless select [con], nil, nil, 1
         con.close
@@ -483,7 +483,7 @@ module Roma
       received += con.read(len.to_i - received.length) while received.length != len.to_i
       con.read(2)
       con.gets
-      Messaging::ConnectionPool.instance.return_connection(node_id, con)
+      Messaging::ConnectionPool.instance.checkin(node_id, con)
       received
     rescue Exception
       nil
@@ -619,10 +619,10 @@ module Roma
 
             @routing_table.create_nodes_from_routes
             begin
-              con = Roma::Messaging::ConnectionPool.instance.get_connection(nodes[idx - 1])
+              con = Roma::Messaging::ConnectionPool.instance.checkout(nodes[idx - 1])
               con.write("create_nodes_from_v_idx\r\n")
               if con.gets == "CREATED\r\n"
-                Roma::Messaging::ConnectionPool.instance.return_connection(nodes[idx - 1], con)
+                Roma::Messaging::ConnectionPool.instance.checkin(nodes[idx - 1], con)
               else
                 @log.error("get busy result in create_nodes_from_v_idx command from #{nodes[idx - 1]}.")
                 con.close
@@ -677,7 +677,7 @@ module Roma
       con = res = nil
       if tout
         Timeout.timeout(tout) do
-          con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
+          con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
           unless con
             @routing_table.proc_failed(node_id) if @routing_table
             @log.error("#{__FILE__}:#{__LINE__}:#{node_id} connection refused,command is #{cmd}.")
@@ -687,7 +687,7 @@ module Roma
           res = con.gets
         end
       else
-        con = Roma::Messaging::ConnectionPool.instance.get_connection(node_id)
+        con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
         unless con
           @routing_table.proc_failed(node_id) if @routing_table
           @log.error("#{__FILE__}:#{__LINE__}:#{node_id} connection refused,command is #{cmd}.")
@@ -701,7 +701,7 @@ module Roma
         return nil
       elsif res.start_with?('ERROR') == false
         @routing_table.proc_succeed(node_id) if @routing_table
-        Roma::Messaging::ConnectionPool.instance.return_connection(node_id, con)
+        Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
       end
       res.chomp
     rescue Exception => e

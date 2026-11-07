@@ -23,7 +23,7 @@ module Roma
         @lock = Mutex.new
       end
 
-      def get_connection(ap)
+      def checkout(ap)
         ret = @pool[ap].shift if @pool.key?(ap) && @pool[ap].length > 0
         if ret && @expire_time != 0 && ret.last_access < Time.now - @expire_time
           ret.close_connection if ret.connected
@@ -34,7 +34,7 @@ module Roma
         ret
       end
 
-      def return_connection(ap, con)
+      def checkin(ap, con)
         return if con.connected == false
 
         con.last_access = Time.now

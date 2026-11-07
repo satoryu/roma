@@ -381,7 +381,7 @@ module Roma
         buf = rs.join(' ') + " forward\r\n"
         buf << (data + "\r\n") if data
 
-        con = get_connection(node_id)
+        con = checkout_connection(node_id)
         con.send(buf)
 
         buf = con.gets
@@ -395,7 +395,7 @@ module Roma
           @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{$@}")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         elsif buf.start_with?('VALUE') == false
-          return_connection(node_id, con)
+          checkin_connection(node_id, con)
           @routing_table.proc_succeed(node_id)
           return send_data(buf)
         end
@@ -405,7 +405,7 @@ module Roma
           res << buf
           s = buf.split(/ /)
           if s[0] != 'VALUE'
-            return_connection(node_id, con)
+            checkin_connection(node_id, con)
             @routing_table.proc_succeed(node_id)
             return send_data(buf)
           end
@@ -414,7 +414,7 @@ module Roma
 
         res << "END\r\n"
 
-        return_connection(node_id, con)
+        checkin_connection(node_id, con)
         @routing_table.proc_succeed(node_id)
 
         send_data(res)

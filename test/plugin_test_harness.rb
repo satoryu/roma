@@ -143,13 +143,13 @@ class PluginTestHarness
     self
   end
 
-  def get_connection(_nid)
+  def checkout_connection(_nid)
     raise 'no connection' unless @owner
 
     NodeConnection.new(@owner)
   end
 
-  def return_connection(_nid, _con); end
+  def checkin_connection(_nid, _con); end
 
   # A connection to another node, as the event handler's connection pool
   # gives (send, gets, read_bytes), that sends each command to a harness.
