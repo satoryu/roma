@@ -7,8 +7,8 @@ class BackgroundCommandReceiverTest < Test::Unit::TestCase
   # Makes this node primary of fewer vnodes than its share.
   def unbalance
     @conn.routing_table.each_vnode do |vnode, _|
-      @conn.routing_table.set_route(vnode, @conn.routing_table.search_nodes_with_clk(vnode)[0],
-                                    [OTHER_NODE_ID, NODE_ID])
+      @conn.routing_table.update_route(vnode, @conn.routing_table.search_nodes_with_clk(vnode)[0],
+                                       [OTHER_NODE_ID, NODE_ID])
     end
   end
 

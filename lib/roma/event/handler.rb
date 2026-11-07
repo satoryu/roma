@@ -22,11 +22,11 @@ module Roma
       @@continuous_limit_rate = 30
       @@continuous_limit_full = 300
 
-      def self.get_continuous_limit
+      def self.continuous_limit
         "#{@@continuous_limit_start}:#{@@continuous_limit_rate}:#{@@continuous_limit_full}"
       end
 
-      def self.set_continuous_limit(continuous_limit)
+      def self.update_continuous_limit(continuous_limit)
         if continuous_limit =~ /^(\d+):(\d+):(\d+)$/
           s = ::Regexp.last_match(1).to_i
           r = ::Regexp.last_match(2).to_i
@@ -257,7 +257,7 @@ module Roma
         ret = {}
         ret['connection.count'] = EM.connection_count
         ret['connection.descriptor_table_size'] = EM.set_descriptor_table_size
-        ret['connection.continuous_limit'] = Handler.get_continuous_limit
+        ret['connection.continuous_limit'] = Handler.continuous_limit
         ret['connection.accepted_connection_expire_time'] = Handler.connection_expire_time
         ret['connection.handler_instance_count'] = Handler.connections.length
         ret['connection.pool_maxlength'] = Messaging::ConnectionPool.instance.maxlength

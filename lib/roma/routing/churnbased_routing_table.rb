@@ -46,7 +46,7 @@ module Roma
         ret
       end
 
-      def set_version(node_id, ver)
+      def update_version(node_id, ver)
         @version_of_nodes[node_id] = ver
         @min_version = find_min_version
       end
@@ -57,15 +57,15 @@ module Roma
         ret
       end
 
-      def set_leave_proc(&block)
+      def on_leave(&block)
         @leave_proc = block
       end
 
-      def set_lost_proc(&block)
+      def on_lost(&block)
         @lost_proc = block
       end
 
-      def set_recover_proc(&block)
+      def on_recover(&block)
         @recover_proc = block
       end
 
@@ -179,7 +179,7 @@ module Roma
       end
       private :list_include?
 
-      def set_route(vnode, clock, node_ids)
+      def update_route(vnode, clock, node_ids)
         return "#{vnode} is not found." unless @routing_data.routes.key?(vnode)
 
         @lock.synchronize do
@@ -203,7 +203,7 @@ module Roma
         @routing_data.nodes << node_id
         @routing_data.nodes.sort!
         write_log("join #{node_id}")
-        set_event(node_id, 'join')
+        record_event(node_id, 'join')
       end
 
       def enabled_failover=(b)
@@ -222,7 +222,7 @@ module Roma
 
         @log.warn("#{node_id} just failed.")
         write_log("leave #{node_id}")
-        set_event(node_id, __method__)
+        record_event(node_id, __method__)
 
         lost_vnodes = []
         short_vnodes = []
@@ -231,7 +231,7 @@ module Roma
             buf = node_ids.clone
             next unless buf.delete(node_id)
 
-            set_route_and_inc_clk_inside_sync(vnode, buf)
+            update_route_and_increment_clock(vnode, buf)
             if buf.length == 0
               lost_vnodes << vnode
               @log.error("Vnode data is lost.(Vnode=#{vnode})")
@@ -244,7 +244,7 @@ module Roma
           @lost_proc.call if @lost_proc
           if @lost_action == :auto_assign
             lost_vnodes.each do |vnode|
-              set_route_and_inc_clk_inside_sync(vnode, next_alive_vnode(vnode))
+              update_route_and_increment_clock(vnode, next_alive_vnode(vnode))
             end
           end
         elsif short_vnodes.length > 0
@@ -254,15 +254,16 @@ module Roma
         @failure_counts.delete(node_id)
       end
 
-      def set_event(node_id, process)
+      def record_event(node_id, process)
         t = Time.now
         time_string = "#{t.strftime('%Y-%m-%dT%H:%M:%S')}.#{t.usec}"
         @event.shift if @event.size >= @event_limit_line
         @event << "#{time_string} #{process} #{node_id}"
       end
-      private :set_event
+      private :record_event
 
-      def set_route_and_inc_clk_inside_sync(vnode, nodes)
+      # Callers hold @lock.
+      def update_route_and_increment_clock(vnode, nodes)
         @routing_data.routes[vnode] = nodes
         clock = @routing_data.clocks[vnode] + 1
         @routing_data.clocks[vnode] = clock
@@ -270,7 +271,7 @@ module Roma
         write_log_setroute(vnode, clock, nodes)
         clock
       end
-      private :set_route_and_inc_clk_inside_sync
+      private :update_route_and_increment_clock
 
       def next_alive_vnode(vnode)
         svn = vnode

@@ -26,7 +26,7 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
 
   def test_set_route
     make_rt([[A1, B1], [B1, A1], [A1, B1], [B1, A1]])
-    assert_equal 1, @rt.set_route(VN[0], 0, [B1, A2])
+    assert_equal 1, @rt.update_route(VN[0], 0, [B1, A2])
     assert_equal [B1, A2], @rt.search_nodes(VN[0])
     assert_include @rt.nodes, A2
     assert_equal ["join #{A2}", "setroute #{VN[0]} 1 #{B1} #{A2}"], log_lines
@@ -35,10 +35,10 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
 
   def test_set_route_rejects_old_clock_and_unknown_vnode
     make_rt([[A1, B1], [B1, A1], [A1, B1], [B1, A1]])
-    @rt.set_route(VN[0], 5, [B1, A1])
-    assert_equal "It's old table.", @rt.set_route(VN[0], 0, [A1])
+    @rt.update_route(VN[0], 5, [B1, A1])
+    assert_equal "It's old table.", @rt.update_route(VN[0], 0, [A1])
     assert_equal [B1, A1], @rt.search_nodes(VN[0])
-    assert_equal '1 is not found.', @rt.set_route(1, 0, [A1])
+    assert_equal '1 is not found.', @rt.update_route(1, 0, [A1])
   end
 
   def test_leave_does_nothing_unless_failover_is_enabled
@@ -51,8 +51,8 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
     make_rt([[A1, B1], [B1, A1], [A1, B1], [B1, A1]])
     @rt.enabled_failover = true
     left = recovered = nil
-    @rt.set_leave_proc { |node_id| left = node_id }
-    @rt.set_recover_proc { |cmd| recovered = cmd }
+    @rt.on_leave { |node_id| left = node_id }
+    @rt.on_recover { |cmd| recovered = cmd }
 
     @rt.leave(B1)
     assert_equal B1, left
@@ -67,7 +67,7 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
     make_rt([[A1, B1], [B1], [A1, B1], [A1, B1]])
     @rt.enabled_failover = true
     lost = false
-    @rt.set_lost_proc { lost = true }
+    @rt.on_lost { lost = true }
 
     @rt.leave(B1)
     assert_true lost
@@ -151,8 +151,8 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
 
   def test_set_version
     make_rt([[A1, B1], [B1, A1], [A1, B1], [B1, A1]])
-    @rt.set_version(A1, 0x010203)
-    @rt.set_version(B1, 0x010100)
+    @rt.update_version(A1, 0x010203)
+    @rt.update_version(B1, 0x010100)
     assert_equal 0x010100, @rt.min_version
   end
 end

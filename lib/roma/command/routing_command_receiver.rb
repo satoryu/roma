@@ -76,7 +76,7 @@ module Roma
               return
             end
           end
-          res = @routing_table.set_route(s[1].to_i, s[2].to_i, node_ids)
+          res = @routing_table.update_route(s[1].to_i, s[2].to_i, node_ids)
           if res.is_a?(Integer)
             send_data("STORED\r\n")
           else

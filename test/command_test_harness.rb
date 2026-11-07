@@ -48,18 +48,10 @@ class CommandTestHarness
 
   # A logger that also remembers what the commands set on RLogger.
   class Log < ::Logger
-    attr_reader :shift_size, :shift_age
+    attr_accessor :shift_size, :shift_age
 
     def initialize
       super(nil)
-    end
-
-    def set_log_shift_size(size)
-      @shift_size = size
-    end
-
-    def set_log_shift_age(age)
-      @shift_age = age
     end
   end
 
