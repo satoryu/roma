@@ -1,5 +1,5 @@
 require 'roma/messaging/con_pool'
-require 'roma/async_process'
+require 'roma/async_event'
 require 'roma/configuration'
 
 module Roma
@@ -111,7 +111,7 @@ module Roma
           send_data("REJECTED\r\n")
           return
         end
-        Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('reqpushv', [s[1], s[2], s[3]]))
+        Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('reqpushv', [s[1], s[2], s[3]]))
         send_data("PUSHED\r\n")
       rescue StandardError => e
         @log.error("#{e}\n#{$@}")

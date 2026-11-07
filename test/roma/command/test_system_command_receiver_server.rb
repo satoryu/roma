@@ -14,7 +14,7 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
 
   def teardown
     @conn.close
-    Roma::AsyncProcess.queue.clear
+    Roma::AsyncEvent.queue.clear
   end
 
   def replies(reply, other: 'STORED')
@@ -95,7 +95,7 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
     assert_false cr.run_existing_data_replication
     assert_equal 'mklhash of localhost_21211', cr.replica_mklhash
     assert_equal ['localhost_21211'], cr.replica_nodelist
-    assert_true Roma::AsyncProcess.queue.empty?
+    assert_true Roma::AsyncEvent.queue.empty?
 
     @conn.relay_reply = 'DEACTIVATED'
     assert_equal replies('DEACTIVATED', other: 'DEACTIVATED'), @conn.request('switch_replication false')
@@ -109,8 +109,8 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
     @conn.relay_reply = 'ACTIVATED'
     @conn.request('switch_replication true localhost_21211 all')
     assert_true @conn.server.cluster_replication_writer.run_existing_data_replication
-    assert_equal 1, Roma::AsyncProcess.queue.size
-    msg = Roma::AsyncProcess.queue.pop
+    assert_equal 1, Roma::AsyncEvent.queue.size
+    msg = Roma::AsyncEvent.queue.pop
     assert_equal 'start_replicate_existing_data_process', msg.event
     assert_equal ['routing_table of localhost_21211'], msg.args
   end
@@ -197,7 +197,7 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
     assert_equal "CLIENT_ERROR status parse error\r\n", @conn.request('set_storage_status 0 hoge')
     assert_equal "CLIENT_ERROR storage[0] != :safecopy_flushed status\r\n",
                  @conn.request('set_storage_status 0 normal')
-    assert_true Roma::AsyncProcess.queue.empty?
+    assert_true Roma::AsyncEvent.queue.empty?
   end
 
   def test_set_storage_status_with_unknown_hash
@@ -231,10 +231,10 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
   end
 
   def test_forcedly_start
-    Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_join_process'))
+    Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_join_process'))
     assert_equal "STARTED\r\n", @conn.request('forcedly_start')
     assert_true @conn.routing_table.enabled_failover
     assert_false @conn.server.startup
-    assert_true Roma::AsyncProcess.queue.empty?
+    assert_true Roma::AsyncEvent.queue.empty?
   end
 end

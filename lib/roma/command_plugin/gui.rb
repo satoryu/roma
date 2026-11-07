@@ -34,7 +34,7 @@ module Roma
 
         begin
           @stats.gui_run_gather_logs = true
-          Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_get_logs', [start_date, end_date]))
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_get_logs', [start_date, end_date]))
 
           send_data("STARTED\r\n")
         rescue StandardError

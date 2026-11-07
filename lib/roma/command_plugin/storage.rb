@@ -1,7 +1,7 @@
 require 'roma/command_plugin'
 require 'zlib'
 require 'digest/sha1'
-require 'roma/async_process'
+require 'roma/async_event'
 
 module Roma
   module CommandPlugin
@@ -156,7 +156,7 @@ module Roma
         nodes[1..-1].each do |node_id|
           res2 = send_cmd(node_id, "rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
           unless res2
-            Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('rdelete', [node_id, hash_name, s[1], res[2]]))
+            Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('rdelete', [node_id, hash_name, s[1], res[2]]))
             @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{node_id}")
           end
         end
@@ -205,7 +205,7 @@ module Roma
         nodes.each do |node_id|
           res2 = send_cmd(node_id, "rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
           unless res2
-            Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('rdelete', [node_id, hash_name, s[1], res[2]]))
+            Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('rdelete', [node_id, hash_name, s[1], res[2]]))
             @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{node_id}")
           end
         end
@@ -602,8 +602,8 @@ module Roma
           res = send_cmd(node_id, "rset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}\r\n#{v}\r\n")
           next unless res.nil? || res.start_with?('ERROR')
 
-          Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('redundant',
-                                                               [node_id, hash_name, k, d, clock, expire_time, v]))
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('redundant',
+                                                             [node_id, hash_name, k, d, clock, expire_time, v]))
           @log.warn("redundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length} -> #{node_id}")
         end
       end
@@ -615,8 +615,8 @@ module Roma
           res = send_cmd(node_id, "rzset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}\r\n#{zv}\r\n")
           next unless res.nil? || res.start_with?('ERROR')
 
-          Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('zredundant',
-                                                               [node_id, hash_name, k, d, clock, expire_time, zv]))
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('zredundant',
+                                                             [node_id, hash_name, k, d, clock, expire_time, zv]))
           @log.warn("zredundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length} -> #{node_id}")
         end
       end

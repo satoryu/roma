@@ -1,11 +1,11 @@
 require 'test_helper'
-require 'async_process_harness'
+require 'async_event_harness'
 require 'fake_node'
 
-# Unit tests for the background processes of the server (Roma::AsyncProcess).
-module AsyncProcessTestHelper
-  NODE_ID = AsyncProcessHarness::NODE_ID
-  OTHER_NODE_ID = AsyncProcessHarness::OTHER_NODE_ID
+# Unit tests for the async events of the server (Roma::AsyncEvent).
+module AsyncEventTestHelper
+  NODE_ID = AsyncEventHarness::NODE_ID
+  OTHER_NODE_ID = AsyncEventHarness::OTHER_NODE_ID
 
   def teardown
     @h&.close
@@ -27,11 +27,11 @@ module AsyncProcessTestHelper
   end
 end
 
-class AsyncProcessLoopTest < Test::Unit::TestCase
-  include AsyncProcessTestHelper
+class AsyncEventLoopTest < Test::Unit::TestCase
+  include AsyncEventTestHelper
 
   # Handles the test events: ok succeeds, ng fails and error raises.
-  class Harness < AsyncProcessHarness
+  class Harness < AsyncEventHarness
     attr_reader :handled
 
     def initialize
@@ -61,47 +61,47 @@ class AsyncProcessLoopTest < Test::Unit::TestCase
   end
 
   def teardown
-    @h.call(:stop_async_process) if @h.instance_variable_get(:@async_thread)
-    Roma::AsyncProcess.queue.clear
-    Roma::AsyncProcess.queue_latency.clear
+    @h.call(:stop_async_event_loop) if @h.instance_variable_get(:@async_thread)
+    Roma::AsyncEvent.queue.clear
+    Roma::AsyncEvent.queue_latency.clear
     super
   end
 
   data('async_queue' => :queue, 'latency queue' => :queue_latency)
   def test_runs_the_event_and_calls_back(queue)
-    @h.start_async_process
+    @h.start_async_event_loop
     results = Queue.new
-    Roma::AsyncProcess.send(queue).push(Roma::AsyncMessage.new('ok', 'a') { |msg, ok| results << [msg.args, ok] })
+    Roma::AsyncEvent.send(queue).push(Roma::AsyncMessage.new('ok', 'a') { |msg, ok| results << [msg.args, ok] })
     assert_equal ['a', true], results.pop
   end
 
   data('async_queue' => :queue, 'latency queue' => :queue_latency)
   def test_retries_a_failed_event(queue)
-    @h.start_async_process
+    @h.start_async_event_loop
     results = Queue.new
     msg = Roma::AsyncMessage.new('ng', 'a') { |m, ok| results << [m.args, ok] }
     msg.instance_variable_set(:@retry_max, 2)
     msg.instance_variable_set(:@retry_wait, 0)
-    Roma::AsyncProcess.send(queue).push(msg)
+    Roma::AsyncEvent.send(queue).push(msg)
     assert_equal ['a', false], results.pop
     # Run once, then retried twice.
     assert_equal 3, @h.handled.size
   end
 
   def test_keeps_running_after_an_error
-    @h.start_async_process
-    Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('error'))
+    @h.start_async_event_loop
+    Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('error'))
     results = Queue.new
-    Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('ok', 'b') { |msg, ok| results << [msg.args, ok] })
+    Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('ok', 'b') { |msg, ok| results << [msg.args, ok] })
     assert_equal ['b', true], results.pop
   end
 end
 
-class AsyncProcessEventTest < Test::Unit::TestCase
-  include AsyncProcessTestHelper
+class AsyncEventHandlerTest < Test::Unit::TestCase
+  include AsyncEventTestHelper
 
   # Records the processes instead of running them.
-  class Harness < AsyncProcessHarness
+  class Harness < AsyncEventHarness
     attr_reader :calls
 
     def initialize(**opts)
@@ -250,11 +250,11 @@ class AsyncProcessEventTest < Test::Unit::TestCase
 end
 
 # join, balance and recover ask other nodes to push vnodes to this node.
-class AsyncProcessAcquireTest < Test::Unit::TestCase
-  include AsyncProcessTestHelper
+class AsyncEventAcquireTest < Test::Unit::TestCase
+  include AsyncEventTestHelper
 
   # Pushing a vnode puts this node in it, at once.
-  class Harness < AsyncProcessHarness
+  class Harness < AsyncEventHarness
     attr_reader :requests
     attr_accessor :push_reply
     # Makes this node primary of every vnode pushed, instead of as asked.
@@ -352,12 +352,12 @@ class AsyncProcessAcquireTest < Test::Unit::TestCase
 end
 
 # Pushing vnodes to other nodes, through a FakeNode.
-class AsyncProcessPushTest < Test::Unit::TestCase
-  include AsyncProcessTestHelper
+class AsyncEventPushTest < Test::Unit::TestCase
+  include AsyncEventTestHelper
 
   def setup
     @node = FakeNode.new
-    @h = AsyncProcessHarness.new(nodes: [NODE_ID, OTHER_NODE_ID, @node.node_id], vnode_nodes: [NODE_ID, OTHER_NODE_ID])
+    @h = AsyncEventHarness.new(nodes: [NODE_ID, OTHER_NODE_ID, @node.node_id], vnode_nodes: [NODE_ID, OTHER_NODE_ID])
     @vnode = @h.store('key1', 'value1')
   end
 
@@ -399,7 +399,7 @@ class AsyncProcessPushTest < Test::Unit::TestCase
 
   def test_sync_a_vnode_already_in_the_vnode
     # The data is pushed again; the routing doesn't change.
-    @h2 = AsyncProcessHarness.new(nodes: [NODE_ID, @node.node_id], vnode_nodes: [NODE_ID, @node.node_id])
+    @h2 = AsyncEventHarness.new(nodes: [NODE_ID, @node.node_id], vnode_nodes: [NODE_ID, @node.node_id])
     vnode = @h2.store('key1', 'value1')
     assert_true @h2.call(:sync_a_vnode, vnode, @node.node_id, false)
     assert_equal ['key1'], @node.dat[vnode].keys
@@ -474,11 +474,11 @@ class AsyncProcessPushTest < Test::Unit::TestCase
   end
 end
 
-class AsyncProcessReleaseTest < Test::Unit::TestCase
-  include AsyncProcessTestHelper
+class AsyncEventReleaseTest < Test::Unit::TestCase
+  include AsyncEventTestHelper
 
   # Moving a vnode replaces this node at once.
-  class Harness < AsyncProcessHarness
+  class Harness < AsyncEventHarness
     attr_reader :moves
     attr_accessor :move_reply
 
@@ -528,11 +528,11 @@ class AsyncProcessReleaseTest < Test::Unit::TestCase
   end
 end
 
-class AsyncProcessEditNodesTest < Test::Unit::TestCase
-  include AsyncProcessTestHelper
+class AsyncEventEditNodesTest < Test::Unit::TestCase
+  include AsyncEventTestHelper
 
   def setup
-    @h = AsyncProcessHarness.new
+    @h = AsyncEventHarness.new
   end
 
   data('secondary' => [%w(hosta_1 hostb_1), 'hostc_1', false, %w(hosta_1 hostc_1)],
@@ -551,11 +551,11 @@ class AsyncProcessEditNodesTest < Test::Unit::TestCase
   end
 end
 
-class AsyncProcessStorageTest < Test::Unit::TestCase
-  include AsyncProcessTestHelper
+class AsyncEventStorageTest < Test::Unit::TestCase
+  include AsyncEventTestHelper
 
   def setup
-    @h = AsyncProcessHarness.new(vnode_nodes: [NODE_ID, OTHER_NODE_ID])
+    @h = AsyncEventHarness.new(vnode_nodes: [NODE_ID, OTHER_NODE_ID])
     # Long enough since the last clean up.
     @h.stats.last_clean_up = Time.at(0)
   end
@@ -666,13 +666,13 @@ end
 
 # Reads the routing logs and the server's log, in Roma.config.routing.path and
 # LOG_PATH, named after this node.
-class AsyncProcessLogTest < Test::Unit::TestCase
-  include AsyncProcessTestHelper
+class AsyncEventLogTest < Test::Unit::TestCase
+  include AsyncEventTestHelper
 
   BASE = Time.local(2026, 1, 2, 3, 0, 0)
 
   def setup
-    @h = AsyncProcessHarness.new
+    @h = AsyncEventHarness.new
     @h.stats.address = 'asyncprocesstest'
     @h.stats.port = Process.pid.to_s
     @files = []

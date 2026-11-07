@@ -13,7 +13,7 @@
 Layout/LineLength:
   Exclude:
     - 'Rakefile'
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/cli/log.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/command/system_command_receiver.rb'
@@ -50,7 +50,7 @@ Lint/AmbiguousRange:
 # Configuration parameters: AllowSafeAssignment.
 Lint/AssignmentInCondition:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/server.rb'
     - 'lib/roma/write_behind/process.rb'
@@ -111,7 +111,7 @@ Lint/UselessConstantScoping:
 # Offense count: 24
 Naming/AccessorMethodName:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/dns_cache.rb'
     - 'lib/roma/event/handler.rb'
@@ -147,7 +147,7 @@ Naming/MethodName:
 Naming/MethodParameterName:
   Exclude:
     - 'lib/roma/async_message.rb'
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/command/definition.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/command_plugin/alist.rb'
@@ -175,7 +175,7 @@ Naming/MethodParameterName:
 # WaywardPredicates: infinite?, nonzero?
 Naming/PredicateMethod:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/logging/rlogger.rb'
     - 'lib/roma/server.rb'
@@ -187,7 +187,7 @@ Naming/PredicateMethod:
     - 'lib/roma/tools/log_merger.rb'
     - 'lib/roma/write_behind/file_writer.rb'
     - 'test/command_test_harness.rb'
-    - 'test/roma/test_async_process.rb'
+    - 'test/roma/test_async_event.rb'
 
 # Offense count: 2
 # Configuration parameters: NamePrefix, ForbiddenPrefixes, AllowedMethods, MethodDefinitionMacros, UseSorbetSigs.
@@ -225,7 +225,7 @@ Security/Eval:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Security/IoMethods:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
 
 # Offense count: 59
 Security/MarshalLoad:
@@ -275,14 +275,14 @@ Style/CaseEquality:
 # AllowedMethods: ==, equal?, eql?
 Style/ClassEqualityComparison:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/tools/config_creator.rb'
     - 'test/roma_test_utils.rb'
 
 # Offense count: 25
 Style/ClassVars:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/command_plugin.rb'
     - 'lib/roma/dns_cache.rb'
     - 'lib/roma/event/handler.rb'
@@ -307,7 +307,7 @@ Style/CombinableLoops:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/CommentedKeyword:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/command/background_command_receiver.rb'
     - 'lib/roma/command/definition.rb'
     - 'lib/roma/command/multi_hash_command_receiver.rb'
@@ -356,7 +356,7 @@ Style/FormatStringToken:
 # Configuration parameters: AllowedVariables.
 Style/GlobalVars:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/command/vnode_command_receiver.rb'
     - 'lib/roma/command_plugin/alist.rb'
@@ -365,7 +365,7 @@ Style/GlobalVars:
     - 'test/command_test_harness.rb'
     - 'test/plugin_test_harness.rb'
     - 'test/rcirb.rb'
-    - 'test/roma/test_async_process.rb'
+    - 'test/roma/test_async_event.rb'
 
 # Offense count: 7
 # This cop supports unsafe autocorrection (--autocorrect-all).
@@ -377,7 +377,7 @@ Style/HashEachMethods:
     - 'lib/roma/server.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/tools/config_creator.rb'
-    - 'test/roma/test_async_process.rb'
+    - 'test/roma/test_async_event.rb'
 
 # Offense count: 1
 # This cop supports unsafe autocorrection (--autocorrect-all).
@@ -415,7 +415,7 @@ Style/LineEndConcatenation:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/MapIntoArray:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/routing/routing_table.rb'
@@ -432,7 +432,7 @@ Style/MutableConstant:
     - 'lib/roma/logging/rlogger.rb'
     - 'lib/roma/tools/config_creator.rb'
     - 'lib/roma/version.rb'
-    - 'test/async_process_harness.rb'
+    - 'test/async_event_harness.rb'
     - 'test/command_test_harness.rb'
     - 'test/coverage_helper.rb'
     - 'test/optional_test/test_routing_logic.rb'
@@ -458,7 +458,7 @@ Style/MutableConstant:
 Style/NumericPredicate:
   Exclude:
     - 'spec/**/*'
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/command/util_command_receiver.rb'
@@ -543,7 +543,7 @@ Style/ReturnNilInPredicateMethodDefinition:
 # AllowedMethods: present?, blank?, presence, try, try!
 Style/SafeNavigation:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/tools/admin_client.rb'
@@ -561,7 +561,7 @@ Style/SafeNavigation:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/SlicingWithRange:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/command/definition.rb'
     - 'lib/roma/command/receiver.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
@@ -581,7 +581,7 @@ Style/SlicingWithRange:
 # SupportedStyles: use_perl_names, use_english_names, use_builtin_english_names
 Style/SpecialGlobalVars:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/server.rb'
     - 'test/fake_node.rb'
     - 'test/optional_test/test_routing_logic.rb'
@@ -621,7 +621,7 @@ Style/YodaCondition:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/ZeroLengthPredicate:
   Exclude:
-    - 'lib/roma/async_process.rb'
+    - 'lib/roma/async_event.rb'
     - 'lib/roma/command_plugin/alist.rb'
     - 'lib/roma/event/em_con_pool.rb'
     - 'lib/roma/event/handler.rb'

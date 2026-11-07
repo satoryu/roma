@@ -3,7 +3,7 @@ require 'roma/version'
 require 'roma/configuration'
 require 'roma/stats'
 require 'roma/command_plugin'
-require 'roma/async_process'
+require 'roma/async_event'
 require 'roma/write_behind'
 require 'roma/logging/rlogger'
 require 'roma/command/receiver'
@@ -17,7 +17,7 @@ module Roma
   # A ROMA node: it listens for the commands, keeps the data in its storages
   # and works with the other nodes. roma server runs it.
   class Server
-    include AsyncProcess
+    include AsyncEvent
     include WriteBehind::Process
 
     # +argv+ is the arguments of roma server, such as ["localhost", "-p",
@@ -78,11 +78,11 @@ module Roma
         st.opendb
       end
 
-      start_async_process
+      start_async_event_loop
       start_write_behind_process
       start_periodic_jobs
 
-      AsyncProcess.queue.push(AsyncMessage.new('start_join_process')) if @stats.join_node_id
+      AsyncEvent.queue.push(AsyncMessage.new('start_join_process')) if @stats.join_node_id
 
       # select a kind of system call
       if Roma.config.connection.use_epoll
@@ -156,7 +156,7 @@ module Roma
       end
       # Another signal stops the server at once, if stopping takes long.
       %i(INT TERM HUP).each { |sig| Signal.trap(sig, 'DEFAULT') }
-      stop_async_process
+      stop_async_event_loop
       stop_write_behind_process
       stop
     end
@@ -398,8 +398,8 @@ module Roma
       @routing_table.set_leave_proc do |node_id|
         Roma::Messaging::ConPool.instance.close_same_host(node_id)
         Roma::Event::EMConPool.instance.close_same_host(node_id)
-        Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('broadcast_cmd',
-                                                             ["leave #{node_id}", [@stats.my_node_id, node_id, 5]]))
+        Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('broadcast_cmd',
+                                                           ["leave #{node_id}", [@stats.my_node_id, node_id, 5]]))
       end
       @routing_table.set_lost_proc do
         if @routing_table.lost_action == :shutdown
@@ -410,14 +410,14 @@ module Roma
       end
       @routing_table.set_recover_proc do |action|
         if %i(shutdown auto_assign).include?(@routing_table.lost_action) && @routing_table.auto_recover == true
-          Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new("#{action}"))
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new("#{action}"))
         else
           @log.error("AUTO_RECOVER is off or Unavailable value is set to [DEFAULT_LOST_ACTION] => #{@routing_table.lost_action}")
         end
       end
 
       @routing_table.event_limit_line = routing.event_limit_line
-      Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_get_routing_event'))
+      Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_get_routing_event'))
     end
 
     def initialize_rttable_join
@@ -528,7 +528,7 @@ module Roma
         @log.debug('nodes_check start')
         if nodes_check(@routing_table.nodes - [@stats.my_node_id])
           @log.info('all nodes started')
-          AsyncProcess.queue.clear
+          AsyncEvent.queue.clear
           @routing_table.enabled_failover = true
           Command::Receiver.make_event_list
           @startup = false
@@ -549,7 +549,7 @@ module Roma
          @stats.run_join == false &&
          @stats.run_receive_a_vnode.empty? &&
          @stats.do_clean_up?
-        Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_storage_clean_up_process'))
+        Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_storage_clean_up_process'))
       end
 
       if @cluster_replication_writer.run_replication && @cluster_replication_writer.change_mklhash?
