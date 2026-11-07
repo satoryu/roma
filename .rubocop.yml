@@ -48,5 +48,8 @@ Style/SpecialGlobalVars:
   EnforcedStyle: use_builtin_english_names
 
 # The development gems are in roma.gemspec, and Gemfile has only gemspec.
+# The Gemfile of the benchmarks adds the storage engines to it.
 Gemspec/DevelopmentDependencies:
   EnforcedStyle: gemspec
+  Exclude:
+    - 'benchmark/Gemfile'
