@@ -772,7 +772,7 @@ module Roma
       end
       t = Thread.new do
         st.flush_db(db_index)
-        st.set_db_stat(db_index, :safecopy_flushed)
+        st.update_db_status(db_index, :safecopy_flushed)
         @log.info("#{__method__}:storage has flushed. (#{hash_name}, #{db_index})")
       rescue StandardError => e
         @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
@@ -807,7 +807,7 @@ module Roma
       @do_storage_cachecleaning_process = true
       loop do
         # get keys in a cache up to 100 kyes
-        keys = st.get_keys_in_cache(db_index)
+        keys = st.keys_in_cache(db_index)
         break if keys.nil? || keys.length == 0
         break unless @do_storage_cachecleaning_process
 
@@ -832,7 +832,7 @@ module Roma
       if @do_storage_cachecleaning_process == false
         @log.warn("#{__method__}:uncompleted")
       else
-        st.set_db_stat(db_index, :normal)
+        st.update_db_status(db_index, :normal)
       end
       @log.debug("#{__method__}:#{count} keys loaded.")
       @log.debug("#{__method__}:#{rcount} keys rejected.") if rcount > 0

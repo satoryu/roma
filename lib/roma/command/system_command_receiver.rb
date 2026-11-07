@@ -1056,7 +1056,7 @@ module Roma
 
         if s[2] == 'safecopy'
           return send_data("CLIENT_ERROR storage[#{db_index}] != :normal status\r\n") if st.dbs[db_index] != :normal
-          if st.set_db_stat(db_index, :safecopy_flushing) == false
+          if st.update_db_status(db_index, :safecopy_flushing) == false
             return send_data("CLIENT_ERROR storage[#{db_index}] status can't changed\r\n")
           end
 
@@ -1065,7 +1065,7 @@ module Roma
           if st.dbs[db_index] != :safecopy_flushed
             return send_data("CLIENT_ERROR storage[#{db_index}] != :safecopy_flushed status\r\n")
           end
-          if st.set_db_stat(db_index, :cachecleaning) == false
+          if st.update_db_status(db_index, :cachecleaning) == false
             return send_data("CLIENT_ERROR storage[#{db_index}] status can't changed\r\n")
           end
 

@@ -39,7 +39,7 @@ class StorageMergerTest < Test::Unit::TestCase
   end
 
   def get(storage, key)
-    storage.get_raw2(key)&.values_at(2, 4)
+    storage.find_raw(key)&.values_at(2, 4)
   end
 
   # The newer data of a key, by its clock, is kept.

@@ -374,7 +374,7 @@ class AsyncEventPushTest < Test::Unit::TestCase
   end
 
   def test_push_a_vnode_stream_while_the_storage_is_busy
-    @h.storage.set_db_stat(@h.storage.hdiv[@vnode], :safecopy_flushing)
+    @h.storage.update_db_status(@h.storage.hdiv[@vnode], :safecopy_flushing)
     assert_equal 'CANCELED', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.node_id)
   end
 
@@ -619,7 +619,7 @@ class AsyncEventStorageTest < Test::Unit::TestCase
     assert_true @h.call(:asyncev_start_storage_flush_process, ['roma', 0])
     assert_equal :normal, @h.storage.dbs[0]
 
-    @h.storage.set_db_stat(0, :safecopy_flushing)
+    @h.storage.update_db_status(0, :safecopy_flushing)
     assert_true @h.call(:asyncev_start_storage_flush_process, ['roma', 0])
     wait_until('the flush') { @h.storage.dbs[0] == :safecopy_flushed }
   end
@@ -630,15 +630,15 @@ class AsyncEventStorageTest < Test::Unit::TestCase
     assert_true @h.call(:asyncev_start_storage_cachecleaning_process, ['roma', db_index])
     assert_equal :normal, @h.storage.dbs[db_index]
 
-    @h.storage.set_db_stat(db_index, :safecopy_flushing)
+    @h.storage.update_db_status(db_index, :safecopy_flushing)
     # Written to the cache while the storage is flushed.
     @h.storage.set(vnode, 'cached', digest('cached'), 0x7fffffff, 'v')
-    @h.storage.set_db_stat(db_index, :safecopy_flushed)
-    @h.storage.set_db_stat(db_index, :cachecleaning)
+    @h.storage.update_db_status(db_index, :safecopy_flushed)
+    @h.storage.update_db_status(db_index, :cachecleaning)
     assert_true @h.call(:asyncev_start_storage_cachecleaning_process, ['roma', db_index])
     wait_until('cache cleaning') { @h.storage.dbs[db_index] == :normal }
     assert_equal 'v', @h.storage.get(vnode, 'cached', digest('cached'))
-    assert_equal [], @h.storage.get_keys_in_cache(db_index)
+    assert_equal [], @h.storage.keys_in_cache(db_index)
   end
 
   def test_calc_latency_average

@@ -101,7 +101,7 @@ class DefinitionTestReceiver
   end
 
   class StorageStub
-    def get_raw(*_arg)
+    def raw(*_arg)
       nil
     end
   end

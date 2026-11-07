@@ -97,7 +97,7 @@ class CommandPluginStorageForwardTest < Test::Unit::TestCase
   def test_set_expt
     @owner.request('set key1 0 0 5', 'value')
     assert_equal "STORED\r\n", @conn.request('set_expt key1 100')
-    assert_in_delta Time.now.to_i + 100, @owner.storage.get_raw(0, 'key1', 0)[3], 2
+    assert_in_delta Time.now.to_i + 100, @owner.storage.raw(0, 'key1', 0)[3], 2
     assert_equal "NOT_STORED\r\n", @conn.request('set_expt key2 100')
   end
 
