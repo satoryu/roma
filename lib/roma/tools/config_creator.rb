@@ -134,13 +134,13 @@ module Roma
 
       class Input
         module InputReadline
-          def get_line
+          def read_line
             Readline.readline('> ', false)
           end
         end
 
         module InputSimple
-          def get_line
+          def read_line
             print '>'
             $stdin.gets&.chomp
           end
@@ -210,18 +210,18 @@ module Roma
       end
 
       class Calculate
-        def self.get_bnum(res)
+        def self.bnum(res)
           res['server'] = res['fd_server'] unless res['server']
           res['data'].value.to_i * BNUM_COEFFICIENT * REDUNDANCY / res['server'].value.to_i / DIVIDED_FILES
         end
 
-        def self.get_xmsize_max(res)
+        def self.xmsize_max(res)
           ans = ((res['memory'].value.to_f * GB) - OS_MEMORY_SIZE) / res['process'].value.to_i / DIVIDED_FILES
           ans = res['memory'].value.to_f * GB / 2 / res['process'].value.to_i / DIVIDED_FILES if ans <= 0
           ans.to_i
         end
 
-        def self.get_fd(res)
+        def self.fd(res)
           res['fd_server'] = res['server'] unless res['fd_server']
           (res['fd_server'].value.to_i * connection_num(res)) + ((res['fd_client'].value.to_i - 1) * DEFAULT_ROMA_CONNECTION * 2)
         end
@@ -255,7 +255,7 @@ module Roma
         # confirming overwrite
         if File.exist?(@path)
           print("Config.rb already exist in current directory. \nWill you overwrite?[y/n]")
-          if @input.get_line != 'y'
+          if @input.read_line != 'y'
             puts 'config.rb  were not created!'
             return
           end
@@ -283,7 +283,7 @@ module Roma
           Box.print_with_box(@defaults, @out)
           print_status(@results)
           @base.print_question(@next_hash, @out)
-          input = get_input(@base[@next_hash])
+          input = read_answer(@base[@next_hash])
 
           # if specific words(balse, exit, quit) was inputed, roma config create was finished.
           if END_MSG.include?(input)
@@ -343,12 +343,12 @@ module Roma
         Box.print_with_box(strs, @out)
       end
 
-      def get_input(hash)
+      def read_answer(hash)
         input = ''
 
         until correct_in?(hash, input)
           # The end of the input quits.
-          input = @input.get_line || END_MSG.first
+          input = @input.read_line || END_MSG.first
           if input == ''
             # set defaults value
             input = hash['default']
@@ -395,16 +395,16 @@ module Roma
             results['storage.engine'] = :hash
             results['storage.option'] = ''
           when 'Groonga'
-            bnum = Calculate.get_bnum(res)
+            bnum = Calculate.bnum(res)
             bnum = 5_000_000 if bnum < 5_000_000
-            xmsiz = Calculate.get_xmsize_max(res)
+            xmsiz = Calculate.xmsize_max(res)
             results['storage.engine'] = :groonga
             results['storage.option'] = "bnum=#{bnum}#xmsiz=#{xmsiz}#opts=d#dfunit=10"
           end
         end
 
         if res.key?('language')
-          fd = Calculate.get_fd(res)
+          fd = Calculate.fd(res)
           print "\r\nPlease set FileDescriptor bigger than #{fd}.\r\n\r\n"
         end
 

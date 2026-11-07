@@ -14,7 +14,7 @@ class ConfigCreatorTest < Test::Unit::TestCase
       @lines = lines
     end
 
-    def get_line
+    def read_line
       @lines.shift
     end
   end
