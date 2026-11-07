@@ -2,12 +2,12 @@ require 'logger'
 require 'tmpdir'
 require 'fileutils'
 require 'roma/stats'
-require 'roma/async_process'
+require 'roma/async_event'
 require 'roma/messaging/con_pool'
 require 'roma/routing/churnbased_routing_table'
 require 'roma/storage/hash'
 
-# Runs the background processes of the server (Roma::AsyncProcess) in-process.
+# Runs the async events of the server (Roma::AsyncEvent) in-process.
 #
 # - A fresh Roma::Stats and a real routing table are made for each harness.
 #   This node is NODE_ID; +nodes+ are the nodes in the routing table.
@@ -19,11 +19,11 @@ require 'roma/storage/hash'
 # - sleep only records how long it would have slept, so that the processes,
 #   which sleep between steps, run fast.
 #
-#   h = AsyncProcessHarness.new
+#   h = AsyncEventHarness.new
 #   h.call(:asyncev_rdelete, [OTHER_NODE_ID, 'roma', 'key', 1]) # => true
 #   h.sent # => [["localhost_11212", "rdelete key\eroma 1\r\n"]]
-class AsyncProcessHarness
-  include Roma::AsyncProcess
+class AsyncEventHarness
+  include Roma::AsyncEvent
 
   NODE_ID = 'localhost_11211'
   OTHER_NODE_ID = 'localhost_11212'
@@ -59,7 +59,7 @@ class AsyncProcessHarness
     FileUtils.rm_rf(@dir)
   end
 
-  # Calls a private method of Roma::AsyncProcess.
+  # Calls a private method of Roma::AsyncEvent.
   def call(name, *)
     send(name, *)
   end

@@ -1,4 +1,4 @@
-require 'roma/async_process'
+require 'roma/async_event'
 require 'roma/messaging/con_pool'
 require 'roma/command/vnode_command_receiver'
 
@@ -13,7 +13,7 @@ module Roma
            @stats.run_recover == false &&
            @stats.run_balance == false &&
            @routing_table.vnode_balance(@stats.my_node_id) == :less
-          Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_balance_process'))
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_balance_process'))
           res[@stats.my_node_id] = 'STARTED'
         else
           res[@stats.my_node_id] = 'SERVER_ERROR Not unbalance or othre process is already running.'
@@ -26,7 +26,7 @@ module Roma
            @stats.run_recover == false &&
            @stats.run_balance == false &&
            @routing_table.vnode_balance(@stats.my_node_id) == :less
-          Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_balance_process'))
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_balance_process'))
           send_data("STARTED\r\n")
         else
           send_data("SERVER_ERROR Not unbalance or other process is already running.\r\n")
@@ -39,7 +39,7 @@ module Roma
            @stats.run_balance == false &&
            @stats.run_release == false &&
            @stats.run_iterate_storage == false
-          Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_release_process'))
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_release_process'))
           send_data("STARTED\r\n")
         else
           send_data("SERVER_ERROR Other process is already running.\r\n")
@@ -54,7 +54,7 @@ module Roma
           if @stats.run_recover
             res[@my_node_id] = 'SERVER_ERROR Recover process is already running.'
           else
-            Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_recover_process'))
+            Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_recover_process'))
             res[@my_node_id] = 'STARTED'
           end
           send_data("#{res}\r\n")
@@ -69,7 +69,7 @@ module Roma
           if @stats.run_recover
             send_data("SERVER_ERROR Recover process is already running.\r\n")
           else
-            Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_recover_process'))
+            Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_recover_process'))
             send_data("STARTED\r\n")
           end
         else

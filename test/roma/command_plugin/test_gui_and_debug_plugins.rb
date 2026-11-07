@@ -30,7 +30,7 @@ class GuiAndDebugPluginsTest < Test::Unit::TestCase
 
   def test_gather_logs
     assert_equal "STARTED\r\n", @conn.request('gather_logs 2026-01-01T00:00:00')
-    msg = Roma::AsyncProcess.queue.pop
+    msg = Roma::AsyncEvent.queue.pop
     assert_equal ['start_get_logs', ['2026-01-01T00:00:00', 'current']], [msg.event, msg.args]
     assert_true @conn.stats.gui_run_gather_logs
 

@@ -1,4 +1,4 @@
-require 'roma/async_process'
+require 'roma/async_event'
 require 'roma/configuration'
 
 module Roma
@@ -232,8 +232,8 @@ module Roma
             $roma.cluster_replication_writer.run_replication = true
             if s[3] == 'all'
               $roma.cluster_replication_writer.run_existing_data_replication = true
-              Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process',
-                                                                   [$roma.cluster_replication_writer.replica_rttable]))
+              Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process',
+                                                                 [$roma.cluster_replication_writer.replica_rttable]))
             end
             res[@stats.my_node_id] = 'ACTIVATED'
           when 'false'
@@ -265,8 +265,8 @@ module Roma
             $roma.cluster_replication_writer.run_replication = true
             if s[3] == 'all'
               $roma.cluster_replication_writer.run_existing_data_replication = true
-              Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process',
-                                                                   [$roma.cluster_replication_writer.replica_rttable]))
+              Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process',
+                                                                 [$roma.cluster_replication_writer.replica_rttable]))
             end
             send_data("ACTIVATED\r\n")
           when 'false'
@@ -414,7 +414,7 @@ module Roma
 
       def ev_forcedly_start(_s)
         @log.info('ROMA forcedly start.')
-        AsyncProcess.queue.clear
+        AsyncEvent.queue.clear
         @routing_table.enabled_failover = true
         Command::Receiver.make_event_list
         $roma.startup = false
@@ -1060,7 +1060,7 @@ module Roma
             return send_data("CLIENT_ERROR storage[#{db_index}] status can't changed\r\n")
           end
 
-          Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_storage_flush_process', [hash_name, db_index]))
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_storage_flush_process', [hash_name, db_index]))
         elsif s[2] == 'normal'
           if st.dbs[db_index] != :safecopy_flushed
             return send_data("CLIENT_ERROR storage[#{db_index}] != :safecopy_flushed status\r\n")
@@ -1069,8 +1069,8 @@ module Roma
             return send_data("CLIENT_ERROR storage[#{db_index}] status can't changed\r\n")
           end
 
-          Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_storage_cachecleaning_process',
-                                                               [hash_name, db_index]))
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_storage_cachecleaning_process',
+                                                             [hash_name, db_index]))
         else
           return send_data("CLIENT_ERROR status parse error\r\n")
         end

@@ -23,7 +23,7 @@ module CommandPluginStorageTestHelper
 
   def teardown
     Roma::WriteBehind::Process.class_variable_get(:@@queue).clear
-    Roma::AsyncProcess.queue.clear
+    Roma::AsyncEvent.queue.clear
   end
 
   # What was pushed to the write-behind queue.
@@ -327,6 +327,6 @@ class CommandPluginStorageRedundantTest < Test::Unit::TestCase
     @node.reply = "ERROR\r\n"
     @conn.request('set key1 0 0 5', 'value')
     # Retried later.
-    assert_equal event, Roma::AsyncProcess.queue.pop.event
+    assert_equal event, Roma::AsyncEvent.queue.pop.event
   end
 end

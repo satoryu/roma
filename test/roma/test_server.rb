@@ -25,7 +25,7 @@ module ServerTestHelper
     @server&.routing_table&.close_log
     @nodes&.each(&:close)
     Roma::Messaging::ConPool.instance.close_all
-    Roma::AsyncProcess.queue.clear
+    Roma::AsyncEvent.queue.clear
     Roma::Event::Handler.event_list.replace(@saved_event_list)
     Roma::Event::Handler.system_commands.replace(@saved_system_commands)
     FileUtils.rm_rf(@dir)
@@ -236,7 +236,7 @@ class ServerInitializeTest < Test::Unit::TestCase
     assert_equal Roma.config.routing.failure_count_threshold, routing_table.failure_count_threshold
     assert_equal Roma.config.routing.event_limit_line, routing_table.event_limit_line
     assert_false routing_table.enabled_failover
-    assert_equal 'start_get_routing_event', Roma::AsyncProcess.queue.pop.event
+    assert_equal 'start_get_routing_event', Roma::AsyncEvent.queue.pop.event
   end
 
   def test_initialize_rttable_without_a_file
@@ -246,10 +246,10 @@ class ServerInitializeTest < Test::Unit::TestCase
   def test_leave_proc
     save_routing([ap, OTHER_NODE_ID])
     call(:initialize_rttable)
-    Roma::AsyncProcess.queue.clear
+    Roma::AsyncEvent.queue.clear
     @server.routing_table.enabled_failover = true
     @server.routing_table.leave(OTHER_NODE_ID)
-    msg = Roma::AsyncProcess.queue.pop
+    msg = Roma::AsyncEvent.queue.pop
     assert_equal ['broadcast_cmd', ["leave #{OTHER_NODE_ID}", [ap, OTHER_NODE_ID, 5]]], [msg.event, msg.args]
   end
 
@@ -258,10 +258,10 @@ class ServerInitializeTest < Test::Unit::TestCase
     auto_recover, messages = data
     save_routing([ap, OTHER_NODE_ID])
     call(:initialize_rttable)
-    Roma::AsyncProcess.queue.clear
+    Roma::AsyncEvent.queue.clear
     @server.routing_table.auto_recover = auto_recover
     @server.routing_table.instance_variable_get(:@recover_proc).call('start_auto_recover_process')
-    assert_equal messages, Roma::AsyncProcess.queue.size
+    assert_equal messages, Roma::AsyncEvent.queue.size
   end
 
   def test_initialize_storages
@@ -353,12 +353,12 @@ class ServerTimerTest < Test::Unit::TestCase
     server(nodes: [NODE_ID, node.node_id])
     set(cluster_replication_writer: Struct.new(:run_replication).new(false))
     stub_send_cmd('whoami' => 'ROMA')
-    Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_get_routing_event'))
+    Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_get_routing_event'))
     call(:maintain_cluster)
     # Once all the nodes answer, failover is enabled.
     assert_true @server.routing_table.enabled_failover
     assert_false @server.startup
-    assert_true Roma::AsyncProcess.queue.empty?
+    assert_true Roma::AsyncEvent.queue.empty?
   end
 
   def test_maintain_cluster_waiting_for_nodes
@@ -398,7 +398,7 @@ class ServerTimerTest < Test::Unit::TestCase
     assert_equal [[NODE_ID, "version\r\n"], [OTHER_NODE_ID, "version\r\n"]], sent
     assert_equal (1 << 16) + (2 << 8) + 3, @server.routing_table.min_version
     # Starts cleaning up the storages.
-    assert_equal 'start_storage_clean_up_process', Roma::AsyncProcess.queue.pop.event
+    assert_equal 'start_storage_clean_up_process', Roma::AsyncEvent.queue.pop.event
     # Updates the replica cluster's information.
     assert_equal ['localhost_21211'] * 3, cluster_replication_writer.updated
     assert_equal 0, @server.stats.write_count

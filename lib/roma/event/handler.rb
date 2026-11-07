@@ -181,7 +181,7 @@ module Roma
           @log.warn("hilatency occurred in #{@lastcmd} put in a #{ps} seconds") if ps > @stats.hilatency_warn_time
           # check latency average
           if @stats.latency_check_cmd.include?(@lastcmd[0])
-            Roma::AsyncProcess.queue_latency.push(Roma::AsyncMessage.new('calc_latency_average', [ps, @lastcmd[0]]))
+            Roma::AsyncEvent.queue_latency.push(Roma::AsyncMessage.new('calc_latency_average', [ps, @lastcmd[0]]))
           end
 
           d = EM.connection_count - @@continuous_limit_start

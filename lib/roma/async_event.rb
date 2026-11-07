@@ -4,7 +4,7 @@ require 'roma/async_message'
 require 'roma/configuration'
 
 module Roma
-  module AsyncProcess
+  module AsyncEvent
     @@async_queue = Queue.new
     @@async_queue_latency = Queue.new
 
@@ -16,14 +16,14 @@ module Roma
       @@async_queue_latency
     end
 
-    def start_async_process
+    def start_async_event_loop
       @async_thread = Thread.new do
-        async_process_loop
+        async_event_loop
       end
       @async_thread[:name] = __method__
 
       @async_thread_latency = Thread.new do
-        async_process_loop_for_latency
+        async_event_loop_for_latency
       end
       @async_thread_latency[:name] = __method__
     rescue StandardError => e
@@ -32,7 +32,7 @@ module Roma
 
     private
 
-    def stop_async_process
+    def stop_async_event_loop
       count = 0
       while @@async_queue.empty? == false && count < 100
         count += 1
@@ -48,7 +48,7 @@ module Roma
       @async_thread_latency.exit
     end
 
-    def async_process_loop
+    def async_event_loop
       loop do
         while msg = @@async_queue.pop
           if send("asyncev_#{msg.event}", msg.args)
@@ -61,7 +61,7 @@ module Roma
             end
             t[:name] = __method__
           else
-            @log.error("async process retry out:#{msg.inspect}")
+            @log.error("async event retry out:#{msg.inspect}")
             msg.callback.call(msg, false) if msg.callback
           end
         end
@@ -71,7 +71,7 @@ module Roma
       retry
     end
 
-    def async_process_loop_for_latency
+    def async_event_loop_for_latency
       loop do
         while msg = @@async_queue_latency.pop
           if send("asyncev_#{msg.event}", msg.args)
@@ -84,7 +84,7 @@ module Roma
             end
             t[:name] = __method__
           else
-            @log.error("async process retry out:#{msg.inspect}")
+            @log.error("async event retry out:#{msg.inspect}")
             msg.callback.call(msg, false) if msg.callback
           end
         end
@@ -1030,5 +1030,5 @@ module Roma
     rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
     end
-  end # module AsyncProcess
+  end # module AsyncEvent
 end # module Roma

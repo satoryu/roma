@@ -69,7 +69,7 @@ class VnodeCommandReceiverTest < Test::Unit::TestCase
 
   def test_reqpushv
     assert_equal "PUSHED\r\n", @conn.request("reqpushv 0 #{OTHER_NODE_ID} true")
-    msg = Roma::AsyncProcess.queue.pop
+    msg = Roma::AsyncEvent.queue.pop
     assert_equal ['reqpushv', ['0', OTHER_NODE_ID, 'true']], [msg.event, msg.args]
   end
 
@@ -77,7 +77,7 @@ class VnodeCommandReceiverTest < Test::Unit::TestCase
   def test_reqpushv_rejected(flag)
     @conn.stats.send("#{flag}=", true)
     assert_equal "REJECTED\r\n", @conn.request("reqpushv 0 #{OTHER_NODE_ID} true")
-    assert_true Roma::AsyncProcess.queue.empty?
+    assert_true Roma::AsyncEvent.queue.empty?
   end
 
   def test_reqpushv_usage

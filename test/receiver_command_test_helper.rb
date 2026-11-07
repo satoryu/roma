@@ -12,7 +12,7 @@ module ReceiverCommandTestHelper
 
   def teardown
     @conn.close
-    Roma::AsyncProcess.queue.clear
+    Roma::AsyncEvent.queue.clear
   end
 
   # The other nodes' replies come first.
@@ -21,7 +21,7 @@ module ReceiverCommandTestHelper
   end
 
   def queued_events
-    queue = Roma::AsyncProcess.queue
+    queue = Roma::AsyncEvent.queue
     Array.new(queue.size) { queue.pop.event }
   end
 end
