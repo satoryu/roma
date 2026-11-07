@@ -79,7 +79,7 @@ module Roma
       end
 
       start_async_process
-      start_wb_process
+      start_write_behind_process
       start_periodic_jobs
 
       AsyncProcess.queue.push(AsyncMessage.new('start_join_process')) if @stats.join_node_id
@@ -157,7 +157,7 @@ module Roma
       # Another signal stops the server at once, if stopping takes long.
       %i(INT TERM HUP).each { |sig| Signal.trap(sig, 'DEFAULT') }
       stop_async_process
-      stop_wb_process
+      stop_write_behind_process
       stop
     end
 

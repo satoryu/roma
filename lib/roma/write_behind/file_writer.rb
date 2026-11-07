@@ -86,7 +86,7 @@ module Roma
         @file_handles[hash_name] = fd
       end
 
-      def wb_get_path(hash_name)
+      def get_path(hash_name)
         File.expand_path("#{@path}/#{@stats.my_node_id}/#{hash_name}")
       end
 

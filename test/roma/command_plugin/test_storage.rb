@@ -22,13 +22,13 @@ module CommandPluginStorageTestHelper
   end
 
   def teardown
-    Roma::WriteBehindProcess.class_variable_get(:@@wb_queue).clear
+    Roma::WriteBehindProcess.class_variable_get(:@@queue).clear
     Roma::AsyncProcess.queue.clear
   end
 
   # What was pushed to the write-behind queue.
   def write_behind
-    queue = Roma::WriteBehindProcess.class_variable_get(:@@wb_queue)
+    queue = Roma::WriteBehindProcess.class_variable_get(:@@queue)
     Array.new(queue.size) { queue.pop }
   end
 end

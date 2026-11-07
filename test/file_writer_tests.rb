@@ -150,11 +150,11 @@ module FileWriterTests
     assert_equal(File.join(path, '1.wb'), fw.get_current_file_path('roma'))
   end
 
-  def test_wb_get_path
+  def test_get_path
     system('rm -rf wb_test')
     fw = Roma::WriteBehind::FileWriter.new('wb_test', 900, Logger.new(nil))
     path = File.expand_path('./wb_test/roma0_11211/roma')
-    assert_equal(path, fw.wb_get_path('roma'))
+    assert_equal(path, fw.get_path('roma'))
   end
 
   def read_wb(fname)

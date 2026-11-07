@@ -63,7 +63,30 @@ class CommandTestHarness
     end
   end
 
-  WriteBehindWriter = Struct.new(:shift_size)
+  # Stands in for the writer of the write-behind files.
+  class WriteBehindWriter
+    attr_accessor :shift_size
+    # Files open now, by hash name.
+    attr_reader :current_files, :rotated
+
+    def initialize
+      @current_files = {}
+      @rotated = []
+    end
+
+    def rotate(hash_name)
+      @rotated << hash_name
+      !!@current_files.delete(hash_name)
+    end
+
+    def get_path(hash_name)
+      "wb/#{NODE_ID}/#{hash_name}"
+    end
+
+    def get_current_file_path(hash_name)
+      @current_files[hash_name]
+    end
+  end
 
   # Stands in for the writer of cluster replication. update_* would ask a
   # node of the replica cluster; here they just make up the answers.
@@ -93,17 +116,13 @@ class CommandTestHarness
   # Stands in for $roma, the running server.
   class Server
     attr_accessor :wb_writer, :cluster_replication_writer, :eventloop, :startup
-    # Write-behind files open now, by hash name.
-    attr_reader :wb_current_files, :rotated
     # How many times the storage clean up was stopped.
     attr_reader :clean_up_stops
 
     def initialize
-      @wb_writer = WriteBehindWriter.new(nil)
+      @wb_writer = WriteBehindWriter.new
       @cluster_replication_writer = ClusterReplicationWriter.new
       @startup = true
-      @wb_current_files = {}
-      @rotated = []
       @clean_up_stops = 0
     end
 
@@ -111,20 +130,7 @@ class CommandTestHarness
       @clean_up_stops += 1
     end
 
-    def wb_rotate(hash_name)
-      @rotated << hash_name
-      !!@wb_current_files.delete(hash_name)
-    end
-
-    def wb_get_path(hash_name)
-      "wb/#{NODE_ID}/#{hash_name}"
-    end
-
-    def wb_get_current_file_path(hash_name)
-      @wb_current_files[hash_name]
-    end
-
-    def wb_get_stat
+    def write_behind_stat
       { 'write-behind.run_replication' => @cluster_replication_writer.run_replication }
     end
   end
