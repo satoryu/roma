@@ -347,36 +347,38 @@ end
 class ServerTimerTest < Test::Unit::TestCase
   include ServerTestHelper
 
-  def test_timer_event_10sec_at_startup
+  def test_maintain_cluster_at_startup
     # At startup, it first checks that the node accepts connections.
     node = fake_node
     server(nodes: [NODE_ID, node.node_id])
+    set(cluster_replication_writer: Struct.new(:run_replication).new(false))
     stub_send_cmd('whoami' => 'ROMA')
     Roma::AsyncProcess.queue.push(Roma::AsyncMessage.new('start_get_routing_event'))
-    call(:timer_event_10sec)
+    call(:maintain_cluster)
     # Once all the nodes answer, failover is enabled.
     assert_true @server.routing_table.enabled_failover
     assert_false @server.startup
     assert_true Roma::AsyncProcess.queue.empty?
   end
 
-  def test_timer_event_10sec_waiting_for_nodes
+  def test_maintain_cluster_waiting_for_nodes
     server
-    call(:timer_event_10sec)
+    set(cluster_replication_writer: Struct.new(:run_replication).new(false))
+    call(:maintain_cluster)
     # OTHER_NODE_ID isn't running.
     assert_false @server.routing_table.enabled_failover
     assert_true @server.startup
   end
 
-  def test_timer_event_10sec_while_failover_is_disabled
+  def test_maintain_cluster_while_failover_is_disabled
     server
     set(startup: false, cluster_replication_writer: Struct.new(:run_replication).new(false))
     sent = stub_send_cmd({})
-    call(:timer_event_10sec)
+    call(:maintain_cluster)
     assert_equal [], sent
   end
 
-  def test_timer_event_10sec
+  def test_maintain_cluster
     server
     cluster_replication_writer = Struct.new(:run_replication, :replica_nodelist, :updated) do
       def change_mklhash? = true
@@ -391,7 +393,7 @@ class ServerTimerTest < Test::Unit::TestCase
     # Counters are reset when they pass 32 bits.
     @server.stats.write_count = 0x100000000
     sent = stub_send_cmd('version' => 'VERSION ROMA-1.2.3')
-    call(:timer_event_10sec)
+    call(:maintain_cluster)
     # Checks the versions of the nodes.
     assert_equal [[NODE_ID, "version\r\n"], [OTHER_NODE_ID, "version\r\n"]], sent
     assert_equal (1 << 16) + (2 << 8) + 3, @server.routing_table.min_version
@@ -402,17 +404,35 @@ class ServerTimerTest < Test::Unit::TestCase
     assert_equal 0, @server.stats.write_count
   end
 
-  def test_timer_event_1sec
+  def test_run_periodically
+    server
+    log = StringIO.new
+    set(log: Logger.new(log))
+    calls = Queue.new
+    @server.define_singleton_method(:job) do
+      calls << :called
+      raise 'failed' if calls.size == 1
+    end
+    thread = call(:run_periodically, 0.01, :job)
+    # It keeps calling the job after an error.
+    assert_equal %i(called called), Array.new(2) { calls.pop(timeout: 5) }
+    assert_equal :job, thread[:name]
+    assert_match(/failed/, log.string)
+  ensure
+    thread&.kill
+  end
+
+  def test_watch_cluster
     server
     @server.routing_table.enabled_failover = true
     sent = stub_send_cmd('whoami' => 'ROMA')
     set(startup: false)
-    call(:timer_event_1sec)
+    call(:watch_cluster)
     # Checks the other nodes.
     assert_equal [[OTHER_NODE_ID, "whoami\r\n"]], sent
   end
 
-  def test_timer_event_1sec_stops_clean_up_while_joining
+  def test_watch_cluster_stops_clean_up_while_joining
     server
     storage = Object.new
     def storage.stop_clean_up = (@stopped = true)
@@ -424,7 +444,7 @@ class ServerTimerTest < Test::Unit::TestCase
       Kernel.sleep 0.05
       @server.stats.run_storage_clean_up = false
     end
-    call(:timer_event_1sec)
+    call(:watch_cluster)
     assert_true storage.stopped?
   end
 

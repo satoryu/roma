@@ -80,7 +80,7 @@ module Roma
 
       start_async_process
       start_wb_process
-      timer
+      start_periodic_jobs
 
       AsyncProcess.queue.push(AsyncMessage.new('start_join_process')) if @stats.join_node_id
 
@@ -489,35 +489,41 @@ module Roma
       nil
     end
 
-    def timer
-      t = Thread.new do
-        loop do
-          sleep 1
-          timer_event_1sec
-        end
-      end
-      t[:name] = 'timer_1sec'
-      t = Thread.new do
-        loop do
-          sleep 10
-          timer_event_10sec
-        end
-      end
-      t[:name] = 'timer_10sec'
+    def start_periodic_jobs
+      run_periodically(1, :watch_cluster)
+      run_periodically(10, :maintain_cluster)
     end
 
-    def timer_event_1sec
+    # Calls +job+ every +interval+ seconds in a thread named after it. An
+    # error in +job+ is logged and doesn't stop the thread.
+    def run_periodically(interval, job)
+      t = Thread.new do
+        loop do
+          sleep interval
+          send(job)
+        rescue Exception => e
+          @log.error("#{e}\n#{$@}")
+        end
+      end
+      t[:name] = job
+      t
+    end
+
+    # Checks the other nodes, so that a node that is down fails over, and
+    # stops cleaning up the storages while vnodes are moving.
+    def watch_cluster
       nodes_check(@routing_table.nodes - [@stats.my_node_id]) if @routing_table.enabled_failover
 
       if (@stats.run_join || @stats.run_recover || @stats.run_balance) &&
          @stats.run_storage_clean_up
         stop_clean_up
       end
-    rescue Exception => e
-      @log.error("#{e}\n#{$@}")
     end
 
-    def timer_event_10sec
+    # Enables failover once all the nodes have started. After that, checks the
+    # versions of the nodes and syncs the routing table. Also starts cleaning up
+    # the storages, updates the replica cluster and resets the counters.
+    def maintain_cluster
       if @startup && @routing_table.enabled_failover == false
         @log.debug('nodes_check start')
         if nodes_check(@routing_table.nodes - [@stats.my_node_id])
@@ -554,8 +560,6 @@ module Roma
       end
 
       @stats.clear_counters
-    rescue Exception => e
-      @log.error("#{e}\n#{$@}")
     end
 
     # Whether every node of +nodes+ is up and has the same name. It stops at
