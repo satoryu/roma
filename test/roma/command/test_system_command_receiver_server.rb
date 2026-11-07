@@ -51,11 +51,11 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
   end
 
   def test_writebehind_rotate
-    @conn.server.wb_current_files['roma'] = 'wb/0.wb'
+    @conn.server.wb_writer.current_files['roma'] = 'wb/0.wb'
     @conn.relay_reply = 'ROTATED'
     assert_equal replies('ROTATED', other: 'ROTATED'), @conn.request('writebehind_rotate roma')
     assert_equal ["rwritebehind_rotate roma\r\n"], @conn.broadcasts
-    assert_equal ['roma'], @conn.server.rotated
+    assert_equal ['roma'], @conn.server.wb_writer.rotated
 
     # Nothing to rotate once the file is closed.
     assert_equal "NOT_OPEND\r\n", @conn.request('rwritebehind_rotate roma')
@@ -72,7 +72,7 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
   def test_writebehind_get_current_file
     @conn.relay_reply = 'NOT_OPEND'
     assert_equal replies('NOT_OPEND', other: 'NOT_OPEND'), @conn.request('writebehind_get_current_file roma')
-    @conn.server.wb_current_files['roma'] = 'wb/0.wb'
+    @conn.server.wb_writer.current_files['roma'] = 'wb/0.wb'
     assert_equal replies('wb/0.wb', other: 'NOT_OPEND'), @conn.request('writebehind_get_current_file roma')
     assert_equal "wb/0.wb\r\n", @conn.request('rwritebehind_get_current_file roma')
   end

@@ -121,7 +121,7 @@ module Roma
         @storages.each do |hash_name, st|
           send_stat_result("storages[#{hash_name}].", st.get_stat, regexp)
         end
-        send_stat_result(nil, $roma.wb_get_stat, regexp)
+        send_stat_result(nil, $roma.write_behind_stat, regexp)
         send_stat_result(nil, @routing_table.get_stat(@stats.my_node_id), regexp)
         send_stat_result(nil, conn_get_stat, regexp)
         send_stat_result(nil, DNSCache.instance.get_stat, regexp)
@@ -150,7 +150,7 @@ module Roma
 
         res = broadcast_cmd("rwritebehind_rotate #{s[1]}\r\n")
 
-        res[@stats.my_node_id] = if $roma.wb_rotate(s[1])
+        res[@stats.my_node_id] = if $roma.wb_writer.rotate(s[1])
                                    'ROTATED'
                                  else
                                    'NOT_OPEND'
@@ -162,7 +162,7 @@ module Roma
       def ev_rwritebehind_rotate(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        if $roma.wb_rotate(s[1])
+        if $roma.wb_writer.rotate(s[1])
           send_data("ROTATED\r\n")
         else
           send_data("NOT_OPEND\r\n")
@@ -175,7 +175,7 @@ module Roma
 
         res = broadcast_cmd("rwritebehind_get_path #{s[1]}\r\n")
 
-        ret = $roma.wb_get_path(s[1])
+        ret = $roma.wb_writer.get_path(s[1])
         res[@stats.my_node_id] = ret
 
         send_data("#{res}\r\n")
@@ -185,7 +185,7 @@ module Roma
       def ev_rwritebehind_get_path(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        ret = $roma.wb_get_path(s[1])
+        ret = $roma.wb_writer.get_path(s[1])
         send_data("#{ret}\r\n")
       end
 
@@ -195,7 +195,7 @@ module Roma
 
         res = broadcast_cmd("rwritebehind_get_current_file #{s[1]}\r\n")
 
-        ret = $roma.wb_get_current_file_path(s[1])
+        ret = $roma.wb_writer.get_current_file_path(s[1])
         res[@stats.my_node_id] = (ret || 'NOT_OPEND')
         send_data("#{res}\r\n")
       end
@@ -204,7 +204,7 @@ module Roma
       def ev_rwritebehind_get_current_file(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        ret = $roma.wb_get_current_file_path(s[1])
+        ret = $roma.wb_writer.get_current_file_path(s[1])
         if ret
           send_data("#{ret}\r\n")
         else
