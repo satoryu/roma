@@ -348,7 +348,7 @@ module Roma
         if s.length >= 3
           vnode = s[2].to_i
         else
-          d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+          d = @routing_table.digest(key)
           vnode = @routing_table.vnode_id(d)
         end
         res = @storages[hash_name].out(vnode, key, 0)
@@ -366,7 +366,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
+        d = @routing_table.digest(key) if d == 0
         data = read_bytes(s[5].to_i)
         read_bytes(2)
         vnode = @routing_table.vnode_id(d)
@@ -389,7 +389,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
+        d = @routing_table.digest(key) if d == 0
         zdata = read_bytes(s[5].to_i)
         read_bytes(2)
         vnode = @routing_table.vnode_id(d)

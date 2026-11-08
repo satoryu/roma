@@ -15,7 +15,7 @@ module Roma
       end
 
       def key_info(key)
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         s = format("d = %s 0x%x\r\n", d, d)

@@ -15,6 +15,29 @@ class RoutingTableTest < Test::Unit::TestCase
     assert_equal VN[3], @rt.vnode_id((2**32) - 1)
   end
 
+  KEYS = ['', 'a', 'key:0:1', "key\eroma", 'キー', 'k' * 1000].freeze
+
+  # The clients compute the digest so, and must find the same vnode.
+  def test_digest
+    KEYS.each do |key|
+      assert_equal Digest::SHA1.hexdigest(key).hex % (2**32), @rt.digest(key), key
+    end
+  end
+
+  data('16 bits' => 16, '33 bits' => 33, '64 bits' => 64)
+  def test_digest_of_other_hash_spaces(bits)
+    rt = Roma::Routing::RoutingTable.new(Roma::Routing::RoutingData.create(bits, 9, 2, [A1, B1]))
+    KEYS.each do |key|
+      assert_equal Digest::SHA1.hexdigest(key).hex % (2**bits), rt.digest(key), key
+    end
+  end
+
+  def test_digest_in_threads_and_fibers
+    expected = KEYS.map { |key| @rt.digest(key) }
+    digests = Array.new(4) { Thread.new { KEYS.map { |key| Fiber.new { @rt.digest(key) }.resume } } }.map(&:value)
+    assert_equal [expected] * 4, digests
+  end
+
   def test_search_nodes_returns_a_copy
     nodes = @rt.search_nodes(VN[0])
     assert_equal [A1, B1], nodes

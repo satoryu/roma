@@ -2,6 +2,7 @@ require 'roma/logging/rlogger'
 require 'roma/routing/routing_data'
 require 'roma/routing/merkle_tree'
 require 'json'
+require 'digest/sha1'
 
 module Roma
   module Routing
@@ -16,6 +17,8 @@ module Roma
         @redundancy = @routing_data.redundancy
         @divide_bits = @routing_data.divide_bits
         @hash_space_size = 2**@routing_data.digest_bits
+        # The digest in a hash space of up to 32 bits is the last 32 bits of the SHA-1.
+        @digest_mask = @hash_space_size - 1 if @routing_data.digest_bits <= 32
         @search_mask = @routing_data.search_mask
         @failure_counts = Hash.new(0)
         @failure_count_threshold = 5
@@ -23,6 +26,16 @@ module Roma
         @fail_time = Time.now
         @node_id_substitutions = {}
         init_merkle_tree
+      end
+
+      # The digest of +key+ in the hash space, which decides its vnode: the
+      # SHA-1 of the key modulo hash_space_size, as the clients compute it.
+      # Each Fiber reuses its own Digest::SHA1, which is faster than a new one.
+      def digest(key)
+        return Digest::SHA1.hexdigest(key).hex % @hash_space_size unless @digest_mask
+
+        sha1 = Thread.current[:roma_sha1] ||= Digest::SHA1.new
+        sha1.digest(key).unpack1('N', offset: 16) & @digest_mask
       end
 
       def count_vnodes(ap)
