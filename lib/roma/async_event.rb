@@ -6,14 +6,9 @@ require 'roma/configuration'
 module Roma
   module AsyncEvent
     @@async_queue = Queue.new
-    @@async_queue_latency = Queue.new
 
     def self.queue
       @@async_queue
-    end
-
-    def self.queue_latency
-      @@async_queue_latency
     end
 
     def start_async_event_loop
@@ -21,11 +16,6 @@ module Roma
         async_event_loop
       end
       @async_thread[:name] = __method__
-
-      @async_thread_latency = Thread.new do
-        async_event_loop_for_latency
-      end
-      @async_thread_latency[:name] = __method__
     rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
     end
@@ -39,13 +29,6 @@ module Roma
         sleep 0.1
       end
       @async_thread.exit
-
-      count = 0
-      while @@async_queue_latency.empty? == false && count < 100
-        count += 1
-        sleep 0.1
-      end
-      @async_thread_latency.exit
     end
 
     def async_event_loop
@@ -58,29 +41,6 @@ module Roma
               msg.wait
               msg.incr_count
               @@async_queue.push(msg)
-            end
-            t[:name] = __method__
-          else
-            @log.error("async event retry out:#{msg.inspect}")
-            msg.callback.call(msg, false) if msg.callback
-          end
-        end
-      end
-    rescue StandardError => e
-      @log.error("#{e}\n#{$ERROR_POSITION}")
-      retry
-    end
-
-    def async_event_loop_for_latency
-      loop do
-        while msg = @@async_queue_latency.pop
-          if send("asyncev_#{msg.event}", msg.args)
-            msg.callback.call(msg, true) if msg.callback
-          elsif msg.retry?
-            t = Thread.new do
-              msg.wait
-              msg.incr_count
-              @@async_queue_latency.push(msg)
             end
             t[:name] = __method__
           else
@@ -708,57 +668,6 @@ module Roma
       end
     ensure
       @log.info("#{__method__}:stop")
-    end
-
-    def asyncev_calc_latency_average(args)
-      latency, cmd = args
-      # @log.debug(__method__)
-
-      unless @stats.latency_data.key?(cmd) # only first execute target cmd
-        @stats.latency_data[cmd].store('latency', [])
-        @stats.latency_data[cmd].store('latency_max', {})
-        @stats.latency_data[cmd]['latency_max'].store('current', 0)
-        @stats.latency_data[cmd].store('latency_min', {})
-        @stats.latency_data[cmd]['latency_min'].store('current', 99_999)
-        @stats.latency_data[cmd].store('time', Time.now.to_i)
-      end
-
-      begin
-        @stats.latency_data[cmd]['latency'].delete_at(0) if @stats.latency_data[cmd]['latency'].length >= 10
-        @stats.latency_data[cmd]['latency'].push(latency)
-
-        if latency > @stats.latency_data[cmd]['latency_max']['current']
-          @stats.latency_data[cmd]['latency_max']['current'] =
-            latency
-        end
-        if latency < @stats.latency_data[cmd]['latency_min']['current']
-          @stats.latency_data[cmd]['latency_min']['current'] =
-            latency
-        end
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
-      ensure
-        if @stats.latency_check_time_count && Time.now.to_i - @stats.latency_data[cmd]['time'] > @stats.latency_check_time_count
-          average = @stats.latency_data[cmd]['latency'].inject(0.0) do |r, i|
-            r + i
-          end / @stats.latency_data[cmd]['latency'].size
-          max = @stats.latency_data[cmd]['latency_max']['current']
-          min = @stats.latency_data[cmd]['latency_min']['current']
-          @log.debug("Latency average[#{cmd}]: #{format('%.8f', average)}" \
-                     "(denominator=#{@stats.latency_data[cmd]['latency'].length} " \
-                     "max=#{format('%.8f', max)} " \
-                     "min=#{format('%.8f', min)})")
-
-          @stats.latency_data[cmd]['time'] = Time.now.to_i
-          @stats.latency_data[cmd]['latency_past'] = @stats.latency_data[cmd]['latency']
-          @stats.latency_data[cmd]['latency'] = []
-          @stats.latency_data[cmd]['latency_max']['past'] = @stats.latency_data[cmd]['latency_max']['current']
-          @stats.latency_data[cmd]['latency_max']['current'] = 0
-          @stats.latency_data[cmd]['latency_min']['past'] = @stats.latency_data[cmd]['latency_min']['current']
-          @stats.latency_data[cmd]['latency_min']['current'] = 99_999
-        end
-      end
-      true
     end
 
     def asyncev_start_storage_flush_process(args)
