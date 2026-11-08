@@ -30,6 +30,8 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb
 | `--redis-server` | `redis-server` | redis-server to run |
 | `--yjit` | `off` | Run the ROMA nodes with YJIT: `off`, `on` or `both` |
 | `--pipeline` | 1 | Requests that a client sends at once, such as `1,4,16` |
+| `--profile` | | Record where the ROMA nodes spend their time in a directory |
+| `--stackprof` | | With `--profile`, record the Ruby methods with StackProf too |
 | `--keep` | | Keep the directories of the servers, with their output |
 
 ### Server CPU
@@ -52,6 +54,33 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb --pipelin
 ```
 
 The latencies are those of the requests sent together, so they grow with the depth. The memory and disk table is from the sets of the first depth.
+
+### Profile
+`--profile DIR` records where a ROMA node spends its time while each command is measured, in files named after the target, the command and the pipeline, such as `hash-get-p1`:
+
+```
+BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb -t hash --pipeline 1,16 --profile profile
+```
+
+- `summary.md`: the user and system CPU time for a request, and how the main thread, which runs the event loop and handles the requests, spent its time.
+- `.sample.txt`: the native stacks of all the threads of the node, every millisecond, from macOS's `sample`. Without `sample`, `--profile` records only the CPU times.
+- `.sample.md`: its summary by `sample_report.rb`. For each thread that did more than wait, it tells the share of the time in each kind of work, and the functions where the thread was most. `ruby benchmark/sample_report.rb FILE` summarizes a `.sample.txt` again.
+
+| Kind | |
+|---|---|
+| waiting for events | In select, waiting for requests: the node was idle |
+| waiting for the GVL | Ready to run, waiting for another Ruby thread to release the GVL |
+| blocked | Waiting for something else, such as a queue or sleep |
+| socket I/O | In read and writev, on the sockets |
+| GC | Collecting garbage |
+| other system calls | In the other functions of the kernel |
+| running | In Ruby, EventMachine and the libraries |
+
+The shares are of the time, not of the CPU time. A main thread that waits for events much is idle: the clients don't keep it busy.
+
+With `--stackprof`, the node also runs StackProf, and `.stackprof.txt` tells its Ruby methods. `stackprof` reads the `.stackprof.dump` for more. The time in a C method is the method's own, so the event loop is all in `EventMachine.run_machine`. StackProf interrupts the node with a signal every 200 microseconds, so it slows the node more than `sample`.
+
+Profiling slows the node a little, so compare the numbers of runs with the same options.
 
 ### Memory and disk
 The second table tells, for each target, the resident memory (RSS) of the server before and after the sets, the growth per key, and the disk space of the storage files after the sets.
