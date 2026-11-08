@@ -49,6 +49,10 @@ class PluginTestHarness
       2**32
     end
 
+    def digest(key)
+      Digest::SHA1.hexdigest(key).hex % hash_space_size
+    end
+
     def vnode_id(_digest)
       0
     end

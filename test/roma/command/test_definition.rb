@@ -92,6 +92,7 @@ class DefinitionTestReceiver
       @hash_space_size = 10
     end
 
+    def digest(key) = Digest::SHA1.hexdigest(key).hex % @hash_space_size
     def vnode_id(_d) = 1
     def search_nodes_for_write(_vnode) = %w(roma0 roma1)
   end

@@ -282,7 +282,7 @@ module Roma
       def ev_get_key_info(s)
         return send_data("CLIENT_ERROR number of arguments(0 for 1)\r\n") if s.length != 2
 
-        d = Digest::SHA1.hexdigest(s[1]).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(s[1])
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         send_data(format("d = %s 0x%x\r\n", d, d))

@@ -1,6 +1,5 @@
 require 'roma/command_plugin'
 require 'zlib'
-require 'digest/sha1'
 require 'roma/async_event'
 
 module Roma
@@ -25,7 +24,7 @@ module Roma
 
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes(vnode)
 
@@ -50,7 +49,7 @@ module Roma
       def ev_fget(s)
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes(vnode)
 
@@ -75,7 +74,7 @@ module Roma
         kvn = {} # {key1=>vn1, key2=>vn2, ... }
         s[1..-1].each do |kh|
           key, = kh.split("\e") # split a hash-name
-          d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+          d = @routing_table.digest(key)
           kvn[key] = vnode = @routing_table.vnode_id(d)
           nodes = @routing_table.search_nodes(vnode)
           unless nodes.empty? # check the node existence
@@ -118,7 +117,7 @@ module Roma
 
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
 
@@ -174,7 +173,7 @@ module Roma
       def ev_fdelete(s)
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
@@ -223,7 +222,7 @@ module Roma
       def ev_rdelete(s)
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
         unless @storages.key?(hash_name)
           send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
@@ -266,7 +265,7 @@ module Roma
       def ev_cas(s)
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         v = read_bytes(s[4].to_i)
         read_bytes(2)
         vnode = @routing_table.vnode_id(d)
@@ -286,7 +285,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
+        d = @routing_table.digest(key) if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
         vnode = @routing_table.vnode_id(d)
@@ -312,7 +311,7 @@ module Roma
       def ev_set_expt(s)
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
@@ -356,7 +355,7 @@ module Roma
       def ev_fset_expt(s)
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
@@ -416,7 +415,7 @@ module Roma
           return
         end
 
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
 
         nodes = @routing_table.search_nodes(vnode)
@@ -635,7 +634,7 @@ module Roma
 
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         v = read_bytes(bytes)
         read_bytes(2)
         vnode = @routing_table.vnode_id(d)
@@ -655,7 +654,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
+        d = @routing_table.digest(key) if d == 0
         v = read_bytes(s[4].to_i)
         read_bytes(2)
         vnode = @routing_table.vnode_id(d)
@@ -701,7 +700,7 @@ module Roma
       def incr_decr(fnc, s)
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size
+        d = @routing_table.digest(key)
         v = s[2].to_i
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
@@ -720,7 +719,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = s[2].to_i
-        d = Digest::SHA1.hexdigest(key).hex % @routing_table.hash_space_size if d == 0
+        d = @routing_table.digest(key) if d == 0
         v = s[3].to_i
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
