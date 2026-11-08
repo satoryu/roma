@@ -111,7 +111,7 @@ module Roma
         @@connections.delete(self)
         if @enter_time
           # hilatency check
-          ps = Time.now - @enter_time
+          ps = monotonic_time - @enter_time
           @log.warn("#{@lastcmd} has incompleted, passage of #{ps} seconds") if ps > @stats.hilatency_warn_time
         end
         @log.info("Disconnected from #{@addr}:#{@port}")
@@ -152,13 +152,14 @@ module Roma
           @enter_time = nil
           next unless s = gets
 
-          @enter_time = Time.now
+          @enter_time = monotonic_time
           s = s.chomp.split(/ /)
+          cmd = s[0]&.downcase
           # check whether comand was send or not? and check this command listed on ROMA?
-          if s[0] && @@event_list.key?(s[0].downcase)
-            send(@@event_list[s[0].downcase], s)
+          if cmd && @@event_list.key?(cmd)
+            send(@@event_list[cmd], s)
             @lastcmd = s
-            next if @@system_commands.key?(s[0].downcase)
+            next if @@system_commands.key?(cmd)
           elsif s.length == 0
             next
           elsif s[0] == '!!'
@@ -177,7 +178,7 @@ module Roma
           end
 
           # hilatency check
-          ps = Time.now - @enter_time
+          ps = monotonic_time - @enter_time
           @log.warn("hilatency occurred in #{@lastcmd} put in a #{ps} seconds") if ps > @stats.hilatency_warn_time
           # check latency average
           @stats.record_latency(@lastcmd[0], ps) if @stats.latency_log && @stats.latency_check_cmd.include?(@lastcmd[0])
@@ -212,20 +213,18 @@ module Roma
 
         return unless @read_buffer.size >= size
 
-        r = @read_buffer[0..size - 1]
-        @read_buffer = @read_buffer[size..-1]
-        r
+        @read_buffer.slice!(0, size)
       end
 
       def read_bytes(size, mult = 1)
-        t = Time.now.to_i
+        t = monotonic_time
         while @connected
           d = pop(size)
           return d if d
 
           remain = size - @read_buffer.size
           Fiber.yield(remain)
-          next unless Time.now.to_i - t > @@timeout * mult
+          next unless monotonic_time - t > @@timeout * mult
 
           @log.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} read_bytes time out")
           close_connection
@@ -244,6 +243,11 @@ module Roma
 
         end
         nil
+      end
+
+      # Seconds as a Float, which unlike Time.now allocates no object.
+      def monotonic_time
+        Process.clock_gettime(Process::CLOCK_MONOTONIC)
       end
 
       def detach_socket
