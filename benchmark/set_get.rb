@@ -16,6 +16,12 @@
 # --pipeline makes the clients send several requests at once and then read
 # their replies, so that the server reads and writes them together.
 #
+# --rate makes the clients send the requests on a schedule, at a fixed rate
+# in all, instead of after the replies, and measures each latency from when
+# the request was due. A request that a slow reply delays waits as it would
+# with many independent clients, so pauses of the server show in the
+# percentiles.
+#
 # --profile records where a ROMA node spends its time while each command is
 # measured: on macOS, the native stacks of its threads with sample(1), the
 # objects that it allocates and its GC, and with --stackprof also the Ruby
@@ -436,12 +442,13 @@ module SetGetBenchmark
   # Sends +requests+ set or get requests from each of +clients+ processes,
   # +pipeline+ requests at once, and measures how fast.
   class Runner
-    def initialize(clients:, requests:, value_size:, warmup:, pipelines:)
+    def initialize(clients:, requests:, value_size:, warmup:, pipelines:, rate: nil)
       @clients = clients
       @requests = requests
       @value = 'v' * value_size
       @warmup = warmup
       @pipelines = pipelines
+      @rate = rate
     end
 
     # Returns the Results of set and get for each pipeline, and the Usage
@@ -507,12 +514,25 @@ module SetGetBenchmark
     end
 
     # Client +n+ uses its own keys. A get fails if the value isn't the one set.
+    # With --rate, a batch is due every +interval+ seconds, and the clients
+    # take turns, so that the requests come evenly. A batch that isn't sent
+    # when it is due, because the last reply came late, is sent at once, and
+    # its latency is from when it was due.
     def send_requests(client, command, pipeline, n)
       latencies = []
       errors = 0
+      if @rate
+        interval = pipeline * @clients / @rate
+        due = Process.clock_gettime(Process::CLOCK_MONOTONIC) + (interval * n / @clients)
+      end
       (0...@requests).each_slice(pipeline) do |batch|
         keys = batch.map { |i| "key:#{n}:#{i}" }
         t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        if due
+          sleep(due - t) if due > t
+          t = due
+          due += interval
+        end
         succeeded = client.pipeline(command, keys, @value)
         latency = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t
         latencies.concat([latency] * keys.size)
@@ -552,6 +572,11 @@ module SetGetBenchmark
         options[:pipelines] = v.map { |depth| Integer(depth) }
         raise OptionParser::InvalidArgument, v.join(',') unless options[:pipelines].all?(&:positive?)
       end
+      opts.on('--rate OPS', Float, 'Send the requests at OPS a second in all, on a schedule') do |v|
+        raise OptionParser::InvalidArgument, v.to_s unless v.positive?
+
+        options[:rate] = v
+      end
       opts.on('--profile DIR', 'Record where the ROMA nodes spend their time in DIR') { |v| options[:profile] = v }
       opts.on('--stackprof [MODE]', %w(cpu object), 'With --profile, run StackProf too: cpu (default) or object') do |v|
         options[:stackprof] = v || 'cpu'
@@ -577,7 +602,7 @@ module SetGetBenchmark
 
   def main(argv)
     options = parse(argv)
-    runner = Runner.new(**options.slice(:clients, :requests, :value_size, :warmup, :pipelines))
+    runner = Runner.new(**options.slice(:clients, :requests, :value_size, :warmup, :pipelines, :rate))
     results = []
     usages = []
     versions = []
@@ -599,14 +624,16 @@ module SetGetBenchmark
   def report(results, usages, options, versions)
     lines = []
     lines << "Ruby #{RUBY_VERSION}, #{versions.join(', ')}, #{RbConfig::CONFIG['host_os']}"
-    lines << "#{options[:clients]} clients x #{options[:requests]} requests, values of #{options[:value_size]} bytes"
+    lines << "#{options[:clients]} clients x #{options[:requests]} requests, values of #{options[:value_size]} bytes" \
+             "#{format(', at %.0f requests a second', options[:rate]) if options[:rate]}"
     lines << ''
-    lines << '| target | command | pipeline | ops/s | p50 (ms) | p99 (ms) | max (ms) | server CPU (us/req) | errors |'
-    lines << '|---|---|--:|--:|--:|--:|--:|--:|--:|'
+    lines << '| target | command | pipeline | ops/s | p50 (ms) | p99 (ms) | p99.9 (ms) | max (ms) ' \
+             '| server CPU (us/req) | errors |'
+    lines << '|---|---|--:|--:|--:|--:|--:|--:|--:|--:|'
     results.each do |r|
-      lines << format('| %s | %s | %d | %.0f | %.3f | %.3f | %.3f | %.1f | %d |', r.target, r.command, r.pipeline,
-                      r.ops_per_second, r.percentile(50), r.percentile(99), r.percentile(100), r.cpu_per_request,
-                      r.errors)
+      lines << format('| %s | %s | %d | %.0f | %.3f | %.3f | %.3f | %.3f | %.1f | %d |', r.target, r.command,
+                      r.pipeline, r.ops_per_second, r.percentile(50), r.percentile(99), r.percentile(99.9),
+                      r.percentile(100), r.cpu_per_request, r.errors)
     end
     lines << ''
     lines << '| target | keys | RSS before set (MB) | RSS after set (MB) | RSS per key (bytes) | disk (MB) |'

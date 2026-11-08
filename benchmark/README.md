@@ -30,6 +30,7 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb
 | `--redis-server` | `redis-server` | redis-server to run |
 | `--yjit` | `off` | Run the ROMA nodes with YJIT: `off`, `on` or `both` |
 | `--pipeline` | 1 | Requests that a client sends at once, such as `1,4,16` |
+| `--rate` | | Send the requests at this many a second in all, on a schedule |
 | `--profile` | | Record where the ROMA nodes spend their time in a directory |
 | `--stackprof` | | With `--profile`, run StackProf too: `cpu` (default) or `object` |
 | `--keep` | | Keep the directories of the servers, with their output |
@@ -54,6 +55,17 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb --pipelin
 ```
 
 The latencies are those of the requests sent together, so they grow with the depth. The memory and disk table is from the sets of the first depth.
+
+### Rate
+By default a client sends a request after the reply of the last one. If the server pauses, such as for GC, each client waits for only one request, so the pause hardly shows in the percentiles, only in the max. Many independent clients don't wait for each other: all the requests that come during the pause wait.
+
+`--rate 20000` makes the clients send 20,000 requests a second in all, each when it is due, and measures each latency from when it was due, not from when it was sent. A request that a late reply delays waits as long as it would have with independent clients, so the percentiles show the pauses.
+
+```
+BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb -t hash,redis -n 250000 --rate 20000
+```
+
+Give a rate below what the server can do: if ops/s is below the rate, the server doesn't keep up, and the latencies grow until the end. With `--pipeline`, a client sends a batch when it is due, so the rate is of the requests, not of the batches.
 
 ### Profile
 `--profile DIR` loads `profiler.rb` into the ROMA nodes and records where a node spends its time while each command is measured, in files named after the target, the command and the pipeline, such as `hash-get-p1`:
