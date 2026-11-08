@@ -16,6 +16,10 @@
 # --pipeline makes the clients send several requests at once and then read
 # their replies, so that the server reads and writes them together.
 #
+# --profile records where a ROMA node spends its time while each command is
+# measured: on macOS, the native stacks of its threads with sample(1), and
+# with --stackprof also the Ruby methods with StackProf.
+#
 # --yjit runs the ROMA nodes with YJIT, or both without and with it; the
 # clients are the same either way.
 require 'optparse'
@@ -24,9 +28,11 @@ require 'socket'
 require 'tmpdir'
 require 'fileutils'
 require 'json'
+require_relative 'sample_report'
 
 module SetGetBenchmark
   ROMA = File.expand_path('../bin/roma', __dir__)
+  PROFILER = File.expand_path('profiler.rb', __dir__)
   ENGINES = %w(hash groonga sqlite3 dbm).freeze
   TARGETS = [*ENGINES, 'redis'].freeze
 
@@ -113,16 +119,17 @@ module SetGetBenchmark
 
   # A server that runs while the block of run does.
   class Server
-    attr_reader :name, :port
+    attr_reader :name, :port, :pid
 
     def initialize(name, port)
       @name = name
       @port = port
     end
 
-    def run(keep: false)
+    def run(keep: false, env: {})
       @dir = Dir.mktmpdir("set_get_#{name}_")
-      @pid = Process.spawn(*command(@dir), chdir: @dir, out: File.join(@dir, 'server.out'), err: %i(child out))
+      out = File.join(@dir, 'server.out')
+      @pid = Process.spawn(env, *command(@dir), chdir: @dir, out: out, err: %i(child out))
       wait_until_ready
       yield
     ensure
@@ -136,10 +143,17 @@ module SetGetBenchmark
       Integer(IO.popen(['ps', '-o', 'rss=', '-p', @pid.to_s], &:read).strip) * 1024
     end
 
-    # The CPU time that the server has used, from ps: [[H:]M]M:SS[.ss].
+    # The CPU time that the server has used, from ps.
     def cpu_seconds
-      IO.popen(['ps', '-o', 'time=', '-p', @pid.to_s], &:read).strip.split(':').map(&:to_f)
-        .inject { |sum, part| (sum * 60) + part }
+      cpu_times('time').first
+    end
+
+    # The CPU time of each of +fields+ of ps, such as utime, in seconds:
+    # [[H:]M]M:SS[.ss].
+    def cpu_times(*fields)
+      IO.popen(['ps', '-o', fields.map { |f| "#{f}=" }.join(','), '-p', @pid.to_s], &:read).split.map do |time|
+        time.split(':').map(&:to_f).inject { |sum, part| (sum * 60) + part }
+      end
     end
 
     # The disk space of the data, or nil if the server keeps none.
@@ -203,12 +217,16 @@ module SetGetBenchmark
     end
   end
 
-  # A ROMA node with a storage engine, run with YJIT if +yjit+.
+  # A ROMA node with a storage engine, run with YJIT if +yjit+. +profile+
+  # is a Profile to record it with.
   class RomaServer < Server
-    def initialize(engine, port, yjit: false)
+    attr_reader :profile
+
+    def initialize(engine, port, yjit: false, profile: nil)
       super(yjit ? "#{engine}+yjit" : engine, port)
       @engine = engine
       @yjit = yjit
+      @profile = profile
     end
 
     def client_class
@@ -240,7 +258,10 @@ module SetGetBenchmark
                   chdir: dir, out: File::NULL)
       raise "roma route create #{node_id} failed" unless ok
 
-      [RbConfig.ruby, *('--yjit' if @yjit), ROMA, 'server', 'localhost', '-p', port.to_s, '--config', 'config.rb']
+      ruby = [RbConfig.ruby]
+      ruby << '--yjit' if @yjit
+      ruby.push('-r', PROFILER) if @profile&.stackprof?
+      [*ruby, ROMA, 'server', 'localhost', '-p', port.to_s, '--config', 'config.rb']
     end
   end
 
@@ -255,6 +276,8 @@ module SetGetBenchmark
       RespClient
     end
 
+    def profile = nil
+
     def version
       IO.popen([@redis_server, '--version'], &:read)[/v=(\S+)/, 1].then { |v| "Redis #{v}" }
     end
@@ -267,6 +290,107 @@ module SetGetBenchmark
 
     def command(_dir)
       [@redis_server, '--port', port.to_s, '--bind', '127.0.0.1', '--save', '', '--appendonly', 'no']
+    end
+  end
+
+  # Records where a ROMA node spends its time while a command is measured,
+  # in files in +dir+ named after the target, the command and the pipeline:
+  #
+  # - .sample.txt and .sample.md: the native stacks of all the threads, from
+  #   sample(1), which only macOS has, and their summary by sample_report.rb.
+  # - .stackprof.dump and .stackprof.txt, with +stackprof+: the Ruby methods,
+  #   from StackProf. The time in a C method, such as
+  #   EventMachine.run_machine where the event loop waits, reads and writes,
+  #   is the method's own. Its timer signals interrupt the node often, so
+  #   it slows the node more than sample(1).
+  #
+  # summary.md tells the user and system CPU time for a request, and how the
+  # main thread, which runs the event loop, spent its time.
+  class Profile
+    def initialize(dir, stackprof: false)
+      @dir = File.expand_path(dir)
+      @stackprof = stackprof
+      FileUtils.mkdir_p(@dir)
+      @sample = system('which', 'sample', out: File::NULL)
+      warn 'sample(1) is missing, so --profile records only the CPU times.' unless @sample
+      @rows = []
+    end
+
+    def stackprof? = @stackprof
+
+    # The environment for profiler.rb in a ROMA node.
+    def env(server)
+      return {} unless @stackprof
+
+      @dumps = File.join(@dir, "#{server.name}.dumps")
+      FileUtils.mkdir_p(@dumps)
+      @count = 0
+      { 'SET_GET_PROFILE_DIR' => @dumps }
+    end
+
+    def start(server, name)
+      @name = name
+      @times = server.cpu_times('utime', 'time')
+      Process.kill(:USR2, server.pid) if @stackprof
+      return unless @sample
+
+      @sampler = Process.spawn('sample', server.pid.to_s, '3600', '1', '-file', path('sample.txt'),
+                               out: File::NULL, err: File::NULL)
+      sleep 0.5 # Let sample attach.
+    end
+
+    def stop(server, requests)
+      user, total = server.cpu_times('utime', 'time').zip(@times).map { |now, before| now - before }
+      main = stop_sample
+      Process.kill(:USR2, server.pid) if @stackprof
+      write_stackprof if @stackprof
+      @rows << [@name, requests, user, total - user, main]
+      File.write(File.join(@dir, 'summary.md'), summary)
+    end
+
+    # Removes the directory where profiler.rb wrote.
+    def finish
+      FileUtils.rm_rf(@dumps) if @dumps
+    end
+
+    private
+
+    def path(suffix)
+      File.join(@dir, "#{@name}.#{suffix}")
+    end
+
+    # Returns the main thread of the samples.
+    def stop_sample
+      return unless @sampler
+
+      Process.kill(:INT, @sampler)
+      Process.wait(@sampler)
+      @sampler = nil
+      text = File.read(path('sample.txt'))
+      File.write(path('sample.md'), SampleReport.report(text))
+      SampleReport.parse(text).find { |t| t.name == 'main' }
+    end
+
+    def write_stackprof
+      @count += 1
+      dump = File.join(@dumps, "#{@count}.dump")
+      sleep 0.1 until File.exist?(dump)
+      File.rename(dump, path('stackprof.dump'))
+      text = IO.popen([Gem.bin_path('stackprof', 'stackprof'), '--text', '--limit', '40', path('stackprof.dump')],
+                      &:read)
+      File.write(path('stackprof.txt'), text)
+    end
+
+    def summary
+      kinds = SampleReport::KINDS.keys - ['blocked']
+      lines = ["| profile | requests | user (us/req) | system (us/req) | #{kinds.join(' | ')} |",
+               "|---|--:|--:|--:|#{'--:|' * kinds.size}"]
+      @rows.each do |name, requests, user, system, main|
+        shares = kinds.map { |kind| main ? format('%.1f%%', main.share(kind)) : '-' }
+        lines << format('| %s | %d | %.1f | %.1f | %s |', name, requests, user / requests * 1_000_000,
+                        system / requests * 1_000_000, shares.join(' | '))
+      end
+      lines.join("\n") << "\n"
     end
   end
 
@@ -349,6 +473,8 @@ module SetGetBenchmark
       end
       start_r.close
       sleep 0.5 # Let the clients connect.
+      profile = server.profile
+      profile&.start(server, "#{server.name}-#{command}-p#{pipeline}")
       cpu = server.cpu_seconds
       started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       start_w.write('x' * @clients)
@@ -362,6 +488,7 @@ module SetGetBenchmark
       seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
       cpu = server.cpu_seconds - cpu
       latencies = reports.flat_map { |report| report[:latencies] }.sort
+      profile&.stop(server, latencies.size)
       errors = reports.sum { |report| report[:errors] }
       Result.new(server.name, command, pipeline, latencies.size, seconds, latencies, errors, cpu)
     end
@@ -412,19 +539,25 @@ module SetGetBenchmark
         options[:pipelines] = v.map { |depth| Integer(depth) }
         raise OptionParser::InvalidArgument, v.join(',') unless options[:pipelines].all?(&:positive?)
       end
+      opts.on('--profile DIR', 'Record where the ROMA nodes spend their time in DIR') { |v| options[:profile] = v }
+      opts.on('--stackprof', 'With --profile, record the Ruby methods with StackProf too') do
+        options[:stackprof] = true
+      end
       opts.on('--keep', 'Keep the directories of the servers, with their output') { options[:keep] = true }
     end.parse!(argv)
+    abort '--stackprof needs --profile.' if options[:stackprof] && !options[:profile]
     options
   end
 
   # The servers to measure, in order. Redis runs once whatever --yjit is.
   def servers(options)
+    profile = Profile.new(options[:profile], stackprof: options[:stackprof]) if options[:profile]
     yjits = { 'off' => [false], 'on' => [true], 'both' => [false, true] }.fetch(options[:yjit])
     options[:targets].flat_map do |target|
       if target == 'redis'
         [RedisServer.new(options[:port], options[:redis_server])]
       else
-        yjits.map { |yjit| RomaServer.new(target, options[:port], yjit: yjit) }
+        yjits.map { |yjit| RomaServer.new(target, options[:port], yjit: yjit, profile: profile) }
       end
     end
   end
@@ -437,11 +570,12 @@ module SetGetBenchmark
     versions = []
     servers(options).each do |server|
       warn "Measuring #{server.name} ..."
-      server.run(keep: options[:keep]) do
+      server.run(keep: options[:keep], env: server.profile&.env(server) || {}) do
         target_results, usage = runner.run(server)
         results.concat(target_results)
         usages << usage
       end
+      server.profile&.finish
       versions << server.version
     end
     puts report(results, usages, options, versions.uniq)
