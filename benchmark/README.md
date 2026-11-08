@@ -78,7 +78,7 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb -t hash -
 
 The shares are of the time, not of the CPU time. A main thread that waits for events much is idle: the clients don't keep it busy.
 
-With `--stackprof`, the node also runs StackProf, and `.stackprof.txt` tells its Ruby methods, also `stackprof FILE.stackprof.dump` reads it. The time in a C method is the method's own, so the event loop is all in `EventMachine.run_machine`. StackProf interrupts the node with a signal every 200 microseconds, so it slows the node more than `sample`.
+With `--stackprof`, the node also runs StackProf, and `.stackprof.txt` tells its Ruby methods. `stackprof` reads the `.stackprof.dump` for more. The time in a C method is the method's own, so the event loop is all in `EventMachine.run_machine`. StackProf interrupts the node with a signal every 200 microseconds, so it slows the node more than `sample`.
 
 Profiling slows the node a little, so compare the numbers of runs with the same options.
 
