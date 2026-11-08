@@ -1,4 +1,5 @@
 require 'singleton'
+require 'roma/logging/rlogger'
 
 module Roma
   class Stats
@@ -151,7 +152,44 @@ module Roma
       @last_clean_up.to_i + @clean_up_interval < Time.now.to_i
     end
 
+    # Records +latency+, the seconds that +cmd+ took, in latency_data: the
+    # last 10 latencies, the maximum and the minimum. Every
+    # latency_check_time_count seconds, logs their average and starts over.
+    # The handler calls it while latency_log is on.
+    def record_latency(cmd, latency)
+      data = @latency_data[cmd]
+      if data.empty?
+        data['latency'] = []
+        data['latency_max'] = { 'current' => 0 }
+        data['latency_min'] = { 'current' => 99_999 }
+        data['time'] = Time.now.to_i
+      end
+      data['latency'].shift if data['latency'].length >= 10
+      data['latency'] << latency
+      data['latency_max']['current'] = latency if latency > data['latency_max']['current']
+      data['latency_min']['current'] = latency if latency < data['latency_min']['current']
+      return unless @latency_check_time_count && Time.now.to_i - data['time'] > @latency_check_time_count
+
+      log_latency(cmd, data)
+      data['time'] = Time.now.to_i
+      data['latency_past'] = data['latency']
+      data['latency'] = []
+      %w(latency_max latency_min).each { |k| data[k]['past'] = data[k]['current'] }
+      data['latency_max']['current'] = 0
+      data['latency_min']['current'] = 99_999
+    end
+
     private
+
+    def log_latency(cmd, data)
+      average = data['latency'].sum(0.0) / data['latency'].size
+      Logging::RLogger.instance.debug(
+        "Latency average[#{cmd}]: #{format('%.8f', average)}" \
+        "(denominator=#{data['latency'].length} " \
+        "max=#{format('%.8f', data['latency_max']['current'])} " \
+        "min=#{format('%.8f', data['latency_min']['current'])})"
+      )
+    end
 
     def clear_count(var)
       return unless instance_variable_get(var) > 0xffffffff

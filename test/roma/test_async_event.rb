@@ -63,26 +63,23 @@ class AsyncEventLoopTest < Test::Unit::TestCase
   def teardown
     @h.call(:stop_async_event_loop) if @h.instance_variable_get(:@async_thread)
     Roma::AsyncEvent.queue.clear
-    Roma::AsyncEvent.queue_latency.clear
     super
   end
 
-  data('async_queue' => :queue, 'latency queue' => :queue_latency)
-  def test_runs_the_event_and_calls_back(queue)
+  def test_runs_the_event_and_calls_back
     @h.start_async_event_loop
     results = Queue.new
-    Roma::AsyncEvent.send(queue).push(Roma::AsyncMessage.new('ok', 'a') { |msg, ok| results << [msg.args, ok] })
+    Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('ok', 'a') { |msg, ok| results << [msg.args, ok] })
     assert_equal ['a', true], results.pop
   end
 
-  data('async_queue' => :queue, 'latency queue' => :queue_latency)
-  def test_retries_a_failed_event(queue)
+  def test_retries_a_failed_event
     @h.start_async_event_loop
     results = Queue.new
     msg = Roma::AsyncMessage.new('ng', 'a') { |m, ok| results << [m.args, ok] }
     msg.instance_variable_set(:@retry_max, 2)
     msg.instance_variable_set(:@retry_wait, 0)
-    Roma::AsyncEvent.send(queue).push(msg)
+    Roma::AsyncEvent.queue.push(msg)
     assert_equal ['a', false], results.pop
     # Run once, then retried twice.
     assert_equal 3, @h.handled.size
@@ -639,28 +636,6 @@ class AsyncEventStorageTest < Test::Unit::TestCase
     wait_until('cache cleaning') { @h.storage.dbs[db_index] == :normal }
     assert_equal 'v', @h.storage.get(vnode, 'cached', digest('cached'))
     assert_equal [], @h.storage.keys_in_cache(db_index)
-  end
-
-  def test_calc_latency_average
-    @h.stats.latency_check_time_count = 60
-    [0.3, 0.1, 0.2].each { |latency| assert_true @h.call(:asyncev_calc_latency_average, [latency, 'get']) }
-    data = @h.stats.latency_data['get']
-    assert_equal [0.3, 0.1, 0.2], data['latency']
-    assert_equal 0.3, data['latency_max']['current']
-    assert_equal 0.1, data['latency_min']['current']
-
-    # Keeps the last 10.
-    11.times { |i| @h.call(:asyncev_calc_latency_average, [i, 'get']) }
-    assert_equal (1..10).to_a, data['latency']
-
-    # After latency_check_time_count seconds, starts over.
-    data['time'] -= 61
-    @h.call(:asyncev_calc_latency_average, [0.5, 'get'])
-    assert_equal [], data['latency']
-    assert_equal [2, 3, 4, 5, 6, 7, 8, 9, 10, 0.5], data['latency_past']
-    assert_equal 10, data['latency_max']['past']
-    assert_equal 0, data['latency_max']['current']
-    assert_equal 99_999, data['latency_min']['current']
   end
 end
 
