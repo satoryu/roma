@@ -102,13 +102,14 @@ module RequestPath
 
   # Gives the requests of +command+ for +keys+ to +conn+, +pipeline+ at once.
   # Returns the CPU seconds and the objects allocated in receive_data.
+  # It makes each batch just before it, not all of them first: they would
+  # be many live objects, which a node doesn't have, and make its GC slower.
   def measure(conn, command, keys, value, pipeline)
-    batches = keys.each_slice(pipeline).map do |batch|
-      [batch.map { |key| request(command, key, value) }.join, batch.map { |key| reply(command, key, value) }.join]
-    end
     cpu = 0.0
     objects = 0
-    batches.each do |data, expected|
+    keys.each_slice(pipeline) do |batch|
+      data = batch.map { |key| request(command, key, value) }.join
+      expected = batch.map { |key| reply(command, key, value) }.join
       objects -= GC.stat(:total_allocated_objects)
       started = Process.clock_gettime(Process::CLOCK_PROCESS_CPUTIME_ID)
       conn.receive_data(data)
