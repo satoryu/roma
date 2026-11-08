@@ -12,34 +12,37 @@ module SetGetProfiler
   INTERVALS = { cpu: 200, wall: 200, object: 1 }.freeze
   GC_KEYS = %i(count minor_gc_count major_gc_count total_allocated_objects time).freeze
 
-  # A trap mustn't do the work itself, so it wakes a thread.
+  # StackProf samples the thread that starts it, so the trap, which runs in
+  # the main thread where the event loop handles the requests, starts and
+  # stops it. A thread writes the files, which a trap mustn't do.
   def self.run
     require 'stackprof' if STACKPROF
-    r, w = IO.pipe
-    Signal.trap(:USR2) { w.write_nonblock('.') }
+    records = Queue.new
+    gc = nil
+    Signal.trap(:USR2) do
+      if gc
+        StackProf.stop if STACKPROF
+        records << gc.to_h { |key, before| [key, GC.stat(key) - before] }
+        gc = nil
+      else
+        gc = GC.stat.slice(*GC_KEYS)
+        StackProf.start(mode: STACKPROF, interval: INTERVALS.fetch(STACKPROF), raw: true) if STACKPROF
+      end
+    end
     Thread.new do
       count = 0
-      gc = nil
-      while r.read(1)
-        if gc
-          StackProf.stop if STACKPROF
-          count += 1
-          write(count, gc)
-          gc = nil
-        else
-          gc = GC.stat.slice(*GC_KEYS)
-          StackProf.start(mode: STACKPROF, interval: INTERVALS.fetch(STACKPROF), raw: true) if STACKPROF
-        end
+      while (record = records.pop)
+        count += 1
+        write(count, record)
       end
     end
   end
 
   # Writes N.dump before N.json, which tells that both are there.
-  def self.write(count, gc_before)
+  def self.write(count, record)
     path = File.join(DIR, count.to_s)
     StackProf.results("#{path}.dump") if STACKPROF
-    after = GC.stat
-    File.write("#{path}.tmp", JSON.generate(gc_before.to_h { |key, before| [key, after[key] - before] }))
+    File.write("#{path}.tmp", JSON.generate(record))
     File.rename("#{path}.tmp", "#{path}.json")
   end
 end

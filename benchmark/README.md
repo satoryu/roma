@@ -80,7 +80,7 @@ The shares are of the time, not of the CPU time. A main thread that waits for ev
 
 With `--stackprof`, the node also runs StackProf, and `.stackprof.txt` tells its Ruby methods. `stackprof` reads the `.stackprof.dump` for more, such as `stackprof --method 'String#split' FILE` for the callers of a method.
 
-- `--stackprof` or `--stackprof cpu` samples the methods that use the CPU. The time in a C method is the method's own, so the event loop is all in `EventMachine.run_machine`. It interrupts the node with a signal every 200 microseconds, so it slows the node more than `sample`.
+- `--stackprof` or `--stackprof cpu` samples the methods that use the CPU. In a node, it puts most of the time in `EventMachine.run_machine`, also that of the requests, which run in a Fiber. For the Ruby methods of the requests, use `request_path.rb`. It interrupts the node with a signal every 200 microseconds, so it slows the node more than `sample`.
 - `--stackprof object` records the methods that allocate each object. It keeps every allocation, so the node is slow and large, and only the objects and their methods tell much.
 
 Profiling slows the node a little, so compare the numbers of runs with the same options.
@@ -105,3 +105,23 @@ sqlite3 sets about 2,000 keys a second, so leave it out of large runs, or give i
 A ROMA node takes about 10 seconds to start: it takes only its system commands until it has checked the other nodes.
 
 The clients run on the same machine as the server, so a fast server can be limited by them. Try more clients (`-c`) to see whether the numbers still grow.
+
+## request_path.rb
+Measures the Ruby code that a ROMA node runs for set and get, without the sockets and the event loop. It makes a node in its own process, as `roma server` does, and gives the requests to a connection's `receive_data`, as EventMachine does, so the dispatcher, the commands and the storage run as in a node. It tells the CPU time and the objects for a request.
+
+```
+BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/request_path.rb --pipeline 16 --stackprof wall --out profile
+```
+
+| Option | Default | |
+|---|---|---|
+| `-e`, `--engine` | `hash` | Storage engine |
+| `-n`, `--requests` | 100000 | Requests of each command |
+| `-s`, `--value-size` | 100 | Size of the values in bytes |
+| `--pipeline` | 1 | Requests given to `receive_data` at once |
+| `--stackprof` | | Record the methods with StackProf: `cpu`, `wall` or `object`, in `set.stackprof.dump` and `get.stackprof.dump` with their `.txt` |
+| `--out` | `.` | Where `--stackprof` writes |
+
+Use `wall` rather than `cpu` for the methods: `cpu` puts much of the time of the requests, which run in a Fiber, in the methods that run after it. Nothing else runs in the process, so the wall time is the CPU time. `stackprof --method 'Roma::CommandPlugin::Storage#ev_get' get.stackprof.dump` tells the time of each line of a method.
+
+The difference from the server CPU of `set_get.rb` is what the node spends on the sockets and in EventMachine.
