@@ -31,7 +31,7 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb
 | `--yjit` | `off` | Run the ROMA nodes with YJIT: `off`, `on` or `both` |
 | `--pipeline` | 1 | Requests that a client sends at once, such as `1,4,16` |
 | `--profile` | | Record where the ROMA nodes spend their time in a directory |
-| `--stackprof` | | With `--profile`, record the Ruby methods with StackProf too |
+| `--stackprof` | | With `--profile`, run StackProf too: `cpu` (default) or `object` |
 | `--keep` | | Keep the directories of the servers, with their output |
 
 ### Server CPU
@@ -56,14 +56,14 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb --pipelin
 The latencies are those of the requests sent together, so they grow with the depth. The memory and disk table is from the sets of the first depth.
 
 ### Profile
-`--profile DIR` records where a ROMA node spends its time while each command is measured, in files named after the target, the command and the pipeline, such as `hash-get-p1`:
+`--profile DIR` loads `profiler.rb` into the ROMA nodes and records where a node spends its time while each command is measured, in files named after the target, the command and the pipeline, such as `hash-get-p1`:
 
 ```
 BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb -t hash --pipeline 1,16 --profile profile
 ```
 
-- `summary.md`: the user and system CPU time for a request, and how the main thread, which runs the event loop and handles the requests, spent its time.
-- `.sample.txt`: the native stacks of all the threads of the node, every millisecond, from macOS's `sample`. Without `sample`, `--profile` records only the CPU times.
+- `summary.md`: the user and system CPU time for a request, how the main thread, which runs the event loop and handles the requests, spent its time, and the objects that the node allocated and its GC for a request, from `GC.stat`.
+- `.sample.txt`: the native stacks of all the threads of the node, every millisecond, from macOS's `sample`. Without `sample`, `--profile` records the rest without the stacks.
 - `.sample.md`: its summary by `sample_report.rb`. For each thread that did more than wait, it tells the share of the time in each kind of work, and the functions where the thread was most. `ruby benchmark/sample_report.rb FILE` summarizes a `.sample.txt` again.
 
 | Kind | |
@@ -78,7 +78,10 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb -t hash -
 
 The shares are of the time, not of the CPU time. A main thread that waits for events much is idle: the clients don't keep it busy.
 
-With `--stackprof`, the node also runs StackProf, and `.stackprof.txt` tells its Ruby methods. `stackprof` reads the `.stackprof.dump` for more. The time in a C method is the method's own, so the event loop is all in `EventMachine.run_machine`. StackProf interrupts the node with a signal every 200 microseconds, so it slows the node more than `sample`.
+With `--stackprof`, the node also runs StackProf, and `.stackprof.txt` tells its Ruby methods. `stackprof` reads the `.stackprof.dump` for more, such as `stackprof --method 'String#split' FILE` for the callers of a method.
+
+- `--stackprof` or `--stackprof cpu` samples the methods that use the CPU. The time in a C method is the method's own, so the event loop is all in `EventMachine.run_machine`. It interrupts the node with a signal every 200 microseconds, so it slows the node more than `sample`.
+- `--stackprof object` records the methods that allocate each object. It keeps every allocation, so the node is slow and large, and only the objects and their methods tell much.
 
 Profiling slows the node a little, so compare the numbers of runs with the same options.
 
