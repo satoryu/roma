@@ -4,6 +4,39 @@ require 'roma/configuration'
 module Roma
   module Command
     module SystemCommandReceiver
+      # Defines set_<name>, which changes a setting of every node to a value,
+      # and rset_<name>, which the other nodes run for it. +check+ returns
+      # what is wrong with the value, or nil, and the block changes the
+      # setting of this node. They reply +reply+, set_<name> for each node.
+      def self.def_setting_command(name, check = nil, reply: 'STORED', &)
+        define_method(:"ev_set_#{name}") do |s|
+          error = setting_error(s, check)
+          return send_data("CLIENT_ERROR #{error}\r\n") if error
+
+          res = broadcast_cmd("rset_#{name} #{s[1]}\r\n")
+          instance_exec(s[1], &)
+          res[@stats.my_node_id] = reply
+          send_data("#{res}\r\n")
+        end
+
+        define_method(:"ev_rset_#{name}") do |s|
+          error = setting_error(s, check)
+          return send_data("CLIENT_ERROR #{error}\r\n") if error
+
+          instance_exec(s[1], &)
+          send_data("#{reply}\r\n")
+        end
+      end
+
+      # Checks of the values of settings, which return what is wrong.
+      POSITIVE_LENGTH = ->(v) { 'length must be greater than zero' if v.to_i < 1 }
+      POSITIVE_TIME = ->(v) { 'time value must be lager than 0' if v.to_f <= 0 }
+      POSITIVE_INTEGER_TIME = ->(v) { 'time value must be lager than 0' if v.to_i <= 0 }
+      POSITIVE_SIZE = ->(v) { 'size value must be larger than 0' if v.to_i <= 0 }
+      LOG_SHIFT_AGE = lambda do |v|
+        'invalid arguments' if v.to_i < 1 && !%w(0 min hour daily weekly monthly).include?(v)
+      end
+
       # balse [reason]
       def ev_balse(s)
         send_data("Are you sure?(yes/no)\r\n")
@@ -459,29 +492,9 @@ module Roma
         end
       end
 
-      def ev_set_descriptor_table_size(s)
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\r\n")
-        elsif s[1].to_i < 1024
-          return send_data("CLIENT_ERROR length must be greater than 1024\r\n")
-        end
-
-        res = broadcast_cmd("rset_descriptor_table_size #{s[1]}\r\n")
-
-        EM.set_descriptor_table_size(s[1].to_i)
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      def ev_rset_descriptor_table_size(s)
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\r\n")
-        elsif s[1].to_i < 1024
-          return send_data("CLIENT_ERROR length must be greater than 1024\r\n")
-        end
-
-        EM.set_descriptor_table_size(s[1].to_i)
-        send_data("STORED\r\n")
+      # set_descriptor_table_size <size>
+      def_setting_command :descriptor_table_size, ->(v) { 'length must be greater than 1024' if v.to_i < 1024 } do |v|
+        EM.set_descriptor_table_size(v.to_i)
       end
 
       # set_latency_avg_calc_rule <mode> <count> <command1> <command2>....
@@ -713,83 +726,23 @@ module Roma
       end
 
       # set_connection_pool_maxlength <length>
-      # set to max length of the connection pool
-      def ev_set_connection_pool_maxlength(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR length must be greater than zero\r\n") if s[1].to_i < 1
-
-        res = broadcast_cmd("rset_connection_pool_maxlength #{s[1]}\r\n")
-        Messaging::ConnectionPool.instance.maxlength = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
+      def_setting_command :connection_pool_maxlength, POSITIVE_LENGTH do |v|
+        Messaging::ConnectionPool.instance.maxlength = v.to_i
       end
 
-      # rset_connection_pool_maxlength <length>
-      def ev_rset_connection_pool_maxlength(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR length must be greater than zero\r\n") if s[1].to_i < 1
-
-        Messaging::ConnectionPool.instance.maxlength = s[1].to_i
-        send_data("STORED\r\n")
-      end
-
-      # set_connection_pool_maxlength <length>
-      # set to max length of the connection pool
-      def ev_set_emconnection_pool_maxlength(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR length must be greater than zero\r\n") if s[1].to_i < 1
-
-        res = broadcast_cmd("rset_emconnection_pool_maxlength #{s[1]}\r\n")
-        Event::EMConnectionPool.instance.maxlength = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      # rset_connection_pool_maxlength <length>
-      def ev_rset_emconnection_pool_maxlength(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR length must be greater than zero\r\n") if s[1].to_i < 1
-
-        Event::EMConnectionPool.instance.maxlength = s[1].to_i
-        send_data("STORED\r\n")
+      # set_emconnection_pool_maxlength <length>
+      def_setting_command :emconnection_pool_maxlength, POSITIVE_LENGTH do |v|
+        Event::EMConnectionPool.instance.maxlength = v.to_i
       end
 
       # set_accepted_connection_expire_time <sec>
-      # set to expired time(sec) for accepted connections
-      def ev_set_accepted_connection_expire_time(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-
-        res = broadcast_cmd("rset_accepted_connection_expire_time #{s[1]}\r\n")
-        Event::Handler.connection_expire_time = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      # rset_accepted_connection_expire_time <sec>
-      def ev_rset_accepted_connection_expire_time(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-
-        Event::Handler.connection_expire_time = s[1].to_i
-        send_data("STORED\r\n")
+      def_setting_command :accepted_connection_expire_time do |v|
+        Event::Handler.connection_expire_time = v.to_i
       end
 
       # set_connection_pool_expire_time <sec>
-      # set to expired time(sec) for connection_pool expire time
-      def ev_set_connection_pool_expire_time(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-
-        res = broadcast_cmd("rset_connection_pool_expire_time #{s[1]}\r\n")
-        Messaging::ConnectionPool.instance.expire_time = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      # rset_connection_pool_expire_time <sec>
-      def ev_rset_connection_pool_expire_time(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-
-        Messaging::ConnectionPool.instance.expire_time = s[1].to_i
-        send_data("STORED\r\n")
+      def_setting_command :connection_pool_expire_time do |v|
+        Messaging::ConnectionPool.instance.expire_time = v.to_i
       end
 
       # set_emconnection_pool_expire_time <sec>
@@ -850,126 +803,34 @@ module Roma
       end
 
       # set_hilatency_warn_time <sec>
-      # set to threshold of warn message into a log when hilatency occured in a command.
-      def ev_set_hilatency_warn_time(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR time value must be lager than 0\r\n") if s[1].to_f <= 0
-
-        res = broadcast_cmd("rset_hilatency_warn_time #{s[1]}\r\n")
-        @stats.hilatency_warn_time = s[1].to_f
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      # rset_hilatency_warn_time <sec>
-      def ev_rset_hilatency_warn_time(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR time value must be lager than 0\r\n") if s[1].to_f <= 0
-
-        @stats.hilatency_warn_time = s[1].to_f
-        send_data("STORED\r\n")
+      # A command that takes longer is logged as a warning.
+      def_setting_command :hilatency_warn_time, POSITIVE_TIME do |v|
+        @stats.hilatency_warn_time = v.to_f
       end
 
       # set_routing_trans_timeout <sec>
-      def ev_set_routing_trans_timeout(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR time value must be lager than 0\r\n") if s[1].to_f <= 0
-
-        res = broadcast_cmd("rset_routing_trans_timeout #{s[1]}\r\n")
-        @stats.routing_transaction_timeout = s[1].to_f
-        res[@stats.my_node_id] = 'STORED'
-
-        send_data("#{res}\r\n")
-      end
-
-      # rset_set_routing_trans_timeout <sec>
-      def ev_rset_routing_trans_timeout(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR time value must be lager than 0\r\n") if s[1].to_f <= 0
-
-        @stats.routing_transaction_timeout = s[1].to_f
-
-        send_data("STORED\r\n")
+      def_setting_command :routing_trans_timeout, POSITIVE_TIME do |v|
+        @stats.routing_transaction_timeout = v.to_f
       end
 
       # set_spushv_read_timeout <sec>
-      def ev_set_spushv_read_timeout(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR time value must be lager than 0\r\n") if s[1].to_i <= 0
-
-        res = broadcast_cmd("rset_spushv_read_timeout #{s[1]}\r\n")
-        @stats.spushv_read_timeout = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
+      def_setting_command :spushv_read_timeout, POSITIVE_INTEGER_TIME do |v|
+        @stats.spushv_read_timeout = v.to_i
       end
 
-      # rset_spushv_read_timeout <sec>
-      def ev_rset_spushv_read_timeout(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR time value must be lager than 0\r\n") if s[1].to_i <= 0
-
-        @stats.spushv_read_timeout = s[1].to_i
-        send_data("STORED\r\n")
+      # set_reqpushv_timeout_count <count>
+      def_setting_command :reqpushv_timeout_count, POSITIVE_INTEGER_TIME do |v|
+        @stats.reqpushv_timeout_count = v.to_i
       end
 
-      # set_reqpushv_timeout_count <sec>
-      def ev_set_reqpushv_timeout_count(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR time value must be lager than 0\r\n") if s[1].to_i <= 0
-
-        res = broadcast_cmd("rset_reqpushv_timeout_count #{s[1]}\r\n")
-        @stats.reqpushv_timeout_count = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
+      # set_spushv_klength_warn <bytes>
+      def_setting_command :spushv_klength_warn, POSITIVE_SIZE do |v|
+        @stats.spushv_klength_warn = v.to_i
       end
 
-      # ev_rset_reqpushv_timeout_count <sec>
-      def ev_rset_reqpushv_timeout_count(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR time value must be lager than 0\r\n") if s[1].to_i <= 0
-
-        @stats.reqpushv_timeout_count = s[1].to_i
-        send_data("STORED\r\n")
-      end
-
-      # set_spushv_klength_warn <byte>
-      def ev_set_spushv_klength_warn(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR size value must be larger than 0 \r\n") if s[1].to_i <= 0
-
-        res = broadcast_cmd("rset_spushv_klength_warn #{s[1]}\r\n")
-        @stats.spushv_klength_warn = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      # rset_set_spushv_klength_warn <byte>
-      def ev_rset_spushv_klength_warn(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR size value must be larger than 0 \r\n") if s[1].to_i <= 0
-
-        @stats.spushv_klength_warn = s[1].to_i
-        send_data("STORED\r\n")
-      end
-
-      # set_spushv_vlength_warn <byte>
-      def ev_set_spushv_vlength_warn(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR size value must be larger than 0 \r\n") if s[1].to_i <= 0
-
-        res = broadcast_cmd("rset_spushv_vlength_warn #{s[1]}\r\n")
-        @stats.spushv_vlength_warn = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      # rset_set_spushv_vlength_warn <byte>
-      def ev_rset_spushv_vlength_warn(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR size value must be larger than 0\r\n") if s[1].to_i <= 0
-
-        @stats.spushv_vlength_warn = s[1].to_i
-        send_data("STORED\r\n")
+      # set_spushv_vlength_warn <bytes>
+      def_setting_command :spushv_vlength_warn, POSITIVE_SIZE do |v|
+        @stats.spushv_vlength_warn = v.to_i
       end
 
       # wb_command_map <hash string>
@@ -1013,28 +874,8 @@ module Roma
       end
 
       # set_wb_shift_size <size>
-      def ev_set_wb_shift_size(s)
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\r\n")
-        elsif s[1].to_i < 1
-          return send_data("CLIENT_ERROR length must be greater than zero\r\n")
-        end
-
-        res = broadcast_cmd("rset_wb_shift_size #{s[1]}\r\n")
-        $roma.wb_writer.shift_size = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      def ev_rset_wb_shift_size(s)
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\r\n")
-        elsif s[1].to_i < 1
-          return send_data("CLIENT_ERROR length must be greater than zero\r\n")
-        end
-
-        $roma.wb_writer.shift_size = s[1].to_i
-        send_data("STORED\r\n")
+      def_setting_command :wb_shift_size, POSITIVE_LENGTH do |v|
+        $roma.wb_writer.shift_size = v.to_i
       end
 
       # set_storage_status [number of file][safecopy|normal]{hash_name}
@@ -1092,24 +933,11 @@ module Roma
         end
       end
 
-      # set_gui_last_snapshot_date [%Y/%m/%d %H:%M:%S]
-      def ev_set_gui_last_snapshot(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR format is [%Y/%m/%dT%H:%M:%S]\r\n") if s[1] !~ %r{^\d+/\d+/\d+T\d+:\d+:\d+$}
-
-        res = broadcast_cmd("rset_gui_last_snapshot #{s[1]}\r\n")
-        @stats.gui_last_snapshot = s[1]
-        res[@stats.my_node_id] = 'PUSHED'
-        send_data("#{res}\r\n")
-      end
-
-      # rset_gui_last_snapshot(s)
-      def ev_rset_gui_last_snapshot(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
-        return send_data("CLIENT_ERROR format is [%Y/%m/%dT%H:%M:%S]\r\n") if s[1] !~ %r{^\d+/\d+/\d+T\d+:\d+:\d+$}
-
-        @stats.gui_last_snapshot = s[1]
-        send_data("PUSHED\r\n")
+      # set_gui_last_snapshot <%Y/%m/%dT%H:%M:%S>
+      def_setting_command :gui_last_snapshot,
+                          ->(v) { 'format is [%Y/%m/%dT%H:%M:%S]' if v !~ %r{^\d+/\d+/\d+T\d+:\d+:\d+$} },
+                          reply: 'PUSHED' do |v|
+        @stats.gui_last_snapshot = v
       end
 
       # set_cleanup_regexp <regexp>
@@ -1127,71 +955,27 @@ module Roma
       end
 
       # set_log_shift_size <size>
-      def ev_set_log_shift_size(s)
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\r\n")
-        elsif s[1].to_i < 1
-          return send_data("CLIENT_ERROR length must be greater than zero\r\n")
-        end
-
-        res = broadcast_cmd("rset_log_shift_size #{s[1]}\r\n")
-        @log.shift_size = s[1].to_i
-        @stats.log_shift_size = s[1].to_i
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      def ev_rset_log_shift_size(s)
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\r\n")
-        elsif s[1].to_i < 1
-          return send_data("CLIENT_ERROR length must be greater than zero\r\n")
-        end
-
-        @log.shift_size = s[1].to_i
-        @stats.log_shift_size = s[1].to_i
-        send_data("STORED\r\n")
+      def_setting_command :log_shift_size, POSITIVE_LENGTH do |v|
+        @log.shift_size = v.to_i
+        @stats.log_shift_size = v.to_i
       end
 
       # set_log_shift_age <age>
-      def ev_set_log_shift_age(s)
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\r\n")
-        elsif s[1].to_i < 1 && !%w(0 min hour daily weekly monthly).include?(s[1])
-          return send_data("CLIENT_ERROR invalid arguments\r\n")
-        end
-
-        res = broadcast_cmd("rset_log_shift_age #{s[1]}\r\n")
-
-        if s[1].to_i > 0 || s[1] == '0'
-          @log.shift_age = s[1].to_i
-          @stats.log_shift_age = s[1].to_i
-        else
-          @log.shift_age = s[1]
-          @stats.log_shift_age = s[1]
-        end
-        res[@stats.my_node_id] = 'STORED'
-        send_data("#{res}\r\n")
-      end
-
-      def ev_rset_log_shift_age(s)
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments\r\n")
-        elsif s[1].to_i < 1 && !%w(0 min hour daily weekly monthly).include?(s[1])
-          return send_data("CLIENT_ERROR invalid arguments\r\n")
-        end
-
-        if s[1].to_i > 0 || s[1] == '0'
-          @log.shift_age = s[1].to_i
-          @stats.log_shift_age = s[1].to_i
-        else
-          @log.shift_age = s[1]
-          @stats.log_shift_age = s[1]
-        end
-        send_data("STORED\r\n")
+      # The age is a number of files, or min, hour, daily, weekly or monthly.
+      def_setting_command :log_shift_age, LOG_SHIFT_AGE do |v|
+        age = v.to_i > 0 || v == '0' ? v.to_i : v
+        @log.shift_age = age
+        @stats.log_shift_age = age
       end
 
       private
+
+      # What is wrong with the arguments +s+ of a setting command, or nil.
+      def setting_error(s, check)
+        return 'number of arguments' if s.length != 2
+
+        check&.call(s[1])
+      end
 
       def dcnice(p)
         case p
