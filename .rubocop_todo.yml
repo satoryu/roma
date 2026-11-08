@@ -6,7 +6,7 @@
 # Note that changes in the inspected code, or installation of new
 # versions of RuboCop, may require this file to be generated again.
 
-# Offense count: 35
+# Offense count: 31
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: Max, AllowHeredoc, AllowURI, AllowQualifiedName, URISchemes, AllowRBSInlineAnnotation, AllowCopDirectives, AllowedPatterns, SplitStrings.
 # URISchemes: http, https
@@ -18,17 +18,16 @@ Layout/LineLength:
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/event/handler.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/routing/routing_table.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/stats.rb'
     - 'lib/roma/tools/config_creator.rb'
     - 'lib/roma/tools/log_merger.rb'
     - 'lib/roma/write_behind/file_writer.rb'
     - 'test/optional_test/test_rich_routing.rb'
     - 'test/roma/command_plugin/test_storage.rb'
-    - 'test/roma/test_server.rb'
     - 'test/roma/tools/test_log_merger.rb'
     - 'test/roma/tools/test_recover_lost.rb'
     - 'test/roma/tools/test_route_creator.rb'
@@ -36,16 +35,15 @@ Layout/LineLength:
     - 'test/test_server_signal.rb'
     - 'test/test_write_behind.rb'
 
-# Offense count: 3
+# Offense count: 2
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: RequireParenthesesForMethodChains.
 Lint/AmbiguousRange:
   Exclude:
     - 'lib/roma/event/em_connection.rb'
-    - 'lib/roma/event/handler.rb'
     - 'test/routing_table_test_helper.rb'
 
-# Offense count: 6
+# Offense count: 5
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: AllowSafeAssignment.
 Lint/AssignmentInCondition:
@@ -55,13 +53,6 @@ Lint/AssignmentInCondition:
     - 'lib/roma/server.rb'
     - 'lib/roma/write_behind/process.rb'
     - 'test/fake_node.rb'
-
-# Offense count: 2
-# This cop supports unsafe autocorrection (--autocorrect-all).
-Lint/Loop:
-  Exclude:
-    - 'lib/roma/command/definition.rb'
-    - 'lib/roma/command_plugin/alist.rb'
 
 # Offense count: 3
 # Configuration parameters: AllowedParentClasses.
@@ -83,7 +74,7 @@ Lint/NonLocalExitFromIterator:
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'test/roma_test_client.rb'
 
-# Offense count: 15
+# Offense count: 14
 Lint/RescueException:
   Exclude:
     - 'lib/roma/command_plugin/debug.rb'
@@ -108,22 +99,9 @@ Lint/UselessConstantScoping:
     - 'lib/roma/command_plugin/mapcount.rb'
     - 'lib/roma/logging/rlogger.rb'
 
-# Offense count: 24
+# Offense count: 1
 Naming/AccessorMethodName:
   Exclude:
-    - 'lib/roma/async_event.rb'
-    - 'lib/roma/command/system_command_receiver.rb'
-    - 'lib/roma/dns_cache.rb'
-    - 'lib/roma/event/handler.rb'
-    - 'lib/roma/logging/rlogger.rb'
-    - 'lib/roma/routing/routing_data.rb'
-    - 'lib/roma/stats.rb'
-    - 'lib/roma/tools/config_creator.rb'
-    - 'lib/roma/tools/log_merger.rb'
-    - 'lib/roma/write_behind/file_writer.rb'
-    - 'lib/roma/write_behind/stream_writer.rb'
-    - 'test/command_test_harness.rb'
-    - 'test/roma/tools/test_config_creator.rb'
     - 'test/roma_test_utils.rb'
 
 # Offense count: 1
@@ -141,14 +119,13 @@ Naming/MethodName:
   Exclude:
     - 'lib/roma/logging/rlogger.rb'
 
-# Offense count: 56
+# Offense count: 57
 # Configuration parameters: MinNameLength, AllowNamesEndingInNumbers, AllowedNames, ForbiddenNames.
 # AllowedNames: as, at, by, cc, db, id, if, in, io, ip, of, on, os, pp, to
 Naming/MethodParameterName:
   Exclude:
-    - 'lib/roma/async_message.rb'
     - 'lib/roma/async_event.rb'
-    - 'lib/roma/command/definition.rb'
+    - 'lib/roma/async_message.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/command_plugin/alist.rb'
     - 'lib/roma/command_plugin/storage.rb'
@@ -169,7 +146,7 @@ Naming/MethodParameterName:
     - 'test/test_list_plugin.rb'
     - 'test/test_map_count_plugin.rb'
 
-# Offense count: 23
+# Offense count: 20
 # Configuration parameters: Mode, AllowedMethods, AllowedPatterns, AllowBangMethods, WaywardPredicates.
 # AllowedMethods: call
 # WaywardPredicates: infinite?, nonzero?
@@ -178,10 +155,10 @@ Naming/PredicateMethod:
     - 'lib/roma/async_event.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/logging/rlogger.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/routing/routing_table.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/tools/check_nodes.rb'
     - 'lib/roma/tools/key_access.rb'
     - 'lib/roma/tools/log_merger.rb'
@@ -233,8 +210,8 @@ Security/MarshalLoad:
     - 'lib/roma/command_plugin/alist.rb'
     - 'lib/roma/command_plugin/map.rb'
     - 'lib/roma/command_plugin/mapcount.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/routing/routing_table.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/tools/admin_client.rb'
     - 'lib/roma/write_behind/stream_writer.rb'
     - 'test/fake_node.rb'
@@ -279,7 +256,7 @@ Style/ClassEqualityComparison:
     - 'lib/roma/tools/config_creator.rb'
     - 'test/roma_test_utils.rb'
 
-# Offense count: 25
+# Offense count: 24
 Style/ClassVars:
   Exclude:
     - 'lib/roma/async_event.rb'
@@ -303,14 +280,14 @@ Style/CombinableLoops:
   Exclude:
     - 'lib/roma/command/system_command_receiver.rb'
 
-# Offense count: 16
+# Offense count: 47
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: MaxUnannotatedPlaceholdersAllowed, Mode, AllowedMethods, AllowedPatterns.
 # SupportedStyles: annotated, template, unannotated
 Style/FormatStringToken:
   EnforcedStyle: unannotated
 
-# Offense count: 63
+# Offense count: 56
 # Configuration parameters: AllowedVariables.
 Style/GlobalVars:
   Exclude:
@@ -332,8 +309,8 @@ Style/GlobalVars:
 Style/HashEachMethods:
   Exclude:
     - 'lib/roma/command/system_command_receiver.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/routing/routing_data.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/tools/config_creator.rb'
     - 'test/roma/test_async_event.rb'
 
@@ -409,7 +386,7 @@ Style/MutableConstant:
     - 'test/test_protocol.rb'
     - 'test/test_storage_command.rb'
 
-# Offense count: 83
+# Offense count: 81
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: EnforcedStyle, AllowedMethods, AllowedPatterns.
 # SupportedStyles: predicate, comparison
@@ -429,12 +406,12 @@ Style/NumericPredicate:
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/logging/rlogger.rb'
     - 'lib/roma/messaging/connection_pool.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/random_balancer.rb'
     - 'lib/roma/routing/random_partitioner.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/routing/routing_table.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/tools/benchmark.rb'
     - 'lib/roma/tools/config_creator.rb'
     - 'lib/roma/tools/key_list.rb'
@@ -467,8 +444,8 @@ Style/RaiseArgs:
 # Configuration parameters: Methods.
 Style/RedundantArgument:
   Exclude:
-    - 'lib/roma/server.rb'
     - 'lib/roma/routing/routing_data.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/write_behind/stream_writer.rb'
     - 'test/fake_node.rb'
     - 'test/roma/command_plugin/test_mapcount.rb'
@@ -495,15 +472,15 @@ Style/ReturnNilInPredicateMethodDefinition:
   Exclude:
     - 'lib/roma/tools/config_creator.rb'
 
-# Offense count: 26
+# Offense count: 24
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: ConvertCodeThatCanStartToReturnNil, AllowedMethods, MaxChainLength.
 # AllowedMethods: present?, blank?, presence, try, try!
 Style/SafeNavigation:
   Exclude:
     - 'lib/roma/async_event.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/tools/admin_client.rb'
     - 'lib/roma/tools/key_access.rb'
     - 'test/fake_node.rb'
@@ -515,16 +492,14 @@ Style/SafeNavigation:
     - 'test/test_new_func.rb'
     - 'test/test_protocol.rb'
 
-# Offense count: 56
+# Offense count: 31
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/SlicingWithRange:
   Exclude:
     - 'lib/roma/async_event.rb'
-    - 'lib/roma/command/definition.rb'
     - 'lib/roma/command/receiver.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/command/system_command_receiver.rb'
-    - 'lib/roma/command_plugin/alist.rb'
     - 'lib/roma/command_plugin/debug.rb'
     - 'lib/roma/command_plugin/storage.rb'
     - 'lib/roma/event/em_connection.rb'
@@ -533,24 +508,22 @@ Style/SlicingWithRange:
     - 'test/roma/command_plugin/test_mapcount.rb'
     - 'test/roma/routing/test_routing_data.rb'
 
-# Offense count: 31
+# Offense count: 18
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: RequireEnglish, EnforcedStyle.
 # SupportedStyles: use_perl_names, use_english_names, use_builtin_english_names
 Style/SpecialGlobalVars:
   Exclude:
     - 'lib/roma/async_event.rb'
-    - 'lib/roma/server.rb'
     - 'test/fake_node.rb'
     - 'test/optional_test/test_routing_logic.rb'
     - 'test/roma_test_utils.rb'
 
-# Offense count: 15
+# Offense count: 10
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: Mode.
 Style/StringConcatenation:
   Exclude:
-    - 'lib/roma/command/definition.rb'
     - 'lib/roma/routing/merkle_tree.rb'
     - 'test/roma/command/test_routing_command_receiver.rb'
     - 'test/roma/command/test_system_command_receiver_stop.rb'
@@ -584,10 +557,10 @@ Style/ZeroLengthPredicate:
     - 'lib/roma/event/em_connection_pool.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/messaging/connection_pool.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/random_balancer.rb'
     - 'lib/roma/routing/random_partitioner.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/routing/routing_table.rb'
+    - 'lib/roma/server.rb'
     - 'lib/roma/write_behind/stream_writer.rb'
