@@ -163,8 +163,9 @@ module Roma
         end
         return send_data("NOT_#{msg}\r\n") unless ret
 
-        push_to_write_behind(cmd.to_sym, params.hash_name, params.key, ret[4])
-        redundant(params.nodes[1..], params.hash_name, params.key, params.digest, ret[2], expire_time, ret[4])
+        _vnode, _last, clock, _expire_time, stored_value = ret
+        push_to_write_behind(cmd.to_sym, params.hash_name, params.key, stored_value)
+        redundant(params.nodes[1..], params.hash_name, params.key, params.digest, clock, expire_time, stored_value)
         send_data("#{msg}\r\n")
       end
     end

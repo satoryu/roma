@@ -1152,7 +1152,10 @@ module Roma
       # Returns nil or false if the storage didn't store it.
       def store_list(hash_name, k, d, vnode, nodes, list)
         ret = @storages[hash_name].set(vnode, k, d, NEVER_EXPIRES, Marshal.dump(list))
-        redundant(nodes[1..], hash_name, k, d, ret[2], NEVER_EXPIRES, ret[4]) if ret
+        return ret unless ret
+
+        _vnode, _last, clock, _expire_time, value = ret
+        redundant(nodes[1..], hash_name, k, d, clock, NEVER_EXPIRES, value)
         ret
       end
     end #  Alist
