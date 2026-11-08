@@ -66,87 +66,37 @@ module Roma
 
     def asyncev_start_join_process(_args)
       @log.debug(__method__)
-      if @stats.run_join
-        @log.error("#{__method__}:join process running")
-        return true
-      end
-      if @stats.run_recover
-        @log.error("#{__method__}:recover process running")
-        return true
-      end
-      if @stats.run_balance
-        @log.error("#{__method__}:balance process running")
+      if (running = running_process)
+        @log.error("#{__method__}:#{running} process running")
         return true
       end
       @stats.run_join = true
-      t = Thread.new do
+      start_thread(__method__) do
         join_process
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       ensure
         @stats.run_join = false
         @stats.join_node_id = nil
       end
-      t[:name] = __method__
       true
     end
 
     def asyncev_start_balance_process(_args)
       @log.debug(__method__)
-      if @stats.run_join
-        @log.error("#{__method__}:join process running")
-        return true
-      end
-      if @stats.run_recover
-        @log.error("#{__method__}:recover process running")
-        return true
-      end
-      if @stats.run_balance
-        @log.error("#{__method__}:balance process running")
+      if (running = running_process)
+        @log.error("#{__method__}:#{running} process running")
         return true
       end
       @stats.run_balance = true
-      t = Thread.new do
+      start_thread(__method__) do
         balance_process
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       ensure
         @stats.run_balance = false
       end
-      t[:name] = __method__
       true
     end
 
-    def asyncev_redundant(args)
-      node_id, hash_name, k, d, clock, expire_time, v = args
-      @log.debug("#{__method__} #{args.inspect}")
-      unless @routing_table.nodes.include?(node_id)
-        @log.warn("async redundant failed:#{node_id} does not found in routing table.#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}")
-        return true # no retry
-      end
-      res = async_send_cmd(node_id, "rset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}\r\n#{v}\r\n", 10)
-      if res.nil? || res.start_with?('ERROR')
-        @log.warn("async redundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length} -> #{node_id}")
-        return false # retry
-      end
-      true
-    end
-
-    def asyncev_zredundant(args)
-      node_id, hash_name, k, d, clock, expire_time, zv = args
-      @log.debug("#{__method__} #{args.inspect}")
-      unless @routing_table.nodes.include?(node_id)
-        @log.warn("async zredundant failed:#{node_id} does not found in routing table.#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}")
-        return true # no retry
-      end
-      res = async_send_cmd(node_id, "rzset #{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length}\r\n#{zv}\r\n",
-                           10)
-      if res.nil? || res.start_with?('ERROR')
-        @log.warn("async zredundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length} -> #{node_id}")
-        return false # retry
-      end
-      true
-    end
+    def asyncev_redundant(args) = send_redundant('rset', args)
+    def asyncev_zredundant(args) = send_redundant('rzset', args)
 
     def asyncev_rdelete(args)
       node_id, hash_name, k, clock = args
@@ -170,40 +120,26 @@ module Roma
         @log.warn("#{__method__}:already be iterated storage process.")
       else
         @stats.run_iterate_storage = true
-        t = Thread.new do
+        start_thread(__method__) do
           sync_a_vnode(vnode.to_i, node_id, p == 'true')
-        rescue StandardError => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
         ensure
           @stats.run_iterate_storage = false
         end
-        t[:name] = __method__
       end
     end
 
     def asyncev_start_recover_process(args)
       @log.debug("#{__method__} #{args.inspect}")
-      if @stats.run_join
-        @log.error("#{__method__}:join process running")
-        return true
-      end
-      if @stats.run_recover
-        @log.error("#{__method__}:recover process running.")
-        return false
-      end
-      if @stats.run_balance
-        @log.error("#{__method__}:balance process running")
-        return true
+      if (running = running_process)
+        @log.error("#{__method__}:#{running} process running")
+        return running != :recover
       end
       @stats.run_recover = true
-      t = Thread.new do
+      start_thread(__method__) do
         acquired_recover_process
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       ensure
         @stats.run_recover = false
       end
-      t[:name] = __method__
     end
 
     def asyncev_start_auto_recover_process(args)
@@ -263,15 +199,12 @@ module Roma
         @stats.run_release = true
         @stats.run_iterate_storage = true
         @stats.spushv_protection = true
-        t = Thread.new do
+        start_thread(__method__) do
           release_process
-        rescue StandardError => e
-          @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
         ensure
           @stats.run_iterate_storage = false
           @stats.run_release = false
         end
-        t[:name] = __method__
       end
     end
 
@@ -608,15 +541,12 @@ module Roma
         return
       end
       @stats.run_storage_clean_up = true
-      t = Thread.new do
+      start_thread(__method__) do
         storage_clean_up_process
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       ensure
         @stats.last_clean_up = Time.now
         @stats.run_storage_clean_up = false
       end
-      t[:name] = __method__
     end
 
     def storage_clean_up_process
@@ -679,14 +609,11 @@ module Roma
         @log.error("Can not flush storage. stat = #{st.dbs[db_index]}")
         return true
       end
-      t = Thread.new do
+      start_thread(__method__) do
         st.flush_db(db_index)
         st.update_db_status(db_index, :safecopy_flushed)
         @log.info("#{__method__}:storage has flushed. (#{hash_name}, #{db_index})")
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       end
-      t[:name] = __method__
       true
     end
 
@@ -699,12 +626,9 @@ module Roma
         @log.error("Can not start cachecleaning process. stat = #{st.dbs[db_index]}")
         return true
       end
-      t = Thread.new do
+      start_thread(__method__) do
         storage_cachecleaning_process(hash_name, db_index)
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       end
-      t[:name] = __method__
       true
     end
 
@@ -751,12 +675,9 @@ module Roma
 
     def asyncev_start_get_routing_event(args)
       @log.debug("#{__method__} #{args}")
-      t = Thread.new do
+      start_thread(__method__) do
         load_routing_events
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       end
-      t[:name] = __method__
     end
 
     def load_routing_events
@@ -782,14 +703,11 @@ module Roma
 
     def asyncev_start_get_logs(args)
       @log.debug("#{__method__} #{args}")
-      t = Thread.new do
+      start_thread(__method__) do
         load_logs(args)
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       ensure
         @stats.gui_run_gather_logs = false
       end
-      t[:name] = __method__
     end
 
     def load_logs(args)
@@ -907,15 +825,12 @@ module Roma
 
     def asyncev_start_replicate_existing_data_process(args)
       # args is [$roma.cluster_replication_writer.replica_rttable])
-      t = Thread.new do
+      start_thread(__method__) do
         $roma.cluster_replication_writer.run_existing_data_replication = true
         replicate_existing_data_process(args)
-      rescue StandardError => e
-        @log.error("#{__method__}:#{e.inspect} #{$ERROR_POSITION}")
       ensure
         $roma.cluster_replication_writer.run_existing_data_replication = false
       end
-      t[:name] = __method__
     end
 
     def replicate_existing_data_process(args)
@@ -939,5 +854,44 @@ module Roma
     rescue StandardError => e
       @log.error("#{e}\n#{$ERROR_POSITION}")
     end
-  end # module AsyncEvent
-end # module Roma
+
+    # Runs the block in a thread named +name+, and logs an error that it
+    # raises. Returns the thread.
+    def start_thread(name)
+      t = Thread.new do
+        yield
+      rescue StandardError => e
+        @log.error("#{name}:#{e.inspect} #{$ERROR_POSITION}")
+      end
+      t[:name] = name
+      t
+    end
+
+    # The process that changes the routing and is running: :join, :recover
+    # or :balance, or nil.
+    def running_process
+      if @stats.run_join then :join
+      elsif @stats.run_recover then :recover
+      elsif @stats.run_balance then :balance
+      end
+    end
+
+    # Sends a value to a replica with +command+, rset or rzset for a
+    # compressed value. Returns false to retry later.
+    def send_redundant(command, args)
+      node_id, hash_name, k, d, clock, expire_time, v = args
+      @log.debug("#{__method__} #{args.inspect}")
+      request = "#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}"
+      unless @routing_table.nodes.include?(node_id)
+        @log.warn("async #{command} failed:#{node_id} does not found in routing table.#{request}")
+        return true # no retry
+      end
+      res = async_send_cmd(node_id, "#{command} #{request}\r\n#{v}\r\n", 10)
+      if res.nil? || res.start_with?('ERROR')
+        @log.warn("async #{command} failed:#{request} -> #{node_id}")
+        return false # retry
+      end
+      true
+    end
+  end
+end
