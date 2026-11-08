@@ -125,3 +125,5 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/request_path.rb --pi
 Use `wall` rather than `cpu` for the methods: `cpu` puts much of the time of the requests, which run in a Fiber, in the methods that run after it. Nothing else runs in the process, so the wall time is the CPU time. `stackprof --method 'Roma::CommandPlugin::Storage#ev_get' get.stackprof.dump` tells the time of each line of a method.
 
 The difference from the server CPU of `set_get.rb` is what the node spends on the sockets and in EventMachine.
+
+With the hash engine, the keys and values are Ruby objects, so a node with more keys takes longer to collect garbage. A set writes a new value into a large Hash, and the next minor GC marks the whole Hash again: about 60 ms for each minor GC with 1,000,000 keys, during which the node handles no requests. groonga and dbm keep the data outside Ruby's heap and don't have this.
