@@ -129,6 +129,8 @@ class DefinitionTestReceiver
     ret
   end
 
+  def read_value(n) = read_bytes(n)
+
   def command_argument_validation_num(s, num)
     raise ClientError, "number of arguments (#{s.length - 1} for #{num - 1})" if s.length != num
   end

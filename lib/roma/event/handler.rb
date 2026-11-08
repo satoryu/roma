@@ -204,25 +204,28 @@ module Roma
         close_connection
       end
 
-      def pop(size)
-        if size == 0
-          return ''
-        elsif size < 0
-          return nil
-        end
+      # Takes +size+ bytes from the read buffer and drops +skip+ bytes after
+      # them, or returns nil if it doesn't have them yet.
+      def pop(size, skip = 0)
+        return if size < 0
+        return unless @read_buffer.bytesize >= size + skip
+        return @read_buffer.slice!(0, size) if @read_buffer.bytesize == size
 
-        return unless @read_buffer.size >= size
-
-        @read_buffer.slice!(0, size)
+        # Faster than slice!, which also makes a string for the rest. []=
+        # counts characters, but EventMachine gives binary data, so the
+        # buffer is binary or ASCII and they are bytes.
+        data = @read_buffer.byteslice(0, size)
+        @read_buffer[0, size + skip] = ''.freeze
+        data
       end
 
-      def read_bytes(size, mult = 1)
+      def read_bytes(size, mult = 1, skip: 0)
         t = monotonic_time
         while @connected
-          d = pop(size)
+          d = pop(size, skip)
           return d if d
 
-          remain = size - @read_buffer.size
+          remain = size + skip - @read_buffer.bytesize
           Fiber.yield(remain)
           next unless monotonic_time - t > @@timeout * mult
 
@@ -232,6 +235,12 @@ module Roma
 
         end
         nil
+      end
+
+      # Reads a value of +size+ bytes and the CRLF after it, and returns the
+      # value.
+      def read_value(size, mult = 1)
+        read_bytes(size, mult, skip: 2)
       end
 
       def gets

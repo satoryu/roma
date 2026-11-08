@@ -140,6 +140,12 @@ class PluginTestHarness
     @read_buffer.slice!(0, size)
   end
 
+  def read_value(size)
+    value = read_bytes(size)
+    read_bytes(2)
+    value
+  end
+
   # Sends the commands this node forwards to +owner+, another harness.
   # Without it, connecting to another node fails.
   def forward_to(owner)

@@ -367,8 +367,7 @@ module Roma
         hash_name ||= @default_hash_name
         d = s[2].to_i
         d = @routing_table.digest(key) if d == 0
-        data = read_bytes(s[5].to_i)
-        read_bytes(2)
+        data = read_value(s[5].to_i)
         vnode = @routing_table.vnode_id(d)
         unless @storages.key?(hash_name)
           send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
@@ -390,8 +389,7 @@ module Roma
         hash_name ||= @default_hash_name
         d = s[2].to_i
         d = @routing_table.digest(key) if d == 0
-        zdata = read_bytes(s[5].to_i)
-        read_bytes(2)
+        zdata = read_value(s[5].to_i)
         vnode = @routing_table.vnode_id(d)
         unless @storages.key?(hash_name)
           send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
