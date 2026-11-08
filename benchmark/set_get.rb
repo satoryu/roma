@@ -13,6 +13,9 @@
 # a process with its own connection, and sends a request after the reply of
 # the last one.
 #
+# --pipeline makes the clients send several requests at once and then read
+# their replies, so that the server reads and writes them together.
+#
 # --yjit runs the ROMA nodes with YJIT, or both without and with it; the
 # clients are the same either way.
 require 'optparse'
@@ -38,19 +41,16 @@ module SetGetBenchmark
     end
 
     def set(key, value)
-      @sock.write("set #{key} 0 0 #{value.bytesize}\r\n#{value}\r\n")
-      expect("STORED\r\n")
+      raise Failed unless pipeline(:set, [key], value).first
     end
 
-    # Returns nil when the key is missing.
-    def get(key)
-      @sock.write("get #{key}\r\n")
-      line = @sock.gets
-      return nil unless line.start_with?('VALUE')
-
-      value = @sock.read(line.split[3].to_i + 2).chomp("\r\n")
-      @sock.gets # END
-      value
+    # Sends a request of +command+ for each of +keys+ at once, then reads the
+    # replies. Returns whether each request succeeded: a get succeeds if it
+    # gets +value+.
+    def pipeline(command, keys, value)
+      requests = keys.map { |key| command == :set ? set_request(key, value) : get_request(key) }
+      @sock.write(requests.join)
+      keys.map { command == :set ? stored? : read_value == value }
     end
 
     def close
@@ -59,28 +59,52 @@ module SetGetBenchmark
 
     private
 
-    def expect(reply)
+    def set_request(key, value)
+      "set #{key} 0 0 #{value.bytesize}\r\n#{value}\r\n"
+    end
+
+    def get_request(key)
+      "get #{key}\r\n"
+    end
+
+    # Reads the reply of a set.
+    def stored?
+      @sock.gets == "STORED\r\n"
+    end
+
+    # Reads the reply of a get. Returns nil when the key is missing.
+    def read_value
       line = @sock.gets
-      raise Failed, line.inspect unless line == reply
+      return nil unless line.start_with?('VALUE')
+
+      value = @sock.read(line.split[3].to_i + 2).chomp("\r\n")
+      @sock.gets # END
+      value
     end
   end
 
   # Sends requests in RESP, which Redis speaks.
   class RespClient < TextClient
-    def set(key, value)
-      @sock.write(command('SET', key, value))
-      expect("+OK\r\n")
+    private
+
+    def set_request(key, value)
+      command('SET', key, value)
     end
 
-    def get(key)
-      @sock.write(command('GET', key))
+    def get_request(key)
+      command('GET', key)
+    end
+
+    def stored?
+      @sock.gets == "+OK\r\n"
+    end
+
+    def read_value
       size = @sock.gets[1..].to_i
       return nil if size.negative?
 
       @sock.read(size + 2).chomp("\r\n")
     end
-
-    private
 
     def command(*args)
       "*#{args.size}\r\n" + args.map { |a| "$#{a.bytesize}\r\n#{a}\r\n" }.join
@@ -247,7 +271,7 @@ module SetGetBenchmark
   end
 
   # The results of a command on a target.
-  Result = Struct.new(:target, :command, :requests, :seconds, :latencies, :errors, :cpu_seconds) do
+  Result = Struct.new(:target, :command, :pipeline, :requests, :seconds, :latencies, :errors, :cpu_seconds) do
     def ops_per_second
       requests / seconds
     end
@@ -258,7 +282,8 @@ module SetGetBenchmark
       cpu_seconds / requests * 1_000_000
     end
 
-    # The latency at +percent+ in milliseconds.
+    # The latency at +percent+ in milliseconds. With --pipeline it is the
+    # latency of the requests sent together.
     def percentile(percent)
       latencies[((latencies.size - 1) * percent / 100.0).round] * 1000
     end
@@ -272,22 +297,28 @@ module SetGetBenchmark
   end
 
   # Sends +requests+ set or get requests from each of +clients+ processes,
-  # and measures how fast.
+  # +pipeline+ requests at once, and measures how fast.
   class Runner
-    def initialize(clients:, requests:, value_size:, warmup:)
+    def initialize(clients:, requests:, value_size:, warmup:, pipelines:)
       @clients = clients
       @requests = requests
       @value = 'v' * value_size
       @warmup = warmup
+      @pipelines = pipelines
     end
 
-    # Returns the Results of set and get, and the Usage after the set.
+    # Returns the Results of set and get for each pipeline, and the Usage
+    # after the first set. The later sets overwrite the same keys.
     def run(server)
       warm_up(server)
       rss_before = server.rss_bytes
-      set = measure(server, :set)
-      usage = Usage.new(server.name, @clients * @requests, rss_before, server.rss_bytes, server.disk_bytes)
-      [[set, measure(server, :get)], usage]
+      usage = nil
+      results = @pipelines.flat_map do |pipeline|
+        set = measure(server, :set, pipeline)
+        usage ||= Usage.new(server.name, @clients * @requests, rss_before, server.rss_bytes, server.disk_bytes)
+        [set, measure(server, :get, pipeline)]
+      end
+      [results, usage]
     end
 
     private
@@ -300,7 +331,7 @@ module SetGetBenchmark
 
     # The clients start together after they connect. The time is from the
     # start until the last client finishes.
-    def measure(server, command)
+    def measure(server, command, pipeline)
       start_r, start_w = IO.pipe
       workers = Array.new(@clients) do |n|
         r, w = IO.pipe
@@ -309,7 +340,7 @@ module SetGetBenchmark
           start_w.close
           client = server.client_class.new(server.port)
           start_r.read(1)
-          w.write(JSON.generate(send_requests(client, command, n)))
+          w.write(JSON.generate(send_requests(client, command, pipeline, n)))
           w.close
           exit!(0)
         end
@@ -332,30 +363,22 @@ module SetGetBenchmark
       cpu = server.cpu_seconds - cpu
       latencies = reports.flat_map { |report| report[:latencies] }.sort
       errors = reports.sum { |report| report[:errors] }
-      Result.new(server.name, command, latencies.size, seconds, latencies, errors, cpu)
+      Result.new(server.name, command, pipeline, latencies.size, seconds, latencies, errors, cpu)
     end
 
     # Client +n+ uses its own keys. A get fails if the value isn't the one set.
-    def send_requests(client, command, n)
-      latencies = Array.new(@requests)
+    def send_requests(client, command, pipeline, n)
+      latencies = []
       errors = 0
-      @requests.times do |i|
-        key = "key:#{n}:#{i}"
+      (0...@requests).each_slice(pipeline) do |batch|
+        keys = batch.map { |i| "key:#{n}:#{i}" }
         t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        ok = succeeded?(client, command, key)
-        latencies[i] = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t
-        errors += 1 unless ok
+        succeeded = client.pipeline(command, keys, @value)
+        latency = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t
+        latencies.concat([latency] * keys.size)
+        errors += succeeded.count(false)
       end
       { latencies: latencies, errors: errors }
-    end
-
-    def succeeded?(client, command, key)
-      return client.get(key) == @value if command == :get
-
-      client.set(key, @value)
-      true
-    rescue Failed
-      false
     end
   end
 
@@ -363,7 +386,7 @@ module SetGetBenchmark
 
   def parse(argv)
     options = { targets: TARGETS, clients: 4, requests: 10_000, value_size: 100, warmup: 1000,
-                port: 21_300, redis_server: 'redis-server', keep: false, yjit: 'off' }
+                port: 21_300, redis_server: 'redis-server', keep: false, yjit: 'off', pipelines: [1] }
     OptionParser.new do |opts|
       opts.banner = 'Usage: BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb [options]'
       opts.on('-t', '--targets LIST', Array, "Targets to measure (default: #{TARGETS.join(',')})") do |v|
@@ -385,6 +408,10 @@ module SetGetBenchmark
 
         options[:yjit] = v
       end
+      opts.on('--pipeline LIST', Array, 'Requests that a client sends at once, such as 1,16 (default: 1)') do |v|
+        options[:pipelines] = v.map { |depth| Integer(depth) }
+        raise OptionParser::InvalidArgument, v.join(',') unless options[:pipelines].all?(&:positive?)
+      end
       opts.on('--keep', 'Keep the directories of the servers, with their output') { options[:keep] = true }
     end.parse!(argv)
     options
@@ -404,7 +431,7 @@ module SetGetBenchmark
 
   def main(argv)
     options = parse(argv)
-    runner = Runner.new(**options.slice(:clients, :requests, :value_size, :warmup))
+    runner = Runner.new(**options.slice(:clients, :requests, :value_size, :warmup, :pipelines))
     results = []
     usages = []
     versions = []
@@ -427,11 +454,12 @@ module SetGetBenchmark
     lines << "Ruby #{RUBY_VERSION}, #{versions.join(', ')}, #{RbConfig::CONFIG['host_os']}"
     lines << "#{options[:clients]} clients x #{options[:requests]} requests, values of #{options[:value_size]} bytes"
     lines << ''
-    lines << '| target | command | ops/s | p50 (ms) | p99 (ms) | max (ms) | server CPU (us/req) | errors |'
-    lines << '|---|---|--:|--:|--:|--:|--:|--:|'
+    lines << '| target | command | pipeline | ops/s | p50 (ms) | p99 (ms) | max (ms) | server CPU (us/req) | errors |'
+    lines << '|---|---|--:|--:|--:|--:|--:|--:|--:|'
     results.each do |r|
-      lines << format('| %s | %s | %.0f | %.3f | %.3f | %.3f | %.1f | %d |', r.target, r.command, r.ops_per_second,
-                      r.percentile(50), r.percentile(99), r.percentile(100), r.cpu_per_request, r.errors)
+      lines << format('| %s | %s | %d | %.0f | %.3f | %.3f | %.3f | %.1f | %d |', r.target, r.command, r.pipeline,
+                      r.ops_per_second, r.percentile(50), r.percentile(99), r.percentile(100), r.cpu_per_request,
+                      r.errors)
     end
     lines << ''
     lines << '| target | keys | RSS before set (MB) | RSS after set (MB) | RSS per key (bytes) | disk (MB) |'

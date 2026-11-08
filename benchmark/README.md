@@ -29,6 +29,7 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb
 | `-p`, `--port` | 21300 | Port of the servers |
 | `--redis-server` | `redis-server` | redis-server to run |
 | `--yjit` | `off` | Run the ROMA nodes with YJIT: `off`, `on` or `both` |
+| `--pipeline` | 1 | Requests that a client sends at once, such as `1,4,16` |
 | `--keep` | | Keep the directories of the servers, with their output |
 
 ### Server CPU
@@ -42,6 +43,15 @@ BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb --yjit bo
 ```
 
 With few clients the node waits for them, and ops/s hardly changes even if YJIT makes the node faster. Compare the server CPU per request, or use enough clients (`-c`) to keep the node busy.
+
+### Pipeline
+By default a client sends a request after the reply of the last one, so the server waits for the event loop, reads and writes for every request. `--pipeline 16` makes each client send 16 requests at once and then read the 16 replies: the server reads them together and writes the replies together, so it costs the server less for a request. A list measures each depth in turn on the same server, and the later sets overwrite the keys of the first.
+
+```
+BUNDLE_GEMFILE=benchmark/Gemfile bundle exec ruby benchmark/set_get.rb --pipeline 1,4,16,64
+```
+
+The latencies are those of the requests sent together, so they grow with the depth. The memory and disk table is from the sets of the first depth.
 
 ### Memory and disk
 The second table tells, for each target, the resident memory (RSS) of the server before and after the sets, the growth per key, and the disk space of the storage files after the sets.
