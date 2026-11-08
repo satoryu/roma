@@ -35,14 +35,7 @@ module Roma
           return
         end
 
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
-        data = @storages[hash_name].get(vnode, key, 0)
-        @stats.read_count += 1
-        send_data("VALUE #{s[1]} 0 #{data.length}\r\n#{data}\r\n") if data
-        send_data("END\r\n")
+        get_here(s[1], hash_name, vnode, key)
       end
 
       # fget <key>
@@ -58,14 +51,7 @@ module Roma
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
-        data = @storages[hash_name].get(vnode, key, 0)
-        @stats.read_count += 1
-        send_data("VALUE #{s[1]} 0 #{data.length}\r\n#{data}\r\n") if data
-        send_data("END\r\n")
+        get_here(s[1], hash_name, vnode, key)
       end
 
       # gets <key>*\r\n
@@ -132,41 +118,7 @@ module Roma
           return send_data("#{res}\r\n")
         end
 
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
-
-        if @stats.wb_command_map.key?(:delete__prev)
-          data = @storages[hash_name].get(vnode, key, d)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:delete__prev], key, data) if data
-        end
-
-        res = @storages[hash_name].delete(vnode, key, d)
-        @stats.delete_count += 1
-
-        return send_data("NOT_DELETED\r\n") unless res
-        return send_data("NOT_FOUND\r\n") if res == :deletemark
-
-        if @stats.wb_command_map.key?(:delete)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:delete], key, res[4])
-        end
-
-        nodes[1..-1].each do |node_id|
-          res2 = send_cmd(node_id, "rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
-          unless res2
-            Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('rdelete', [node_id, hash_name, s[1], res[2]]))
-            @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{node_id}")
-          end
-        end
-        return send_data("NOT_FOUND\r\n") unless res[4]
-
-        if $roma.cluster_replication_writer.run_replication
-          fnc = 'delete'
-          Roma::WriteBehind::Process.push(nil, "#{fnc} #{s[1]}\r\n", s[1], nil)
-        end
-
-        send_data("DELETED\r\n")
+        delete_here(s[1], hash_name, vnode, key, d, nodes[1..])
       end
 
       # fdelete <key> [<time>] [noreply]\r\n
@@ -180,42 +132,9 @@ module Roma
           @log.error("fdelete failed delete key=#{s[1]} vnode=#{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
-
-        if @stats.wb_command_map.key?(:delete__prev)
-          data = @storages[hash_name].get(vnode, key, d)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:delete__prev], key, data) if data
-        end
-
-        res = @storages[hash_name].delete(vnode, key, d)
-        @stats.delete_count += 1
-
-        return send_data("NOT_DELETED\r\n") unless res
-        return send_data("NOT_FOUND\r\n") if res == :deletemark
-
-        if @stats.wb_command_map.key?(:delete)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:delete], key, res[4])
-        end
 
         nodes.delete(@my_node_id)
-        nodes.each do |node_id|
-          res2 = send_cmd(node_id, "rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
-          unless res2
-            Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('rdelete', [node_id, hash_name, s[1], res[2]]))
-            @log.warn("rdelete failed:#{s[1]}\e#{hash_name} #{d} #{res[2]} -> #{node_id}")
-          end
-        end
-        return send_data("NOT_FOUND\r\n") unless res[4]
-
-        if $roma.cluster_replication_writer.run_replication
-          fnc = 'delete'
-          Roma::WriteBehind::Process.push(nil, "#{fnc} #{s[1]}\r\n", s[1], nil)
-        end
-
-        send_data("DELETED\r\n")
+        delete_here(s[1], hash_name, vnode, key, d, nodes)
       end
 
       # rdelete <key> <clock>
@@ -224,10 +143,8 @@ module Roma
         hash_name ||= @default_hash_name
         d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
+        return reply_no_hash(hash_name) unless @storages.key?(hash_name)
+
         if @storages[hash_name].rdelete(vnode, key, d, s[2].to_i)
           send_data("DELETED\r\n")
         else
@@ -320,33 +237,7 @@ module Roma
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         end
 
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
-
-        if @stats.wb_command_map.key?(:set_expt__prev)
-          @log.debug(':set_export__prev')
-          # [vnode, t, clock, expire_time, val]
-          data = @storages[hash_name].raw(vnode, key, d)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
-        end
-
-        expire_time = chg_time_expt(s[2].to_i)
-        ret = @storages[hash_name].set_expt(vnode, key, d, expire_time)
-
-        return send_data("NOT_STORED\r\n") unless ret
-
-        if @stats.wb_command_map.key?(:set_expt)
-          @log.debug(':set_export')
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt], key, expire_time.to_s)
-        end
-        redundant(nodes[1..-1], hash_name, key, d, ret[2], ret[3], ret[4])
-        if $roma.cluster_replication_writer.run_replication
-          fnc = 'set_expt'
-          Roma::WriteBehind::Process.push(nil, "#{fnc} #{s[1]} #{expire_time}\r\n", s[1], expire_time)
-        end
-        send_data("STORED\r\n")
+        set_expt_here(s[1], hash_name, vnode, key, d, s[2].to_i, nodes[1..])
       end
 
       # fset_expt <key> <expire_time>
@@ -361,31 +252,8 @@ module Roma
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
-
-        if @stats.wb_command_map.key?(:set_expt__prev)
-          # [vnode, t, clock, expire_time, val]
-          data = @storages[hash_name].raw(vnode, key, d)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt__prev], key, data[3].to_s) if data
-        end
-
-        expire_time = chg_time_expt(s[2].to_i)
-        ret = @storages[hash_name].set_expt(vnode, key, d, expire_time)
-
-        return send_data("NOT_STORED\r\n") unless ret
-
-        if @stats.wb_command_map.key?(:set_expt)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:set_expt], key, expire_time.to_s)
-        end
-        redundant(nodes[1..-1], hash_name, key, d, ret[2], ret[3], ret[4])
-        if $roma.cluster_replication_writer.run_replication
-          fnc = 'set_expt'
-          Roma::WriteBehind::Process.push(nil, "#{fnc} #{s[1]} #{expire_time}\r\n", s[1], expire_time)
-        end
-        send_data("STORED\r\n")
+        nodes.delete(@my_node_id)
+        set_expt_here(s[1], hash_name, vnode, key, d, s[2].to_i, nodes)
       end
 
       # If you want to get expired time as UNIXTIME, set the 'unix' in last argument
@@ -408,10 +276,7 @@ module Roma
 
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
+        return reply_no_hash(hash_name) unless @storages.key?(hash_name)
 
         d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
@@ -455,6 +320,79 @@ module Roma
       end
 
       private
+
+      # The steps below run a command on a node that has the key. +replicas+
+      # are the other nodes that have it, and +key_arg+ is the key as the
+      # request gave it, with its hash name.
+
+      def get_here(key_arg, hash_name, vnode, key)
+        return reply_no_hash(hash_name) unless @storages.key?(hash_name)
+
+        data = @storages[hash_name].get(vnode, key, 0)
+        @stats.read_count += 1
+        send_data("VALUE #{key_arg} 0 #{data.length}\r\n#{data}\r\n") if data
+        send_data("END\r\n")
+      end
+
+      def delete_here(key_arg, hash_name, vnode, key, d, replicas)
+        return reply_no_hash(hash_name) unless @storages.key?(hash_name)
+
+        push_previous_value(:delete, hash_name, vnode, key, d)
+        res = @storages[hash_name].delete(vnode, key, d)
+        @stats.delete_count += 1
+
+        return send_data("NOT_DELETED\r\n") unless res
+        return send_data("NOT_FOUND\r\n") if res == :deletemark
+
+        push_to_write_behind(:delete, hash_name, key, res[4])
+        replicas.each do |node_id|
+          next if send_cmd(node_id, "rdelete #{key}\e#{hash_name} #{res[2]}\r\n")
+
+          Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('rdelete', [node_id, hash_name, key_arg, res[2]]))
+          @log.warn("rdelete failed:#{key_arg}\e#{hash_name} #{d} #{res[2]} -> #{node_id}")
+        end
+        return send_data("NOT_FOUND\r\n") unless res[4]
+
+        Roma::WriteBehind::Process.push(nil, "delete #{key_arg}\r\n", key_arg, nil) if cluster_replication?
+        send_data("DELETED\r\n")
+      end
+
+      def set_expt_here(key_arg, hash_name, vnode, key, d, expire_time, replicas)
+        return reply_no_hash(hash_name) unless @storages.key?(hash_name)
+
+        if @stats.wb_command_map.key?(:set_expt__prev)
+          data = @storages[hash_name].raw(vnode, key, d)
+          push_to_write_behind(:set_expt__prev, hash_name, key, data[3].to_s) if data
+        end
+
+        expire_time = chg_time_expt(expire_time)
+        ret = @storages[hash_name].set_expt(vnode, key, d, expire_time)
+        return send_data("NOT_STORED\r\n") unless ret
+
+        push_to_write_behind(:set_expt, hash_name, key, expire_time.to_s)
+        redundant(replicas, hash_name, key, d, ret[2], ret[3], ret[4])
+        if cluster_replication?
+          Roma::WriteBehind::Process.push(nil, "set_expt #{key_arg} #{expire_time}\r\n", key_arg, expire_time)
+        end
+        send_data("STORED\r\n")
+      end
+
+      def reply_no_hash(hash_name)
+        send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
+      end
+
+      # Pushes the value that the key had before +command+ to write-behind,
+      # if it records +command+__prev.
+      def push_previous_value(command, hash_name, vnode, key, d)
+        prev = :"#{command}__prev"
+        return unless @stats.wb_command_map.key?(prev)
+
+        data = @storages[hash_name].get(vnode, key, d)
+        push_to_write_behind(prev, hash_name, key, data) if data
+      end
+
+      # Whether the writes are sent to the replica cluster too.
+      def cluster_replication? = $roma.cluster_replication_writer.run_replication
 
       def forward_get(node_id, k, _d)
         con = checkout_connection(node_id)
@@ -524,25 +462,17 @@ module Roma
 
       def store(fnc, hash_name, vnode, k, d, expire_time, v, nodes)
         expire_time = chg_time_expt(expire_time)
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
+        return reply_no_hash(hash_name) unless @storages.key?(hash_name)
 
-        if @stats.wb_command_map.key?(:"#{fnc}__prev")
-          data = @storages[hash_name].get(vnode, k, d)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:"#{fnc}__prev"], k, data) if data
-        end
+        push_previous_value(fnc, hash_name, vnode, k, d)
 
         ret = @storages[hash_name].send(fnc, vnode, k, d, expire_time, v)
         @stats.write_count += 1
 
         if ret
-          if @stats.wb_command_map.key?(fnc)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[fnc], k, ret[4])
-          end
+          push_to_write_behind(fnc, hash_name, k, ret[4])
           redundant(nodes, hash_name, k, d, ret[2], expire_time, ret[4])
-          if $roma.cluster_replication_writer.run_replication
+          if cluster_replication?
             k = "#{k}\e#{hash_name}" if hash_name != @default_hash_name
             Roma::WriteBehind::Process.push(nil, "#{fnc} #{k} 1 #{expire_time} #{v.length} \r\n#{v}\r\n", k, v)
           end
@@ -555,15 +485,9 @@ module Roma
 
       def store_cas(hash_name, vnode, k, d, clock, expire_time, v, nodes)
         expire_time = chg_time_expt(expire_time)
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
+        return reply_no_hash(hash_name) unless @storages.key?(hash_name)
 
-        if @stats.wb_command_map.key?(:cas__prev)
-          data = @storages[hash_name].get(vnode, k, d)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:cas__prev], k, data) if data
-        end
+        push_previous_value(:cas, hash_name, vnode, k, d)
 
         ret = @storages[hash_name].cas(vnode, k, d, clock, expire_time, v)
         @stats.write_count += 1
@@ -577,10 +501,8 @@ module Roma
         when :exists
           send_data("EXISTS\r\n")
         else
-          if @stats.wb_command_map.key?(:cas)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:cas], k, ret[4])
-          end
-          if $roma.cluster_replication_writer.run_replication
+          push_to_write_behind(:cas, hash_name, k, ret[4])
+          if cluster_replication?
             rk = hash_name == @default_hash_name ? k : "#{k}\e#{hash_name}"
             fnc = 'set' # To restrain a defference between main and replica cluster due to clock
             Roma::WriteBehind::Process.push(nil, "#{fnc} #{rk} 0 #{expire_time} #{v.length} \r\n#{v}\r\n", rk, v)
@@ -665,24 +587,16 @@ module Roma
       end
 
       def store_incr_decr(fnc, hash_name, vnode, k, d, v, nodes)
-        unless @storages.key?(hash_name)
-          send_data("SERVER_ERROR #{hash_name} does not exists.\r\n")
-          return
-        end
+        return reply_no_hash(hash_name) unless @storages.key?(hash_name)
 
-        if @stats.wb_command_map.key?(:"#{fnc}__prev")
-          data = @storages[hash_name].get(vnode, k, d)
-          Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:"#{fnc}__prev"], k, data) if data
-        end
+        push_previous_value(fnc, hash_name, vnode, k, d)
 
         res = @storages[hash_name].send(fnc, vnode, k, d, v)
         @stats.write_count += 1
 
         if res
-          if @stats.wb_command_map.key?(fnc)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[fnc], k, res[4])
-          end
-          if $roma.cluster_replication_writer.run_replication
+          push_to_write_behind(fnc, hash_name, k, res[4])
+          if cluster_replication?
             rk = hash_name == @default_hash_name ? k : "#{k}\e#{hash_name}"
             Roma::WriteBehind::Process.push(nil, "#{fnc} #{rk} #{v}\r\n", rk, v)
           end
