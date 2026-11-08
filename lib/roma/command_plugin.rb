@@ -5,6 +5,9 @@ module Roma
     # plugin directory to use them.
     BUNDLED = %w(storage alist map mapcount gui).freeze
 
+    # An expire time that never comes.
+    NEVER_EXPIRES = 0x7fffffff
+
     @@plugins = []
     def self.plugins
       @@plugins.dup
