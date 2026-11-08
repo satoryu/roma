@@ -71,8 +71,7 @@ module Roma
       # (DELETED|NOT_DELETED|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_delete(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[2].to_i)
-        read_bytes(2)
+        data = read_value(s[2].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -287,8 +286,7 @@ module Roma
       # (true|false|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_include?(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[2].to_i)
-        read_bytes(2)
+        data = read_value(s[2].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -311,8 +309,7 @@ module Roma
       # (<index>|nil|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_index(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[2].to_i)
-        read_bytes(2)
+        data = read_value(s[2].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -339,8 +336,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[3].to_i)
-        read_bytes(2)
+        data = read_value(s[3].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -379,8 +375,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_sized_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[3].to_i)
-        read_bytes(2)
+        data = read_value(s[3].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -422,8 +417,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_swap_and_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[2].to_i)
-        read_bytes(2)
+        data = read_value(s[2].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -468,8 +462,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_swap_and_sized_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[3].to_i)
-        read_bytes(2)
+        data = read_value(s[3].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -520,8 +513,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_expired_swap_and_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[3].to_i)
-        read_bytes(2)
+        data = read_value(s[3].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
@@ -567,8 +559,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_expired_swap_and_sized_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[4].to_i)
-        read_bytes(2)
+        data = read_value(s[4].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
@@ -619,8 +610,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_join_with_time(s)
         hash_name, k, _d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[2].to_i)
-        read_bytes(2)
+        data = read_value(s[2].to_i)
         return forward1(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, 0)
@@ -666,8 +656,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_join(s)
         hash_name, k, _d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[2].to_i)
-        read_bytes(2)
+        data = read_value(s[2].to_i)
         return forward1(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, 0)
@@ -823,8 +812,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[2].to_i)
-        read_bytes(2)
+        data = read_value(s[2].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -861,8 +849,7 @@ module Roma
       # (STORED|NOT_PUSHED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_sized_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[3].to_i)
-        read_bytes(2)
+        data = read_value(s[3].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -905,8 +892,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_swap_and_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[2].to_i)
-        read_bytes(2)
+        data = read_value(s[2].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -949,8 +935,7 @@ module Roma
       # (STORED|NOT_PUSHED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_swap_and_sized_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[3].to_i)
-        read_bytes(2)
+        data = read_value(s[3].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
@@ -1005,8 +990,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_expired_swap_and_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[3].to_i)
-        read_bytes(2)
+        data = read_value(s[3].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
@@ -1052,8 +1036,7 @@ module Roma
       # (STORED|NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_expired_swap_and_sized_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[4].to_i)
-        read_bytes(2)
+        data = read_value(s[4].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
@@ -1099,8 +1082,7 @@ module Roma
       # (STORED|NOT_STORED|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_update_at(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        data = read_bytes(s[3].to_i)
-        read_bytes(2)
+        data = read_value(s[3].to_i)
         return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)

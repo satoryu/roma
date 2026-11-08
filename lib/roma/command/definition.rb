@@ -210,8 +210,7 @@ module Roma
               params.digest = @routing_table.digest(params.key)
               params.vnode = @routing_table.vnode_id(params.digest)
               params.nodes = @routing_table.search_nodes_for_write(params.vnode)
-              params.value = read_bytes(s[idx_of_val_len].to_i)
-              read_bytes(2)
+              params.value = read_value(s[idx_of_val_len].to_i)
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s, params.value)
@@ -286,8 +285,7 @@ module Roma
               params.digest = @routing_table.digest(params.key)
               params.vnode = @routing_table.vnode_id(params.digest)
               params.nodes = @routing_table.search_nodes_for_write(params.vnode)
-              params.value = read_bytes(s[idx_of_val_len].to_i)
-              read_bytes(2)
+              params.value = read_value(s[idx_of_val_len].to_i)
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s, params.value)
@@ -329,8 +327,7 @@ module Roma
               params.digest = @routing_table.digest(params.key)
               params.vnode = @routing_table.vnode_id(params.digest)
               params.nodes = @routing_table.search_nodes_for_write(params.vnode)
-              params.value = read_bytes(s[idx_of_val_len].to_i)
-              read_bytes(2)
+              params.value = read_value(s[idx_of_val_len].to_i)
               if params.nodes[0] != @my_node_id
                 if forward == :one_line
                   return forward_and_one_line_receive(params.nodes[0], s, params.value)

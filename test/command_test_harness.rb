@@ -179,6 +179,12 @@ class CommandTestHarness
     @read_buffer.slice!(0, size)
   end
 
+  def read_value(size, _timeout = nil)
+    value = read_bytes(size)
+    read_bytes(2)
+    value
+  end
+
   # Returns nil when the client sent nothing more. The real one waits.
   def gets
     idx = @read_buffer.index("\n")

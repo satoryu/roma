@@ -266,8 +266,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = @routing_table.digest(key)
-        v = read_bytes(s[4].to_i)
-        read_bytes(2)
+        v = read_value(s[4].to_i)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
@@ -286,8 +285,7 @@ module Roma
         hash_name ||= @default_hash_name
         d = s[2].to_i
         d = @routing_table.digest(key) if d == 0
-        v = read_bytes(s[4].to_i)
-        read_bytes(2)
+        v = read_value(s[4].to_i)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
@@ -635,8 +633,7 @@ module Roma
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
         d = @routing_table.digest(key)
-        v = read_bytes(bytes)
-        read_bytes(2)
+        v = read_value(bytes)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
@@ -655,8 +652,7 @@ module Roma
         hash_name ||= @default_hash_name
         d = s[2].to_i
         d = @routing_table.digest(key) if d == 0
-        v = read_bytes(s[4].to_i)
-        read_bytes(2)
+        v = read_value(s[4].to_i)
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
