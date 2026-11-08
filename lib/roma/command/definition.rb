@@ -102,7 +102,7 @@ module Roma
                 instance_exec(ctx, &)
                 @stats.read_count += 1
               when :write
-                push_to_write_behind(:"#{cmd}__prev", params, ctx.stored.value) if ctx.stored
+                push_to_write_behind(:"#{cmd}__prev", params.hash_name, params.key, ctx.stored.value) if ctx.stored
                 store_result(cmd, params, instance_exec(ctx, &))
               else
                 instance_exec(ctx, &)
@@ -110,70 +110,6 @@ module Roma
             end
           end
         end
-      end
-
-      def forward_and_one_line_receive(node_id, rs, data = nil)
-        return send_data("SERVER_ERROR Routing table is inconsistent.\r\n") if rs.last == 'forward'
-
-        @log.warn("forward #{rs} to #{node_id}")
-
-        buf = rs.join(' ') + " forward\r\n"
-        buf << (data + "\r\n") if data
-        res = send_cmd(node_id, buf)
-        return send_data("SERVER_ERROR Message forward failed.\r\n") if res.nil? || res.start_with?('ERROR')
-
-        send_data("#{res}\r\n")
-      end
-
-      def forward_and_multi_line_receive(node_id, rs, data = nil)
-        return send_data("SERVER_ERROR Routing table is inconsistent.\r\n") if rs.last == 'forward'
-
-        @log.warn("forward #{rs} to #{node_id}")
-
-        buf = rs.join(' ') + " forward\r\n"
-        buf << (data + "\r\n") if data
-
-        con = checkout_connection(node_id)
-        con.send(buf)
-
-        buf = con.gets
-        if buf.nil?
-          @routing_table.proc_failed(node_id)
-          @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{$@}")
-          return send_data("SERVER_ERROR Message forward failed.\r\n")
-        elsif buf.start_with?('ERROR')
-          @routing_table.proc_succeed(node_id)
-          con.close_connection
-          @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{$@}")
-          return send_data("SERVER_ERROR Message forward failed.\r\n")
-        elsif buf.start_with?('VALUE') == false
-          checkin_connection(node_id, con)
-          @routing_table.proc_succeed(node_id)
-          return send_data(buf)
-        end
-
-        res = +''
-        begin
-          res << buf
-          s = buf.split(/ /)
-          if s[0] != 'VALUE'
-            checkin_connection(node_id, con)
-            @routing_table.proc_succeed(node_id)
-            return send_data(buf)
-          end
-          res << con.read_bytes(s[3].to_i + 2)
-        end while (buf = con.gets) != "END\r\n"
-
-        res << "END\r\n"
-
-        checkin_connection(node_id, con)
-        @routing_table.proc_succeed(node_id)
-
-        send_data(res)
-      rescue StandardError => e
-        @routing_table.proc_failed(node_id) if e.message != 'no connection'
-        @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{e} #{$@}")
-        send_data("SERVER_ERROR Message forward failed.\r\n")
       end
 
       private
@@ -214,12 +150,6 @@ module Roma
         StoredData.new(vnode, last, clock, nil, expire_time, value)
       end
 
-      def push_to_write_behind(command, params, value)
-        return unless @stats.wb_command_map.key?(command)
-
-        Roma::WriteBehind::Process.push(params.hash_name, @stats.wb_command_map[command], params.key, value)
-      end
-
       # Stores what the block of the write command +cmd+ returned, and
       # replies. See def_write_command_with_key.
       def store_result(cmd, params, result)
@@ -233,7 +163,7 @@ module Roma
         end
         return send_data("NOT_#{msg}\r\n") unless ret
 
-        push_to_write_behind(cmd.to_sym, params, ret[4])
+        push_to_write_behind(cmd.to_sym, params.hash_name, params.key, ret[4])
         redundant(params.nodes[1..], params.hash_name, params.key, params.digest, ret[2], expire_time, ret[4])
         send_data("#{msg}\r\n")
       end

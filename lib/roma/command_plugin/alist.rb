@@ -18,7 +18,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_at(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s)  if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         @stats.read_count += 1
@@ -31,9 +31,7 @@ module Roma
         ret ||= ''
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_clear <key> [forward]\r\n
@@ -41,28 +39,19 @@ module Roma
       # (CLEARED|NOT_CLEARED|SERVER_ERROR <error message>)\r\n
       def ev_alist_clear(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        return forward2(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump([[], []]))
+        stored = store_list(hash_name, k, d, vnode, nodes, [[], []])
         @stats.delete_count += 1
+        return send_data("NOT_CLEARED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_clear)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_clear], k, ddata)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("CLEARED\r\n")
-        else
-          send_data("NOT_CLEARED\r\n")
-        end
+        push_to_write_behind(:alist_clear, hash_name, k, ddata)
+        send_data("CLEARED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_delete <key> <bytes> [forward]\r\n
@@ -72,7 +61,7 @@ module Roma
       def ev_alist_delete(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[2].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
@@ -85,23 +74,14 @@ module Roma
           v[1].delete_at(idx)
         end
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.delete_count += 1
+        return send_data("NOT_DELETED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_delete)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_delete], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("DELETED\r\n")
-        else
-          send_data("NOT_DELETED\r\n")
-        end
+        push_to_write_behind(:alist_delete, hash_name, k, data)
+        send_data("DELETED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_delete_at <key> <index> [forward]\r\n
@@ -109,7 +89,7 @@ module Roma
       # (DELETED|NOT_DELETED|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_delete_at(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        return forward2(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
@@ -120,23 +100,14 @@ module Roma
 
         v[1].delete_at(s[2].to_i)
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.delete_count += 1
+        return send_data("NOT_DELETED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_delete_at)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_delete_at], k, dret)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("DELETED\r\n")
-        else
-          send_data("NOT_DELETED\r\n")
-        end
+        push_to_write_behind(:alist_delete_at, hash_name, k, dret)
+        send_data("DELETED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_empty? <key> [forward]\r\n
@@ -144,7 +115,7 @@ module Roma
       # (true|false|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_empty?(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        return forward2(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         @stats.read_count += 1
@@ -156,9 +127,7 @@ module Roma
 
         send_data("#{ret}\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_first <key> [forward]\r\n
@@ -170,7 +139,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_first(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         @stats.read_count += 1
@@ -183,9 +152,7 @@ module Roma
         ret = v.first
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_gets <key> [index|range] [forward]\r\n
@@ -200,7 +167,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_gets(s)
         hash_name, k, _d, vnode, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, 0)
         @stats.read_count += 1
@@ -226,9 +193,7 @@ module Roma
         end
         send_data("END\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_gets_with_time <key> [index|range] [forward]\r\n
@@ -245,7 +210,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_gets_with_time(s)
         hash_name, k, _d, vnode, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, 0)
         @stats.read_count += 1
@@ -275,9 +240,7 @@ module Roma
         end
         send_data("END\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_include? <key> <bytes> [forward]\r\n
@@ -287,7 +250,7 @@ module Roma
       def ev_alist_include?(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[2].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         @stats.read_count += 1
@@ -299,8 +262,7 @@ module Roma
 
         send_data("#{ret}\r\n")
       rescue StandardError => e
-        send_data("SERVER_ERROR #{e} #{$@}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_index <key> <bytes> [forward]\r\n
@@ -310,7 +272,7 @@ module Roma
       def ev_alist_index(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[2].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         @stats.read_count += 1
@@ -325,9 +287,7 @@ module Roma
           send_data("nil\r\n")
         end
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_insert <key> <index> <bytes> [forward]\r\n
@@ -337,7 +297,7 @@ module Roma
       def ev_alist_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[3].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         v = if ddata
@@ -348,23 +308,14 @@ module Roma
 
         v[0].insert(s[2].to_i, data)
         v[1].insert(s[2].to_i, Time.now.to_i)
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_insert)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_insert], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_insert, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       def ev_alist_sized_prepend(s) = ev_alist_sized_insert(s)
@@ -376,7 +327,7 @@ module Roma
       def ev_alist_sized_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[3].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         v = if ddata
@@ -390,23 +341,14 @@ module Roma
         v[1].insert(0, Time.now.to_i)
         v[1] = v[1][0..(s[2].to_i - 1)]
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_sized_insert)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_sized_insert], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_sized_insert, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       def ev_alist_delete_and_prepend(s) = ev_alist_swap_and_insert(s)
@@ -418,7 +360,7 @@ module Roma
       def ev_alist_swap_and_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[2].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         v = if ddata
@@ -435,23 +377,14 @@ module Roma
         v[0].insert(0, data)
         v[1].insert(0, Time.now.to_i)
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_swap_and_insert)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_swap_and_insert], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_swap_and_insert, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       def ev_alist_sized_delete_and_prepend(s) = ev_alist_swap_and_sized_insert(s)
@@ -463,7 +396,7 @@ module Roma
       def ev_alist_swap_and_sized_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[3].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         v = if ddata
@@ -482,23 +415,14 @@ module Roma
         v[0] = v[0][0..(s[2].to_i - 1)]
         v[1] = v[1][0..(s[2].to_i - 1)]
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_swap_and_sized_insert)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_swap_and_sized_insert], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_swap_and_sized_insert, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_expired_swap_and_insert <key> <expire-time> <bytes> [forward]\r\n
@@ -514,7 +438,7 @@ module Roma
       def ev_alist_expired_swap_and_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[3].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
@@ -528,23 +452,14 @@ module Roma
         v[0].insert(0, data)
         v[1].insert(0, Time.now.to_i)
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_expired_swap_and_insert)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_expired_swap_and_insert], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_expired_swap_and_insert, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_expired_swap_and_sized_insert <key> <expire-time> <array-size> <bytes> [forward]\r\n
@@ -560,7 +475,7 @@ module Roma
       def ev_alist_expired_swap_and_sized_insert(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[4].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
@@ -576,24 +491,14 @@ module Roma
         v[1].insert(0, Time.now.to_i)
         v[1] = v[1][0..(s[3].to_i - 1)]
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_expired_swap_and_sized_insert)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_expired_swap_and_sized_insert], k,
-                                            data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_expired_swap_and_sized_insert, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_join_with_time <key> <bytes> [index|range] [forward]\r\n
@@ -611,7 +516,7 @@ module Roma
       def ev_alist_join_with_time(s)
         hash_name, k, _d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[2].to_i)
-        return forward1(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, 0)
         @stats.read_count += 1
@@ -639,9 +544,7 @@ module Roma
         send_data("VALUE #{s[1]} 0 #{v_ret.length}\r\n#{v_ret}\r\n")
         send_data("VALUE #{s[1]} 0 #{t_ret.length}\r\n#{t_ret}\r\nEND\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_join <key> <bytes> [index|range] [forward]\r\n
@@ -657,7 +560,7 @@ module Roma
       def ev_alist_join(s)
         hash_name, k, _d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[2].to_i)
-        return forward1(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, 0)
         @stats.read_count += 1
@@ -681,9 +584,7 @@ module Roma
         send_data("VALUE #{s[1]} 0 #{len.to_s.length}\r\n#{len}\r\n")
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_to_json <key> [index|range] [forward]\r\n
@@ -695,7 +596,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_to_json(s)
         hash_name, k, _d, vnode, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, 0)
         @stats.read_count += 1
@@ -717,9 +618,7 @@ module Roma
         end
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_last <key> [forward]\r\n
@@ -731,7 +630,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_last(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         @stats.read_count += 1
@@ -744,9 +643,7 @@ module Roma
         ret = v.last
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_length <key> [forward]\r\n
@@ -754,7 +651,7 @@ module Roma
       # (<length>|NOT_FOUND|SERVER_ERROR <error message>)\r\n
       def ev_alist_length(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        return forward2(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         @stats.read_count += 1
@@ -765,9 +662,7 @@ module Roma
         ret = v.length
         send_data("#{ret}\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_pop <key> [forward]\r\n
@@ -779,7 +674,7 @@ module Roma
       # |NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_pop(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("END\r\n") unless ddata
@@ -789,21 +684,14 @@ module Roma
 
         retv = v[0].pop
         v[1].pop
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.read_count += 1
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("VALUE #{s[1]} 0 #{retv.length}\r\n#{retv}\r\nEND\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        send_data("VALUE #{s[1]} 0 #{retv.length}\r\n#{retv}\r\nEND\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_push <key> <bytes> [forward]\r\n
@@ -813,7 +701,7 @@ module Roma
       def ev_alist_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[2].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         v = if ddata
@@ -824,23 +712,14 @@ module Roma
 
         v[0].push(data)
         v[1].push(Time.now.to_i)
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_push)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_push], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_push, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_sized_push <key> <array-size> <bytes> [forward]\r\n
@@ -850,7 +729,7 @@ module Roma
       def ev_alist_sized_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[3].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         v = if ddata
@@ -867,23 +746,14 @@ module Roma
         v[1].push(Time.now.to_i)
         v[1] = v[1][0..(max - 1)]
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_sized_push)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_sized_push], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_sized_push, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_swap_and_push <key> <bytes> [forward]\r\n
@@ -893,7 +763,7 @@ module Roma
       def ev_alist_swap_and_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[2].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         v = if ddata
@@ -910,23 +780,14 @@ module Roma
         v[0].push(data)
         v[1].push(Time.now.to_i)
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_swap_and_push)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_swap_and_push], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_swap_and_push, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_swap_and_sized_push <key> <array-size> <bytes> [forward]\r\n
@@ -936,7 +797,7 @@ module Roma
       def ev_alist_swap_and_sized_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[3].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         v = if ddata
@@ -959,23 +820,14 @@ module Roma
         v[1].push(Time.now.to_i)
         v[1] = v[1][0..(max - 1)]
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_swap_and_sized_push)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_swap_and_sized_push], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_swap_and_sized_push, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_expired_swap_and_push <key> <expire-time> <bytes> [forward]\r\n
@@ -991,7 +843,7 @@ module Roma
       def ev_alist_expired_swap_and_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[3].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
@@ -1005,23 +857,14 @@ module Roma
         v[0].push(data)
         v[1].push(Time.now.to_i)
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_expired_swap_and_push)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_expired_swap_and_push], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_expired_swap_and_push, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_expired_swap_and_sized_push <key> <expire-time> <array-size> <bytes> [forward]\r\n
@@ -1037,7 +880,7 @@ module Roma
       def ev_alist_expired_swap_and_sized_push(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[4].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
@@ -1056,24 +899,14 @@ module Roma
         v[1].push(Time.now.to_i)
         v[1] = v[1][0..(max - 1)]
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_expired_swap_and_sized_push)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_expired_swap_and_sized_push], k,
-                                            data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_expired_swap_and_sized_push, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_update_at <key> <index> <bytes>[forward]\r\n
@@ -1083,7 +916,7 @@ module Roma
       def ev_alist_update_at(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
         data = read_value(s[3].to_i)
-        return forward2(nodes[0], s, data) if nodes[0] != @my_node_id
+        return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
@@ -1096,23 +929,14 @@ module Roma
         v[0][idx] = data
         v[1][idx] = Time.now.to_i
 
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          if @stats.wb_command_map.key?(:alist_update_at)
-            Roma::WriteBehind::Process.push(hash_name, @stats.wb_command_map[:alist_update_at], k, data)
-          end
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("STORED\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        push_to_write_behind(:alist_update_at, hash_name, k, data)
+        send_data("STORED\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_shift <key> [forward]\r\n
@@ -1124,7 +948,7 @@ module Roma
       # |NOT_STORED|SERVER_ERROR <error message>)\r\n
       def ev_alist_shift(s)
         hash_name, k, d, vnode, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("END\r\n") unless ddata
@@ -1134,21 +958,14 @@ module Roma
 
         retv = v[0].shift
         v[1].shift
-        expire_time = 0x7fffffff
-        ret = @storages[hash_name].set(vnode, k, d, expire_time, Marshal.dump(v))
+        stored = store_list(hash_name, k, d, vnode, nodes, v)
         @stats.read_count += 1
         @stats.write_count += 1
+        return send_data("NOT_STORED\r\n") unless stored
 
-        if ret
-          redundant(nodes[1..-1], hash_name, k, d, ret[2], expire_time, ret[4])
-          send_data("VALUE #{s[1]} 0 #{retv.length}\r\n#{retv}\r\nEND\r\n")
-        else
-          send_data("NOT_STORED\r\n")
-        end
+        send_data("VALUE #{s[1]} 0 #{retv.length}\r\n#{retv}\r\nEND\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_to_s <key> [index|range] [forward]\r\n
@@ -1162,7 +979,7 @@ module Roma
       # |SERVER_ERROR <error message>\r\n)
       def ev_alist_to_s(s)
         hash_name, k, _d, vnode, nodes = calc_hash(s[1])
-        return forward1(nodes[0], s) if nodes[0] != @my_node_id
+        return forward_and_multi_line_receive(nodes[0], s) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, 0)
         @stats.read_count += 1
@@ -1185,9 +1002,7 @@ module Roma
         send_data("VALUE #{s[1]} 0 #{len.to_s.length}\r\n#{len}\r\n")
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       # alist_spushv <hash-name> <vnode-id>
@@ -1333,81 +1148,12 @@ module Roma
         [hash_name, k, d, vnode, nodes]
       end
 
-      # for a several lines received command
-      def forward1(node_id, rs, data = nil)
-        return send_data("SERVER_ERROR Routing table is inconsistent.\r\n") if rs.last == 'forward'
-
-        @log.warn("forward #{rs} to #{node_id}")
-
-        buf = +''
-        rs.each { |ss| buf << "#{ss} " }
-        buf << "forward\r\n"
-        if data
-          buf << data
-          buf << "\r\n"
-        end
-
-        con = checkout_connection(node_id)
-        con.send(buf)
-
-        buf = con.gets
-        if buf.nil?
-          @routing_table.proc_failed(node_id)
-          @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{$@}")
-          return send_data("SERVER_ERROR Message forward failed.\r\n")
-        elsif buf.start_with?('ERROR')
-          @routing_table.proc_succeed(node_id)
-          con.close_connection
-          @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{$@}")
-          return send_data("SERVER_ERROR Message forward failed.\r\n")
-        elsif buf.start_with?('VALUE') == false
-          checkin_connection(node_id, con)
-          @routing_table.proc_succeed(node_id)
-          return send_data(buf)
-        end
-
-        res = +''
-        begin
-          res << buf
-          s = buf.split(/ /)
-          if s[0] != 'VALUE'
-            checkin_connection(node_id, con)
-            @routing_table.proc_succeed(node_id)
-            return send_data(buf)
-          end
-          res << con.read_bytes(s[3].to_i + 2)
-        end while (buf = con.gets) != "END\r\n"
-
-        res << "END\r\n"
-
-        checkin_connection(node_id, con)
-        @routing_table.proc_succeed(node_id)
-
-        send_data(res)
-      rescue StandardError => e
-        @routing_table.proc_failed(node_id) if e.message != 'no connection'
-        @log.error("forward get failed:node_id=#{node_id} rs=#{rs} #{e} #{$@}")
-        send_data("SERVER_ERROR Message forward failed.\r\n")
-      end
-
-      # for a one line reveived command
-      def forward2(node_id, rs, data = nil)
-        return send_data("SERVER_ERROR Routing table is inconsistent.\r\n") if rs.last == 'forward'
-
-        @log.warn("forward #{rs} to #{node_id}")
-
-        buf = +''
-        rs.each { |ss| buf << "#{ss} " }
-        buf << "forward\r\n"
-        if data
-          buf << data
-          buf << "\r\n"
-        end
-
-        res = send_cmd(node_id, buf)
-        return send_data("SERVER_ERROR Message forward failed.\r\n") if res.nil? || res.start_with?('ERROR')
-
-        send_data("#{res}\r\n")
+      # Stores +list+ for the key, which never expires, and replicates it.
+      # Returns nil or false if the storage didn't store it.
+      def store_list(hash_name, k, d, vnode, nodes, list)
+        ret = @storages[hash_name].set(vnode, k, d, NEVER_EXPIRES, Marshal.dump(list))
+        redundant(nodes[1..], hash_name, k, d, ret[2], NEVER_EXPIRES, ret[4]) if ret
+        ret
       end
     end #  Alist
   end # CommandPlugin
