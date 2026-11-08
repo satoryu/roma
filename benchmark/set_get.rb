@@ -17,8 +17,9 @@
 # their replies, so that the server reads and writes them together.
 #
 # --profile records where a ROMA node spends its time while each command is
-# measured: on macOS, the native stacks of its threads with sample(1), and
-# with --stackprof also the Ruby methods with StackProf.
+# measured: on macOS, the native stacks of its threads with sample(1), the
+# objects that it allocates and its GC, and with --stackprof also the Ruby
+# methods with StackProf.
 #
 # --yjit runs the ROMA nodes with YJIT, or both without and with it; the
 # clients are the same either way.
@@ -260,7 +261,7 @@ module SetGetBenchmark
 
       ruby = [RbConfig.ruby]
       ruby << '--yjit' if @yjit
-      ruby.push('-r', PROFILER) if @profile&.stackprof?
+      ruby.push('-r', PROFILER) if @profile
       [*ruby, ROMA, 'server', 'localhost', '-p', port.to_s, '--config', 'config.rb']
     end
   end
@@ -298,40 +299,41 @@ module SetGetBenchmark
   #
   # - .sample.txt and .sample.md: the native stacks of all the threads, from
   #   sample(1), which only macOS has, and their summary by sample_report.rb.
-  # - .stackprof.dump and .stackprof.txt, with +stackprof+: the Ruby methods,
-  #   from StackProf. The time in a C method, such as
+  # - .stackprof.dump and .stackprof.txt, with +stackprof+, a mode of
+  #   StackProf: the Ruby methods that used the CPU (cpu) or allocated the
+  #   objects (object). In cpu mode, the time in a C method, such as
   #   EventMachine.run_machine where the event loop waits, reads and writes,
-  #   is the method's own. Its timer signals interrupt the node often, so
-  #   it slows the node more than sample(1).
+  #   is the method's own. StackProf slows the node more than sample(1).
   #
-  # summary.md tells the user and system CPU time for a request, and how the
-  # main thread, which runs the event loop, spent its time.
+  # summary.md tells the user and system CPU time for a request, how the
+  # main thread, which runs the event loop, spent its time, and the objects
+  # and the GC for a request, from profiler.rb in the node.
   class Profile
-    def initialize(dir, stackprof: false)
+    attr_reader :stackprof
+
+    def initialize(dir, stackprof: nil)
       @dir = File.expand_path(dir)
       @stackprof = stackprof
       FileUtils.mkdir_p(@dir)
       @sample = system('which', 'sample', out: File::NULL)
-      warn 'sample(1) is missing, so --profile records only the CPU times.' unless @sample
+      warn 'sample(1) is missing, so --profile records no stacks of threads.' unless @sample
       @rows = []
     end
 
-    def stackprof? = @stackprof
-
     # The environment for profiler.rb in a ROMA node.
     def env(server)
-      return {} unless @stackprof
-
-      @dumps = File.join(@dir, "#{server.name}.dumps")
-      FileUtils.mkdir_p(@dumps)
+      @records = File.join(@dir, "#{server.name}.records")
+      FileUtils.mkdir_p(@records)
       @count = 0
-      { 'SET_GET_PROFILE_DIR' => @dumps }
+      env = { 'SET_GET_PROFILE_DIR' => @records }
+      env['SET_GET_STACKPROF'] = @stackprof if @stackprof
+      env
     end
 
     def start(server, name)
       @name = name
       @times = server.cpu_times('utime', 'time')
-      Process.kill(:USR2, server.pid) if @stackprof
+      Process.kill(:USR2, server.pid)
       return unless @sample
 
       @sampler = Process.spawn('sample', server.pid.to_s, '3600', '1', '-file', path('sample.txt'),
@@ -342,15 +344,14 @@ module SetGetBenchmark
     def stop(server, requests)
       user, total = server.cpu_times('utime', 'time').zip(@times).map { |now, before| now - before }
       main = stop_sample
-      Process.kill(:USR2, server.pid) if @stackprof
-      write_stackprof if @stackprof
-      @rows << [@name, requests, user, total - user, main]
+      Process.kill(:USR2, server.pid)
+      @rows << { name: @name, requests: requests, user: user, system: total - user, main: main, gc: read_record }
       File.write(File.join(@dir, 'summary.md'), summary)
     end
 
     # Removes the directory where profiler.rb wrote.
     def finish
-      FileUtils.rm_rf(@dumps) if @dumps
+      FileUtils.rm_rf(@records) if @records
     end
 
     private
@@ -371,26 +372,38 @@ module SetGetBenchmark
       SampleReport.parse(text).find { |t| t.name == 'main' }
     end
 
-    def write_stackprof
+    # Returns how GC.stat changed, and writes the samples of StackProf.
+    def read_record
       @count += 1
-      dump = File.join(@dumps, "#{@count}.dump")
-      sleep 0.1 until File.exist?(dump)
-      File.rename(dump, path('stackprof.dump'))
-      text = IO.popen([Gem.bin_path('stackprof', 'stackprof'), '--text', '--limit', '40', path('stackprof.dump')],
-                      &:read)
-      File.write(path('stackprof.txt'), text)
+      record = File.join(@records, @count.to_s)
+      sleep 0.1 until File.exist?("#{record}.json")
+      if @stackprof
+        File.rename("#{record}.dump", path('stackprof.dump'))
+        text = IO.popen([Gem.bin_path('stackprof', 'stackprof'), '--text', '--limit', '40', path('stackprof.dump')],
+                        &:read)
+        File.write(path('stackprof.txt'), text)
+      end
+      JSON.parse(File.read("#{record}.json"))
     end
 
     def summary
       kinds = SampleReport::KINDS.keys - ['blocked']
-      lines = ["| profile | requests | user (us/req) | system (us/req) | #{kinds.join(' | ')} |",
+      times = ["| profile | requests | user (us/req) | system (us/req) | #{kinds.join(' | ')} |",
                "|---|--:|--:|--:|#{'--:|' * kinds.size}"]
-      @rows.each do |name, requests, user, system, main|
-        shares = kinds.map { |kind| main ? format('%.1f%%', main.share(kind)) : '-' }
-        lines << format('| %s | %d | %.1f | %.1f | %s |', name, requests, user / requests * 1_000_000,
-                        system / requests * 1_000_000, shares.join(' | '))
+      gcs = ['| profile | objects/req | minor GCs/1000 req | major GCs/1000 req | GC time (us/req) |',
+             '|---|--:|--:|--:|--:|']
+      @rows.each do |row|
+        per_request = ->(value) { value.fdiv(row[:requests]) }
+        shares = kinds.map { |kind| row[:main] ? format('%.1f%%', row[:main].share(kind)) : '-' }
+        times << format('| %s | %d | %.1f | %.1f | %s |', row[:name], row[:requests],
+                        per_request.call(row[:user]) * 1_000_000, per_request.call(row[:system]) * 1_000_000,
+                        shares.join(' | '))
+        gc = row[:gc]
+        gcs << format('| %s | %.1f | %.2f | %.2f | %.2f |', row[:name], per_request.call(gc['total_allocated_objects']),
+                      per_request.call(gc['minor_gc_count']) * 1000, per_request.call(gc['major_gc_count']) * 1000,
+                      per_request.call(gc['time']) * 1000)
       end
-      lines.join("\n") << "\n"
+      [*times, '', *gcs].join("\n") << "\n"
     end
   end
 
@@ -540,8 +553,8 @@ module SetGetBenchmark
         raise OptionParser::InvalidArgument, v.join(',') unless options[:pipelines].all?(&:positive?)
       end
       opts.on('--profile DIR', 'Record where the ROMA nodes spend their time in DIR') { |v| options[:profile] = v }
-      opts.on('--stackprof', 'With --profile, record the Ruby methods with StackProf too') do
-        options[:stackprof] = true
+      opts.on('--stackprof [MODE]', %w(cpu object), 'With --profile, run StackProf too: cpu (default) or object') do |v|
+        options[:stackprof] = v || 'cpu'
       end
       opts.on('--keep', 'Keep the directories of the servers, with their output') { options[:keep] = true }
     end.parse!(argv)
