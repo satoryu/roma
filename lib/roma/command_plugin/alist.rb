@@ -24,10 +24,10 @@ module Roma
         @stats.read_count += 1
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)[0]
-        return send_data("END\r\n") if v.length <= s[2].to_i
+        values = Marshal.load(ddata)[0]
+        return send_data("END\r\n") if values.length <= s[2].to_i
 
-        ret = v.at(s[2].to_i)
+        ret = values.at(s[2].to_i)
         ret ||= ''
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
@@ -66,15 +66,15 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        v = Marshal.load(ddata)
-        return send_data("NOT_DELETED\r\n") unless v[0].include?(data)
+        values, times = Marshal.load(ddata)
+        return send_data("NOT_DELETED\r\n") unless values.include?(data)
 
-        while (idx = v[0].index(data))
-          v[0].delete_at(idx)
-          v[1].delete_at(idx)
+        while (idx = values.index(data))
+          values.delete_at(idx)
+          times.delete_at(idx)
         end
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.delete_count += 1
         return send_data("NOT_DELETED\r\n") unless stored
 
@@ -94,13 +94,13 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        v = Marshal.load(ddata)
-        dret = v[0].delete_at(s[2].to_i)
+        values, times = Marshal.load(ddata)
+        dret = values.delete_at(s[2].to_i)
         return send_data("NOT_DELETED\r\n") unless dret
 
-        v[1].delete_at(s[2].to_i)
+        times.delete_at(s[2].to_i)
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.delete_count += 1
         return send_data("NOT_DELETED\r\n") unless stored
 
@@ -122,8 +122,8 @@ module Roma
 
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        v = Marshal.load(ddata)
-        ret = v[0].empty?
+        values, _times = Marshal.load(ddata)
+        ret = values.empty?
 
         send_data("#{ret}\r\n")
       rescue StandardError => e
@@ -146,10 +146,10 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)[0]
-        return send_data("END\r\n") if v.length == 0
+        values = Marshal.load(ddata)[0]
+        return send_data("END\r\n") if values.length == 0
 
-        ret = v.first
+        ret = values.first
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
         reply_server_error(e)
@@ -174,19 +174,19 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)[0]
+        values = Marshal.load(ddata)[0]
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[2]
           if ::Regexp.last_match(1)
-            return send_data("END\r\n") if v.length <= ::Regexp.last_match(1).to_i
+            return send_data("END\r\n") if values.length <= ::Regexp.last_match(1).to_i
 
-            buf = v[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
+            buf = values[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
           else
-            buf = v[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
+            buf = values[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
           end
         else
-          buf = v
+          buf = values
         end
-        len = v.length
+        len = values.length
         send_data("VALUE #{s[1]} 0 #{len.to_s.length}\r\n#{len}\r\n")
         buf.each do |val|
           send_data("VALUE #{s[1]} 0 #{val.length}\r\n#{val}\r\n")
@@ -217,22 +217,22 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)
+        values, times = Marshal.load(ddata)
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[2]
           if ::Regexp.last_match(1)
-            return send_data("END\r\n") if v[0].length <= ::Regexp.last_match(1).to_i
+            return send_data("END\r\n") if values.length <= ::Regexp.last_match(1).to_i
 
-            v_buf = v[0][Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
-            t_buf = v[1][Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
+            v_buf = values[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
+            t_buf = times[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
           else
-            v_buf = v[0][Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
-            t_buf = v[1][Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
+            v_buf = values[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
+            t_buf = times[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
           end
         else
-          v_buf = v[0]
-          t_buf = v[1]
+          v_buf = values
+          t_buf = times
         end
-        len = v[0].length
+        len = values.length
         send_data("VALUE #{s[1]} 0 #{len.to_s.length}\r\n#{len}\r\n")
         v_buf.each_with_index do |val, idx|
           send_data("VALUE #{s[1]} 0 #{val.length}\r\n#{val}\r\n")
@@ -257,8 +257,8 @@ module Roma
 
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        v = Marshal.load(ddata)[0]
-        ret = v.include?(data)
+        values = Marshal.load(ddata)[0]
+        ret = values.include?(data)
 
         send_data("#{ret}\r\n")
       rescue StandardError => e
@@ -279,8 +279,8 @@ module Roma
 
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        v = Marshal.load(ddata)[0]
-        ret = v.index(data)
+        values = Marshal.load(ddata)[0]
+        ret = values.index(data)
         if ret
           send_data("#{ret}\r\n")
         else
@@ -300,15 +300,11 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        v = if ddata
-              Marshal.load(ddata)
-            else
-              [[], []]
-            end
+        values, times = ddata ? Marshal.load(ddata) : [[], []]
 
-        v[0].insert(s[2].to_i, data)
-        v[1].insert(s[2].to_i, Time.now.to_i)
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        values.insert(s[2].to_i, data)
+        times.insert(s[2].to_i, Time.now.to_i)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -330,18 +326,14 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        v = if ddata
-              Marshal.load(ddata)
-            else
-              [[], []]
-            end
+        values, times = ddata ? Marshal.load(ddata) : [[], []]
 
-        v[0].insert(0, data)
-        v[0] = v[0][0..(s[2].to_i - 1)]
-        v[1].insert(0, Time.now.to_i)
-        v[1] = v[1][0..(s[2].to_i - 1)]
+        values.insert(0, data)
+        values = values[0..(s[2].to_i - 1)]
+        times.insert(0, Time.now.to_i)
+        times = times[0..(s[2].to_i - 1)]
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -363,21 +355,17 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        v = if ddata
-              Marshal.load(ddata)
-            else
-              [[], []]
-            end
+        values, times = ddata ? Marshal.load(ddata) : [[], []]
 
-        idx = v[0].index(data)
+        idx = values.index(data)
         if idx
-          v[0].delete_at(idx)
-          v[1].delete_at(idx)
+          values.delete_at(idx)
+          times.delete_at(idx)
         end
-        v[0].insert(0, data)
-        v[1].insert(0, Time.now.to_i)
+        values.insert(0, data)
+        times.insert(0, Time.now.to_i)
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -399,23 +387,19 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        v = if ddata
-              Marshal.load(ddata)
-            else
-              [[], []]
-            end
+        values, times = ddata ? Marshal.load(ddata) : [[], []]
 
-        idx = v[0].index(data)
+        idx = values.index(data)
         if idx
-          v[0].delete_at(idx)
-          v[1].delete_at(idx)
+          values.delete_at(idx)
+          times.delete_at(idx)
         end
-        v[0].insert(0, data)
-        v[1].insert(0, Time.now.to_i)
-        v[0] = v[0][0..(s[2].to_i - 1)]
-        v[1] = v[1][0..(s[2].to_i - 1)]
+        values.insert(0, data)
+        times.insert(0, Time.now.to_i)
+        values = values[0..(s[2].to_i - 1)]
+        times = times[0..(s[2].to_i - 1)]
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -443,16 +427,18 @@ module Roma
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
 
-        v = to_alist_value_for_write(hash_name, vnode, k, d)
-        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless v
+        list = to_alist_value_for_write(hash_name, vnode, k, d)
+        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless list
+
+        values, times = list
 
         # @log.debug("#{s[2]} et=#{et}")
-        v = expired_swap(v, data, et)
+        expired_swap(values, times, data, et)
 
-        v[0].insert(0, data)
-        v[1].insert(0, Time.now.to_i)
+        values.insert(0, data)
+        times.insert(0, Time.now.to_i)
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -480,18 +466,20 @@ module Roma
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
 
-        v = to_alist_value_for_write(hash_name, vnode, k, d)
-        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless v
+        list = to_alist_value_for_write(hash_name, vnode, k, d)
+        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless list
+
+        values, times = list
 
         # @log.debug("#{s[2]} et=#{et}")
-        v = expired_swap(v, data, et)
+        expired_swap(values, times, data, et)
 
-        v[0].insert(0, data)
-        v[0] = v[0][0..(s[3].to_i - 1)]
-        v[1].insert(0, Time.now.to_i)
-        v[1] = v[1][0..(s[3].to_i - 1)]
+        values.insert(0, data)
+        values = values[0..(s[3].to_i - 1)]
+        times.insert(0, Time.now.to_i)
+        times = times[0..(s[3].to_i - 1)]
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -522,22 +510,22 @@ module Roma
         @stats.read_count += 1
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)
+        values, times = Marshal.load(ddata)
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[3]
           if ::Regexp.last_match(1)
-            return send_data("END\r\n") if v[0].length <= ::Regexp.last_match(1).to_i
+            return send_data("END\r\n") if values.length <= ::Regexp.last_match(1).to_i
 
-            v_buf = v[0][Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
-            t_buf = v[1][Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
+            v_buf = values[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
+            t_buf = times[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
           else
-            v_buf = v[0][Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
-            t_buf = v[1][Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
+            v_buf = values[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
+            t_buf = times[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
           end
         else
-          v_buf = v[0]
-          t_buf = v[1]
+          v_buf = values
+          t_buf = times
         end
-        len = v[0].length
+        len = values.length
         v_ret = v_buf.join(data)
         t_ret = t_buf.join(data)
         send_data("VALUE #{s[1]} 0 #{len.to_s.length}\r\n#{len}\r\n")
@@ -567,19 +555,19 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)[0]
+        values = Marshal.load(ddata)[0]
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[3]
           if ::Regexp.last_match(1)
-            return send_data("END\r\n") if v.length <= ::Regexp.last_match(1).to_i
+            return send_data("END\r\n") if values.length <= ::Regexp.last_match(1).to_i
 
-            buf = v[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
+            buf = values[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)]
           else
-            buf = v[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
+            buf = values[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)]
           end
         else
-          buf = v
+          buf = values
         end
-        len = v.length
+        len = values.length
         ret = buf.join(data)
         send_data("VALUE #{s[1]} 0 #{len.to_s.length}\r\n#{len}\r\n")
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
@@ -603,18 +591,18 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)[0]
+        values = Marshal.load(ddata)[0]
         ret = nil
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[2]
           if ::Regexp.last_match(1)
-            return send_data("END\r\n") if v.length <= ::Regexp.last_match(1).to_i
+            return send_data("END\r\n") if values.length <= ::Regexp.last_match(1).to_i
 
-            ret = JSON.generate(v[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)])
+            ret = JSON.generate(values[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)])
           else
-            ret = JSON.generate(v[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)])
+            ret = JSON.generate(values[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)])
           end
         else
-          ret = JSON.generate(v)
+          ret = JSON.generate(values)
         end
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
@@ -637,10 +625,10 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)[0]
-        return send_data("END\r\n") if v.length == 0
+        values = Marshal.load(ddata)[0]
+        return send_data("END\r\n") if values.length == 0
 
-        ret = v.last
+        ret = values.last
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
         reply_server_error(e)
@@ -658,8 +646,8 @@ module Roma
 
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        v = Marshal.load(ddata)[0]
-        ret = v.length
+        values = Marshal.load(ddata)[0]
+        ret = values.length
         send_data("#{ret}\r\n")
       rescue StandardError => e
         reply_server_error(e)
@@ -679,12 +667,12 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)
-        return send_data("END\r\n") if v[0].length == 0
+        values, times = Marshal.load(ddata)
+        return send_data("END\r\n") if values.length == 0
 
-        retv = v[0].pop
-        v[1].pop
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        retv = values.pop
+        times.pop
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.read_count += 1
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
@@ -704,15 +692,11 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        v = if ddata
-              Marshal.load(ddata)
-            else
-              [[], []]
-            end
+        values, times = ddata ? Marshal.load(ddata) : [[], []]
 
-        v[0].push(data)
-        v[1].push(Time.now.to_i)
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        values.push(data)
+        times.push(Time.now.to_i)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -732,21 +716,17 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        v = if ddata
-              Marshal.load(ddata)
-            else
-              [[], []]
-            end
+        values, times = ddata ? Marshal.load(ddata) : [[], []]
 
         max = s[2].to_i
-        return send_data("NOT_PUSHED\r\n") if v[0].length >= max
+        return send_data("NOT_PUSHED\r\n") if values.length >= max
 
-        v[0].push(data)
-        v[0] = v[0][0..(max - 1)]
-        v[1].push(Time.now.to_i)
-        v[1] = v[1][0..(max - 1)]
+        values.push(data)
+        values = values[0..(max - 1)]
+        times.push(Time.now.to_i)
+        times = times[0..(max - 1)]
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -766,21 +746,17 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        v = if ddata
-              Marshal.load(ddata)
-            else
-              [[], []]
-            end
+        values, times = ddata ? Marshal.load(ddata) : [[], []]
 
-        idx = v[0].index(data)
+        idx = values.index(data)
         if idx
-          v[0].delete_at(idx)
-          v[1].delete_at(idx)
+          values.delete_at(idx)
+          times.delete_at(idx)
         end
-        v[0].push(data)
-        v[1].push(Time.now.to_i)
+        values.push(data)
+        times.push(Time.now.to_i)
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -800,27 +776,23 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        v = if ddata
-              Marshal.load(ddata)
-            else
-              [[], []]
-            end
+        values, times = ddata ? Marshal.load(ddata) : [[], []]
 
         max = s[2].to_i
 
-        idx = v[0].index(data)
+        idx = values.index(data)
         if idx
-          v[0].delete_at(idx)
-          v[1].delete_at(idx)
-        elsif v[0].length >= max
+          values.delete_at(idx)
+          times.delete_at(idx)
+        elsif values.length >= max
           return send_data("NOT_PUSHED\r\n")
         end
-        v[0].push(data)
-        v[0] = v[0][0..(max - 1)]
-        v[1].push(Time.now.to_i)
-        v[1] = v[1][0..(max - 1)]
+        values.push(data)
+        values = values[0..(max - 1)]
+        times.push(Time.now.to_i)
+        times = times[0..(max - 1)]
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -848,16 +820,18 @@ module Roma
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
 
-        v = to_alist_value_for_write(hash_name, vnode, k, d)
-        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless v
+        list = to_alist_value_for_write(hash_name, vnode, k, d)
+        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless list
+
+        values, times = list
 
         # @log.debug("#{s[2]} et=#{et}")
-        v = expired_swap(v, data, et)
+        expired_swap(values, times, data, et)
 
-        v[0].push(data)
-        v[1].push(Time.now.to_i)
+        values.push(data)
+        times.push(Time.now.to_i)
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -885,21 +859,23 @@ module Roma
         et = expired_str_to_i(s[2])
         return send_data("SERVER_ERROR format error in expire-time.\r\n") unless et
 
-        v = to_alist_value_for_write(hash_name, vnode, k, d)
-        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless v
+        list = to_alist_value_for_write(hash_name, vnode, k, d)
+        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless list
+
+        values, times = list
 
         # @log.debug("#{s[2]} et=#{et}")
-        v = expired_swap(v, data, et)
+        expired_swap(values, times, data, et)
 
         max = s[3].to_i
-        return send_data("NOT_PUSHED\r\n") if v[0].length >= max
+        return send_data("NOT_PUSHED\r\n") if values.length >= max
 
-        v[0].push(data)
-        v[0] = v[0][0..(max - 1)]
-        v[1].push(Time.now.to_i)
-        v[1] = v[1][0..(max - 1)]
+        values.push(data)
+        values = values[0..(max - 1)]
+        times.push(Time.now.to_i)
+        times = times[0..(max - 1)]
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -921,15 +897,15 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        v = Marshal.load(ddata)
+        values, times = Marshal.load(ddata)
 
         idx = s[2].to_i
-        return send_data("NOT_FOUND\r\n") if idx < 0 || v[0].length <= idx
+        return send_data("NOT_FOUND\r\n") if idx < 0 || values.length <= idx
 
-        v[0][idx] = data
-        v[1][idx] = Time.now.to_i
+        values[idx] = data
+        times[idx] = Time.now.to_i
 
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
 
@@ -953,12 +929,12 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("END\r\n") unless ddata
 
-        v = Marshal.load(ddata)
-        return send_data("END\r\n") if v[0].length == 0
+        values, times = Marshal.load(ddata)
+        return send_data("END\r\n") if values.length == 0
 
-        retv = v[0].shift
-        v[1].shift
-        stored = store_list(hash_name, k, d, vnode, nodes, v)
+        retv = values.shift
+        times.shift
+        stored = store_list(hash_name, k, d, vnode, nodes, [values, times])
         @stats.read_count += 1
         @stats.write_count += 1
         return send_data("NOT_STORED\r\n") unless stored
@@ -986,19 +962,21 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        v = to_alist_value(ddata)
-        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless v
+        list = to_alist_value(ddata)
+        return send_data("SERVER_ERROR data other than alist's format already exist.\r\n") unless list
+
+        values, _times = list
 
         ret = if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[2]
                 if ::Regexp.last_match(1)
-                  v[0][Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)].to_s
+                  values[Range.new(::Regexp.last_match(1).to_i, ::Regexp.last_match(1).to_i)].to_s
                 else
-                  v[0][Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)].to_s
+                  values[Range.new(::Regexp.last_match(2).to_i, ::Regexp.last_match(3).to_i)].to_s
                 end
               else
-                v[0].to_s
+                values.to_s
               end
-        len = v[0].length
+        len = values.length
         send_data("VALUE #{s[1]} 0 #{len.to_s.length}\r\n#{len}\r\n")
         send_data("VALUE #{s[1]} 0 #{ret.length}\r\n#{ret}\r\nEND\r\n")
       rescue StandardError => e
@@ -1070,21 +1048,21 @@ module Roma
 
       private
 
-      def expired_swap(v, rcv_val, et)
+      # Deletes +rcv_val+ and the values added +et+ seconds ago or earlier
+      # from the list.
+      def expired_swap(values, times, rcv_val, et)
         del = [rcv_val]
         expire_time = Time.now.to_i - et
-        v[1].each_with_index do |t, i|
-          # @log.debug("v=#{v[0][i]} expire_time=#{expire_time} t=#{t} #{expire_time >= t}")
-          del << v[0][i] if expire_time >= t
+        times.each_with_index do |t, i|
+          del << values[i] if expire_time >= t
         end
         del.each do |dat|
-          i = v[0].index(dat)
+          i = values.index(dat)
           if i
-            v[0].delete_at(i)
-            v[1].delete_at(i)
+            values.delete_at(i)
+            times.delete_at(i)
           end
         end
-        v
       end
 
       def expired_str_to_i(s)
