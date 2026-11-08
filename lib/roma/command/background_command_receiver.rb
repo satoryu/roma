@@ -76,6 +76,6 @@ module Roma
           send_data("SERVER_ERROR nodes num < redundant num\r\n")
         end
       end
-    end # module BackgroundCommandReceiver
-  end # module Command
-end # module Roma
+    end
+  end
+end

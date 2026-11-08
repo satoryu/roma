@@ -85,6 +85,6 @@ module Roma
           @pool.delete(ap)
         end
       end
-    end # class EMConnectionPool
-  end # module Event
-end # module Roma
+    end
+  end
+end

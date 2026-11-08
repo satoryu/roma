@@ -372,6 +372,6 @@ module Roma
         end
         false
       end
-    end # class ChurnbasedRoutingTable
-  end # module Routing
-end # module Roma
+    end
+  end
+end

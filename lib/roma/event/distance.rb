@@ -18,6 +18,6 @@ module Roma
         end
         [(1 - jaro_winkler_distance), similar_cmd]
       end
-    end # module Distance
-  end # module Event
-end # module Roma
+    end
+  end
+end

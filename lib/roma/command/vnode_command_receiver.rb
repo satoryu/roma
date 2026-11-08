@@ -133,6 +133,6 @@ module Roma
         @routing_table.proc_failed(src_node_id)
         false
       end
-    end # module VnodeCommandReceiver
-  end # module Command
-end # module Roma
+    end
+  end
+end

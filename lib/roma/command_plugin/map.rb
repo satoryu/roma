@@ -168,6 +168,6 @@ module Roma
         end
         send_data("END\r\n")
       end
-    end # module Map
-  end # module CommandPlugin
-end # module Roma
+    end
+  end
+end

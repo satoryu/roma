@@ -336,7 +336,7 @@ module Roma
           nodes = hidx[rh]
           nodes[rand(nodes.length)]
         end
-      end # class RandomNodeListMaker
-    end # class RoutingData
-  end # module Routing
-end # module Roma
+      end
+    end
+  end
+end

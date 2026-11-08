@@ -44,6 +44,6 @@ module Roma
       def parent(id)
         id.chop
       end
-    end # class MerkleTree
-  end # module Routing
-end # module Roma
+    end
+  end
+end

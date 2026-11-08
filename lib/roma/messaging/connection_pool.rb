@@ -100,6 +100,6 @@ module Roma
           @pool.delete(ap)
         end
       end
-    end # class ConnectionPool
-  end # module Messaging
-end # module Roma
+    end
+  end
+end

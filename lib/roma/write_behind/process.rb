@@ -40,6 +40,6 @@ module Roma
         retry
       end
       private :process_loop
-    end # module Process
-  end # module WriteBehind
-end # module Roma
+    end
+  end
+end

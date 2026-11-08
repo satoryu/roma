@@ -730,5 +730,5 @@ module Roma
       @routing_table.close_log if @routing_table.instance_of?(Roma::Routing::ChurnbasedRoutingTable)
       @log.info("The server has stopped: #{@stats.my_node_id}")
     end
-  end # class Server
-end # module Roma
+  end
+end

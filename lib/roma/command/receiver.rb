@@ -51,6 +51,6 @@ module Roma
           Event::Handler.event_list[m.to_s[3..-1]] = m if m.to_s.start_with?('ev_')
         end
       end
-    end # class Receiver < Roma::Event::Handler
-  end # module Command
-end # module Roma
+    end
+  end
+end

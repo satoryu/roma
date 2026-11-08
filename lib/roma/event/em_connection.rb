@@ -63,6 +63,6 @@ module Roma
         end
         nil
       end
-    end # module EMConnection
-  end # module Event
-end # module Roma
+    end
+  end
+end

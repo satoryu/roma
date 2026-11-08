@@ -176,6 +176,6 @@ module Roma
       DATE_FORMAT = '%Y-%m-%dT%H:%M:%S +00'
 
       PLUGIN_MAPCOUNT_VERSION = '1.0.1'
-    end # Mapcount
-  end # CommandPlugin
-end # Roma
+    end
+  end
+end

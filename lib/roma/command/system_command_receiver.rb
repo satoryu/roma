@@ -1052,6 +1052,6 @@ module Roma
         end
         ret
       end
-    end # module SystemCommandReceiver
-  end # module Command
-end # module Roma
+    end
+  end
+end

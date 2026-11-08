@@ -196,5 +196,5 @@ module Roma
 
       instance_variable_set(var, 0)
     end
-  end # class Stats
-end # module Roma
+  end
+end

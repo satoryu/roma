@@ -207,6 +207,6 @@ module Roma
         end
         (iaddr & imask) == (imask_addr & imask)
       end
-    end # class RoutingTable
-  end # module Routing
-end # module Roma
+    end
+  end
+end

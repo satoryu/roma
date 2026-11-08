@@ -204,6 +204,6 @@ module Roma
       def shift_age=(age)
         @wrap_logger.shift_age = age
       end
-    end # class RLogger
-  end # module Logging
-end # module Roma
+    end
+  end
+end

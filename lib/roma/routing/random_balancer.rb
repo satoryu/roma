@@ -70,6 +70,6 @@ module Roma
           routes[rep[:vnode]][rep[:idx]] = rep[:to]
         end
       end
-    end # module RandomBalancer
+    end
   end
 end

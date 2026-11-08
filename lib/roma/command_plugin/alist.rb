@@ -1158,6 +1158,6 @@ module Roma
         redundant(nodes[1..], hash_name, k, d, clock, NEVER_EXPIRES, value)
         ret
       end
-    end #  Alist
-  end # CommandPlugin
-end # Roma
+    end
+  end
+end
