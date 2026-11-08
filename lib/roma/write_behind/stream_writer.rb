@@ -104,7 +104,8 @@ module Roma
         nil
       end
 
-      def transmit(cmd, key, value) # value is for error log
+      # value is for error log
+      def transmit(cmd, key, value)
         Timeout.timeout(5) do
           @do_transmit = true
           node_id = search_replica_primary_node(key)
@@ -125,6 +126,6 @@ module Roma
           Roma::Messaging::ConnectionPool.instance.close_at(node_id)
         end
       end
-    end # class StreamWriter
-  end # module WriteBehind
-end # module Roma
+    end
+  end
+end

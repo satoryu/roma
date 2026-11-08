@@ -290,6 +290,6 @@ module Roma
         send_data("nodes = #{nodes.inspect}\r\n")
         send_data("END\r\n")
       end
-    end # module RoutingCommandReceiver
-  end # module Command
-end # module Roma
+    end
+  end
+end

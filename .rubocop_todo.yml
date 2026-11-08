@@ -303,48 +303,6 @@ Style/CombinableLoops:
   Exclude:
     - 'lib/roma/command/system_command_receiver.rb'
 
-# Offense count: 109
-# This cop supports unsafe autocorrection (--autocorrect-all).
-Style/CommentedKeyword:
-  Exclude:
-    - 'lib/roma/async_event.rb'
-    - 'lib/roma/command/background_command_receiver.rb'
-    - 'lib/roma/command/definition.rb'
-    - 'lib/roma/command/multi_hash_command_receiver.rb'
-    - 'lib/roma/command/receiver.rb'
-    - 'lib/roma/command/routing_command_receiver.rb'
-    - 'lib/roma/command/system_command_receiver.rb'
-    - 'lib/roma/command/util_command_receiver.rb'
-    - 'lib/roma/command/vnode_command_receiver.rb'
-    - 'lib/roma/command_plugin/alist.rb'
-    - 'lib/roma/command_plugin/gui.rb'
-    - 'lib/roma/command_plugin/map.rb'
-    - 'lib/roma/command_plugin/mapcount.rb'
-    - 'lib/roma/command_plugin/storage.rb'
-    - 'lib/roma/event/distance.rb'
-    - 'lib/roma/event/em_connection_pool.rb'
-    - 'lib/roma/event/em_connection.rb'
-    - 'lib/roma/event/handler.rb'
-    - 'lib/roma/logging/rlogger.rb'
-    - 'lib/roma/logging/stderr_wrapper.rb'
-    - 'lib/roma/messaging/connection_pool.rb'
-    - 'lib/roma/server.rb'
-    - 'lib/roma/routing/churnbased_routing_table.rb'
-    - 'lib/roma/routing/merkle_tree.rb'
-    - 'lib/roma/routing/random_balancer.rb'
-    - 'lib/roma/routing/routing_data.rb'
-    - 'lib/roma/routing/routing_table.rb'
-    - 'lib/roma/stats.rb'
-    - 'lib/roma/tools/config_creator.rb'
-    - 'lib/roma/write_behind/file_writer.rb'
-    - 'lib/roma/write_behind/stream_writer.rb'
-    - 'lib/roma/write_behind/process.rb'
-    - 'test/test_list_plugin.rb'
-    - 'test/test_map_count_plugin.rb'
-    - 'test/test_map_plugin.rb'
-    - 'test/test_protocol.rb'
-    - 'test/test_replication.rb'
-
 # Offense count: 16
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: MaxUnannotatedPlaceholdersAllowed, Mode, AllowedMethods, AllowedPatterns.

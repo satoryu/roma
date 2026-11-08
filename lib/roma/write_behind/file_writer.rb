@@ -114,6 +114,6 @@ module Roma
           pbuf << '/'
         end
       end
-    end # class FileWriter
-  end # module WriteBehind
-end # module Roma
+    end
+  end
+end

@@ -151,6 +151,6 @@ module Roma
         end
         expire_time
       end
-    end # module UtilCommandReceiver
-  end # module Command
-end # module Roma
+    end
+  end
+end

@@ -646,6 +646,6 @@ module Roma
         nodes.delete(@my_node_id)
         store_incr_decr(fnc, hash_name, vnode, key, d, v, nodes)
       end
-    end # module Storage
-  end # module CommandPlugin
-end # module Roma
+    end
+  end
+end

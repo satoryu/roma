@@ -117,6 +117,6 @@ module Roma
         'UNMOUNTED'
       end
       private :umounthash
-    end # MultiHashCommandReceiver
-  end # module Command
-end # module Roma
+    end
+  end
+end

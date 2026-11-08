@@ -57,6 +57,6 @@ module Roma
           @routing_table.logs.clear
         end
       end
-    end # end of module Gui
-  end # end of module CommandPlugin
-end # end of modlue Roma
+    end
+  end
+end

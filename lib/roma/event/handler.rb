@@ -277,6 +277,6 @@ module Roma
         ret['connection.EMpool_expire_time'] = Event::EMConnectionPool.instance.expire_time
         ret
       end
-    end # class Handler < EventMachine::Connection
-  end # module Event
-end # module Roma
+    end
+  end
+end

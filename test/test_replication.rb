@@ -26,7 +26,7 @@ module StreamWriterTests
     con.close
     ret
   end
-end # end of StreamWriterTests module
+end
 
 class StreamWriterTest < Test::Unit::TestCase
   self.test_order = :defined
@@ -54,7 +54,7 @@ class StreamWriterTest < Test::Unit::TestCase
     sw.replica_mklhash = 'dummy'
     assert_equal(true, sw.change_mklhash?)
   end
-end #  end of StreamWriterTest class
+end
 
 # Checks that data reaches the replica cluster. The replies and argument
 # checks of switch_replication are covered by
@@ -116,7 +116,8 @@ class ClusterReplicationTest < Test::Unit::TestCase
     assert_equal("write-behind.replica_nodelist [\"localhost_21211\", \"localhost_21212\"]\r\n", ret)
   end
 
-  def test_rc_store_cmd # get/set/add/replace/append/prepend
+  # get/set/add/replace/append/prepend
+  def test_rc_store_cmd
     send_cmd('localhost_11211', 'switch_replication true localhost_21211')
 
     # set/get
@@ -154,7 +155,8 @@ class ClusterReplicationTest < Test::Unit::TestCase
     assert_eventually_equal('start_value6') { @rc_replica.get('key6', true) }
   end
 
-  def test_rc_other_store_cmd # delete/incr/decr/set_expt/cas
+  # delete/incr/decr/set_expt/cas
+  def test_rc_other_store_cmd
     send_cmd('localhost_11211', 'switch_replication true localhost_21211')
 
     # delete
@@ -249,4 +251,4 @@ class ClusterReplicationTest < Test::Unit::TestCase
 
     assert_equal('replica1', @rc_replica.get('key1'))
   end
-end #  end of ClusterReplicationTest class
+end

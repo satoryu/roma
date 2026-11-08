@@ -168,7 +168,7 @@ module ProtocolTests
     assert_equal("#{t2}", @sock.gets.chomp)
     assert_equal('END', @sock.gets.chomp)
   end
-end # ProtocolTests
+end
 
 # Runs every test in-process, without a server.
 class ProtocolInProcessTest < Test::Unit::TestCase

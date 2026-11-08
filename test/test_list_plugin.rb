@@ -596,7 +596,7 @@ module ListPluginTests
     Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
   end
   private :push_a_vnode_stream
-end # ListPluginTests
+end
 
 # Runs every test in-process, without a server.
 class ListPluginInProcessTest < Test::Unit::TestCase

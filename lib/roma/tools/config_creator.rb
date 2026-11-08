@@ -450,6 +450,6 @@ module Roma
       def puts(*)
         @out.puts(*)
       end
-    end # ConfigCreator
-  end # module Tools
-end # module Roma
+    end
+  end
+end

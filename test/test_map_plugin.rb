@@ -68,7 +68,7 @@ module MapPluginTests
     10.times { |i| v << "mapkey#{i}" }
     assert_equal v, @rc.map_keys('key1')
   end
-end # MapPluginTests
+end
 
 class MapPluginTest < Test::Unit::TestCase
   self.test_order = :defined

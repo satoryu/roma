@@ -70,4 +70,4 @@ class MapCountPluginTest < Test::Unit::TestCase
     ret2 = { 'last_updated_date' => @lt, 'subkey0' => 1, 'subkey1' => 1 }
     check_roma_value(ret2, @rc.mapcount_get_ms(@k, 'subkey0,subkey1'))
   end
-end # MapCountPluginTest
+end

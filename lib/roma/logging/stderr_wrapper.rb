@@ -12,6 +12,6 @@ module Roma
       end
 
       def flush; end
-    end # class StderrWrapper < IO
-  end # module Logging
-end # module Roma
+    end
+  end
+end
