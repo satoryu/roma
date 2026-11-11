@@ -117,6 +117,9 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `plugin_cmd_aliases.rb`, which had no commands, is removed.
 * `roma config create` doesn't ask for the plugins.
 
+### PID file
+* `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
+
 ### Fixes
 * A server that isn't a daemon stops by TERM and HUP [#39](https://github.com/satoryu/roma/pull/39)
 * The server stops by INT and TERM under load too [#43](https://github.com/satoryu/roma/pull/43)

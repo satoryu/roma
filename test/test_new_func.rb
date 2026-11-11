@@ -100,6 +100,7 @@ class NewFuncTest < Test::Unit::TestCase
         --replication-in-host        Allow redundancy to same host
         --disable-command-protection Command protection disable while starting
         --config [file path of the config.rb]
+        --pid-file PATH              Write the pid to the file, and remove it when the server stops
     -h, --help                       Show this message
     -v, --version                    Show version", res.chomp)
   end

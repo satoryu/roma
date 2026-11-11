@@ -6,7 +6,7 @@ module Roma
     include Singleton
 
     # environment options
-    attr_accessor :config_path
+    attr_accessor :config_path, :pid_file
 
     # command options
     attr_accessor :address, :port
@@ -46,6 +46,7 @@ module Roma
 
     def initialize
       @config_path = nil
+      @pid_file = nil
       @run_recover = false
       @run_sync_routing = false
       @run_iterate_storage = false
@@ -94,6 +95,7 @@ module Roma
     def stat
       ret = {}
       ret['stats.config_path'] = @config_path
+      ret['stats.pid_file'] = @pid_file
       ret['stats.address'] = @address
       ret['stats.port'] = @port
       ret['stats.daemon'] = @daemon
