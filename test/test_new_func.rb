@@ -99,7 +99,7 @@ class NewFuncTest < Test::Unit::TestCase
     -n, --name [name]
         --replication-in-host        Allow redundancy to same host
         --disable-command-protection Command protection disable while starting
-        --config [file path of the config.rb]
+        --config FILE                Load the config file (default: config.rb if it exists)
         --pid-file PATH              Write the pid to the file, and remove it when the server stops
     -h, --help                       Show this message
     -v, --version                    Show version", res.chomp)

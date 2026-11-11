@@ -55,7 +55,7 @@ Refer to [Commands](http://roma-kvs.org/commands.html "Commands") for more detai
 $ roma new myroma
 $ cd myroma
 $ bundle install
-$ bundle exec roma server localhost --config config.rb
+$ bundle exec roma server localhost
 ```
 
 The node is `localhost_12000` by default. `--address` and `--port` give another one, and `--storage` a storage engine, such as `--storage dbm`, whose gem is added to the `Gemfile`. `--dev` makes the `Gemfile` take ROMA from the directory of the `roma` command, instead of the released gem. To add nodes, make the routing tables again by `roma route create` in `routing`.
@@ -111,7 +111,7 @@ Roma.configure do |config|
 end
 ```
 
-Start the server with the config file by `roma server localhost -p 10001 -d --config config.rb`.
+Start the server in the directory of `config.rb` by `roma server localhost -p 10001 -d`: it loads `config.rb` in the current directory. `--config FILE` loads another file.
 
 ### Configure the server
 The config file sets the settings in `Roma.configure`. Each one has a default, so the file only needs what differs. A wrong value stops the server with a message such as `routing.lost_action should be one of :no_action, :auto_assign, :shutdown: :foo`.
@@ -130,7 +130,7 @@ Roma.configure do |config|
 end
 ```
 
-The settings and their defaults are in [lib/roma/configuration.rb](lib/roma/configuration.rb). Without `--config`, the server runs with the defaults.
+The settings and their defaults are in [lib/roma/configuration.rb](lib/roma/configuration.rb). Without `--config`, the server loads `config.rb` in the current directory, and without it, the server runs with the defaults. The log tells which file the server loaded.
 
 The command plugins need no settings: the server loads ROMA's plugins for data, and the `*.rb` files in `./command_plugins`. See [Command plugins](docs/command_plugin.md).
 

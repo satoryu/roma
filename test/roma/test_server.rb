@@ -166,12 +166,29 @@ class ServerOptionsTest < Test::Unit::TestCase
     assert_match(/usage:/, err)
   end
 
-  # Without --config, the settings are kept.
+  # Without --config and config.rb, the settings are kept.
   def test_without_config
     Roma.configure { |config| config.port = 11_300 }
-    call(:options, ['roma0'])
+    empty = File.join(@dir, 'empty')
+    Dir.mkdir(empty)
+    Dir.chdir(empty) { call(:options, ['roma0']) }
     assert_equal '11300', stats.port
     assert_nil stats.config_path
+  end
+
+  # Without --config, config.rb in the current directory is loaded.
+  def test_default_config
+    Dir.chdir(@dir) { call(:options, ['roma0']) }
+    assert_equal 'test', stats.name
+    assert_equal File.realpath(@config), File.realpath(stats.config_path)
+  end
+
+  # --config is taken over config.rb in the current directory.
+  def test_config_over_default
+    other = File.join(@dir, 'other.rb')
+    File.write(other, "Roma.configure { |config| config.name = 'other' }\n")
+    Dir.chdir(@dir) { call(:options, ['--config', 'other.rb', 'roma0']) }
+    assert_equal 'other', stats.name
   end
 
   def test_wrong_config
