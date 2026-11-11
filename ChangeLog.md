@@ -117,6 +117,9 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `plugin_cmd_aliases.rb`, which had no commands, is removed.
 * `roma config create` doesn't ask for the plugins.
 
+### roma new
+* `roma new DIR` makes a directory to run a node in: `config.rb`, a `Gemfile`, the routing table of a node in `routing`, and `command_plugins` and `log`. `--address`, `--port`, `--storage` and `--dev` change them.
+
 ### PID file
 * `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
 
