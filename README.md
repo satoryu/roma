@@ -48,6 +48,18 @@ $ roma route create localhost_10001 localhost_10002 --replication-in-host
 If succeeded, two new files which named localhost_10001.route.yml and localhost_10002.route.yml created in the current directory. See [Routing](docs/routing.md) for what they define.  
 Refer to [Commands](http://roma-kvs.org/commands.html "Commands") for more detail information about Shell Commands.  
 
+### Make a directory for a node
+`roma new DIR` makes a directory to run a node in, as `rails new` does for an application: `config.rb`, a `Gemfile`, the routing table of a node, and the directories for the command plugins and the logs. The node runs in it at once:
+
+```
+$ roma new myroma
+$ cd myroma
+$ bundle install
+$ bundle exec roma server localhost --config config.rb
+```
+
+The node is `localhost_12000` by default. `--address` and `--port` give another one, and `--storage` a storage engine, such as `--storage dbm`, whose gem is added to the `Gemfile`. `--dev` makes the `Gemfile` take ROMA from the directory of the `roma` command, instead of the released gem. To add nodes, make the routing tables again by `roma route create` in `routing`.
+
 ### Start up ROMA
 Run two processes by `roma server` as follows:  
 

@@ -445,6 +445,22 @@ class CLITest < Test::Unit::TestCase
     Open3.capture3(*cmd, ROMA, *, stdin_data: stdin, chdir: @dir)
   end
 
+  def test_new
+    out, err, status = run_roma('new', 'myroma', '-p', '11300', '--storage', 'dbm')
+    assert_true status.success?, err
+    assert_match(/^myroma has been made/, out)
+    assert_true File.exist?(File.join(@dir, 'myroma/routing/localhost_11300.route.yml'))
+    assert_match(/^gem 'roma-storage-dbm'$/, File.read(File.join(@dir, 'myroma/Gemfile')))
+  end
+
+  def test_new_error
+    Dir.mkdir(File.join(@dir, 'myroma'))
+    File.write(File.join(@dir, 'myroma/config.rb'), '')
+    _out, err, status = run_roma('new', 'myroma')
+    assert_equal 1, status.exitstatus
+    assert_equal "myroma is not empty.\n", err
+  end
+
   # It reads the answers from the standard input.
   def test_config_create
     _out, err, status = run_roma('config', 'create', stdin: "1\n1\n\n\n")

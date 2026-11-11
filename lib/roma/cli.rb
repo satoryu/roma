@@ -35,6 +35,18 @@ module Roma
       Roma::Server.run(args)
     end
 
+    desc 'new DIR', 'Make a directory to run roma server in, with config.rb, Gemfile and the routing table'
+    option :address, aliases: '-a', default: 'localhost', desc: 'Address of the node'
+    option :port, aliases: '-p', type: :numeric, default: 12_000, desc: 'Port of the node'
+    option :storage, aliases: '-s', default: 'hash', banner: 'ENGINE',
+                     desc: 'Storage engine, such as hash, dbm, sqlite3 or groonga'
+    option :dev, type: :boolean, default: false, desc: 'Take ROMA in the Gemfile from this ROMA, not the released gem'
+    def new(dir)
+      require 'roma/tools/directory_creator'
+      Roma::Tools::DirectoryCreator.new.create(dir, address: options[:address], port: options[:port],
+                                                    storage: options[:storage], dev: options[:dev])
+    end
+
     desc 'benchmark NODE_ID...', 'Send requests to the nodes, and write the queries per second every 10 seconds'
     option :get, aliases: '-g', type: :boolean, default: false, desc: 'Get key_0 ... in order'
     option :set, aliases: '-s', type: :boolean, default: false, desc: 'Set key_0 ... in order'
