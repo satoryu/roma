@@ -58,6 +58,13 @@ $ roma server localhost -p 10002 -d --replication-in-host
 
 `roma server --help` shows the options.
 
+`--pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops, so that `kill $(cat PATH)` stops the server. `config.pid_file` sets it in the config file too. If the file has the pid of a running process, the server doesn't start.
+
+```
+$ roma server localhost -p 10001 -d --replication-in-host --pid-file localhost_10001.pid
+$ kill $(cat localhost_10001.pid)
+```
+
 Refer to [Shell Commands](http://roma-kvs.org/commands.html#dist-jump-link-shell_commands) for more detail information about Shell Commands.  
 
 ### Choose a storage

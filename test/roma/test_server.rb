@@ -58,6 +58,24 @@ module ServerTestHelper
     @server.send(name, *)
   end
 
+  def capture_stdout
+    saved = $stdout
+    $stdout = StringIO.new
+    yield
+    $stdout.string
+  ensure
+    $stdout = saved
+  end
+
+  def capture_stderr
+    saved = $stderr
+    $stderr = StringIO.new
+    yield
+    $stderr.string
+  ensure
+    $stderr = saved
+  end
+
   # Answers async_send_cmd from +replies+, by command name, and records the
   # commands.
   def stub_send_cmd(replies)
@@ -164,22 +182,94 @@ class ServerOptionsTest < Test::Unit::TestCase
     assert_equal "port should be a valid Integer: 0\n", err
   end
 
-  def capture_stdout
-    saved = $stdout
-    $stdout = StringIO.new
-    yield
-    $stdout.string
-  ensure
-    $stdout = saved
+  def test_pid_file
+    parse(['--pid-file', 'roma.pid', 'roma0'])
+    assert_equal File.expand_path('roma.pid'), stats.pid_file
   end
 
-  def capture_stderr
-    saved = $stderr
-    $stderr = StringIO.new
-    yield
-    $stderr.string
-  ensure
-    $stderr = saved
+  def test_pid_file_in_config
+    File.write(@config, "Roma.configure { |config| config.pid_file = 'config.pid' }\n")
+    parse(['roma0'])
+    assert_equal File.expand_path('config.pid'), stats.pid_file
+
+    # --pid-file is taken over the config file.
+    @server = Roma::Server.allocate
+    set(stats: Roma::Stats.send(:new))
+    parse(['--pid-file', 'roma.pid', 'roma0'])
+    assert_equal File.expand_path('roma.pid'), stats.pid_file
+  end
+
+  def test_without_pid_file
+    parse(['roma0'])
+    assert_nil stats.pid_file
+  end
+end
+
+class ServerPidFileTest < Test::Unit::TestCase
+  include ServerTestHelper
+
+  def setup
+    super
+    @server = Roma::Server.allocate
+    @path = File.join(@dir, 'roma.pid')
+    stats = Roma::Stats.send(:new)
+    stats.pid_file = @path
+    set(stats: stats)
+  end
+
+  def teardown
+    @server = nil
+    super
+  end
+
+  def test_write_and_remove
+    call(:check_pid_file)
+    call(:write_pid_file)
+    assert_equal "#{Process.pid}\n", File.read(@path)
+    call(:remove_pid_file)
+    assert_false File.exist?(@path)
+  end
+
+  def test_without_pid_file
+    @server.stats.pid_file = nil
+    call(:check_pid_file)
+    call(:write_pid_file)
+    call(:remove_pid_file)
+    assert_empty Dir.children(@dir)
+  end
+
+  # Another server has the file.
+  def test_running
+    File.write(@path, "#{Process.pid}\n")
+    err = capture_stderr do
+      assert_raise(SystemExit) { call(:check_pid_file) }
+    end
+    assert_equal "#{@path} has the pid #{Process.pid}, which is running.\n", err
+  end
+
+  # The process of the file is gone, and its file is overwritten.
+  def test_stale
+    pid = Process.spawn(RbConfig.ruby, '-e', '')
+    Process.wait(pid)
+    File.write(@path, "#{pid}\n")
+    call(:check_pid_file)
+    call(:write_pid_file)
+    assert_equal "#{Process.pid}\n", File.read(@path)
+  end
+
+  def test_not_writable
+    @server.stats.pid_file = File.join(@dir, 'missing', 'roma.pid')
+    err = capture_stderr do
+      assert_raise(SystemExit) { call(:check_pid_file) }
+    end
+    assert_equal "#{@server.stats.pid_file} can't be written.\n", err
+  end
+
+  # The file of another server, which overwrote it, is kept.
+  def test_remove_another
+    File.write(@path, "1\n")
+    call(:remove_pid_file)
+    assert_equal "1\n", File.read(@path)
   end
 end
 

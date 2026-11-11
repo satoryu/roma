@@ -1,5 +1,6 @@
 require 'test_helper'
 require 'open3'
+require 'tmpdir'
 require 'roma_test_utils'
 
 # The server stops by INT and TERM, and closes its storages, whether it is
@@ -26,9 +27,9 @@ class ServerSignalTest < Test::Unit::TestCase
     wait_until_down(DEFAULT_NODES)
   end
 
-  # Starts the nodes. The first one is a daemon if +daemon+.
-  def boot(daemon:)
-    @pids << (daemon ? start_daemon(DEFAULT_NODES[0]) : spawn_server(DEFAULT_NODES[0]))
+  # Starts the nodes. The first one is a daemon if +daemon+, with +args+.
+  def boot(daemon:, args: [])
+    @pids << (daemon ? start_daemon(DEFAULT_NODES[0], *args) : spawn_server(DEFAULT_NODES[0]))
     @pids << spawn_server(DEFAULT_NODES[1])
     wait_until_up(DEFAULT_NODES)
   end
@@ -48,8 +49,8 @@ class ServerSignalTest < Test::Unit::TestCase
   end
 
   # Returns the pid of the daemon, which the server writes to the standard error.
-  def start_daemon(node)
-    _, err, status = Open3.capture3(*server_args(node), '-d')
+  def start_daemon(node, *)
+    _, err, status = Open3.capture3(*server_args(node), '-d', *)
     assert_true status.success?, err
     err[/^\d+$/].to_i
   end
@@ -108,5 +109,23 @@ class ServerSignalTest < Test::Unit::TestCase
     assert_true exited, "the server didn't stop by #{signal} in #{STOP_TIMEOUT_SEC} seconds"
     # The storages are closed.
     assert_equal stopped + 1, stopped_logs(node)
+  end
+
+  # The daemon writes its pid to --pid-file, and removes the file when it
+  # stops. Another server with the file doesn't start.
+  def test_pid_file
+    Dir.mktmpdir('roma_pid') do |dir|
+      path = File.join(dir, 'roma.pid')
+      boot(daemon: true, args: ['--pid-file', path])
+      assert_equal "#{@pids[0]}\n", File.read(path)
+
+      _, err, status = Open3.capture3(*server_args(DEFAULT_NODES[0]), '-d', '--pid-file', path)
+      assert_false status.success?
+      assert_equal "#{path} has the pid #{@pids[0]}, which is running.\n", err
+
+      Process.kill(:TERM, @pids[0])
+      assert_true wait_exit(@pids[0])
+      assert_false File.exist?(path)
+    end
   end
 end

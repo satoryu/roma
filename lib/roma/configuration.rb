@@ -186,6 +186,8 @@ module Roma
       setting :port, 12_000, type: Integer, check: ->(v) { (1..65_535).cover?(v) }
       # The directory of the command plugins. The server requires the *.rb files in it.
       setting :command_plugin_path, './command_plugins', type: String
+      # The file that the server writes its pid to, or nil for none.
+      setting :pid_file, nil, type: [String, NilClass]
       group :routing, Routing
       group :log, Log
       group :connection, Connection

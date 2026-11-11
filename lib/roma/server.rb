@@ -58,6 +58,7 @@ module Roma
       @startup = true
       @program = program
       options(argv)
+      check_pid_file
       initialize_stats
       initialize_connection
       initialize_logger
@@ -74,6 +75,7 @@ module Roma
         return
       end
 
+      write_pid_file
       @storages.each do |_hashname, st|
         st.opendb
       end
@@ -159,6 +161,8 @@ module Roma
       stop_async_event_loop
       stop_write_behind_process
       stop
+    ensure
+      remove_pid_file
     end
 
     def daemon? = @stats.daemon
@@ -316,6 +320,10 @@ module Roma
 
       opts.on('--config [file path of the config.rb]') { |v| @stats.config_path = File.expand_path(v) }
 
+      opts.on('--pid-file PATH', 'Write the pid to the file, and remove it when the server stops') do |v|
+        @stats.pid_file = File.expand_path(v)
+      end
+
       opts.parse!(argv)
       raise OptionParser::ParseError.new if argv.length < 1
 
@@ -327,6 +335,7 @@ module Roma
 
       @stats.name = Roma.config.name unless @stats.name
       @stats.port = Roma.config.port.to_s unless @stats.port
+      @stats.pid_file ||= File.expand_path(Roma.config.pid_file) if Roma.config.pid_file
 
       raise OptionParser::ParseError.new('Port number is not numeric.') unless @stats.port =~ /^\d+$/
 
@@ -341,6 +350,49 @@ module Roma
     rescue Configuration::Error => e
       warn e.message
       exit 1
+    end
+
+    # Exits if the pid file has the pid of a running process, such as
+    # another server, or if the server can't write the file. A file of a
+    # process that is gone is overwritten. It runs before -d makes the
+    # daemon, to tell the error on the standard error.
+    def check_pid_file
+      path = @stats.pid_file
+      return unless path
+
+      if File.exist?(path)
+        pid = File.read(path).to_i
+        if pid.positive? && process_alive?(pid)
+          warn "#{path} has the pid #{pid}, which is running."
+          exit 1
+        end
+      end
+      return if File.exist?(path) ? File.writable?(path) : File.writable?(File.dirname(path))
+
+      warn "#{path} can't be written."
+      exit 1
+    end
+
+    def process_alive?(pid)
+      Process.kill(0, pid)
+      true
+    rescue Errno::ESRCH
+      false
+    rescue Errno::EPERM
+      true
+    end
+
+    def write_pid_file
+      File.write(@stats.pid_file, "#{Process.pid}\n") if @stats.pid_file
+    end
+
+    # Removes the pid file if it has the pid of this process: another server
+    # may have overwritten it.
+    def remove_pid_file
+      path = @stats.pid_file
+      return unless path && File.exist?(path) && File.read(path).to_i == Process.pid
+
+      File.delete(path)
     end
 
     def initialize_storages
