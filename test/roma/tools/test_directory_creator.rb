@@ -36,7 +36,7 @@ class DirectoryCreatorTest < Test::Unit::TestCase
                     routing/localhost_12000.route.yml), files
     assert_match(/^  create  config.rb$/, out)
     assert_match(%r{^  create  routing/localhost_12000.route.yml$}, out)
-    assert_match(/^  bundle exec roma server localhost --config config.rb$/, out)
+    assert_match(/^  bundle exec roma server localhost$/, out)
 
     Roma.load_config(File.join(@path, 'config.rb'))
     config = Roma.config

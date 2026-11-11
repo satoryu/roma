@@ -432,8 +432,9 @@ module Roma
           "  # config.#{path} = #{path.split('.').inject(defaults) { |group, name| group.public_send(name) }.inspect}"
         end
         <<~CONFIG
-          # The config of roma server, made by roma config create. Run the server with it by
-          #   roma server ADDRESS --config #{File.basename(@path)}
+          # The config of roma server, made by roma config create. The server loads
+          # config.rb in the current directory, or another file by
+          #   roma server ADDRESS --config FILE
           # The other settings and their defaults are in roma/configuration.rb.
           Roma.configure do |config|
           #{lines.join("\n")}

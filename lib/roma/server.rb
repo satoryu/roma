@@ -48,6 +48,10 @@ module Roma
       exit! 0
     end
 
+    # The config file that the server loads without --config, in the
+    # current directory.
+    DEFAULT_CONFIG = 'config.rb'.freeze
+
     attr_reader :storages, :routing_table, :stats, :wb_writer, :cluster_replication_writer
 
     attr_accessor :eventloop, :startup
@@ -62,6 +66,7 @@ module Roma
       initialize_stats
       initialize_connection
       initialize_logger
+      @log.info("The config file: #{@stats.config_path || 'none, with the defaults'}")
       initialize_rttable
       initialize_storages
       initialize_handler
@@ -318,7 +323,9 @@ module Roma
         @stats.command_protection_disabled = true
       end
 
-      opts.on('--config [file path of the config.rb]') { |v| @stats.config_path = File.expand_path(v) }
+      opts.on('--config FILE', "Load the config file (default: #{DEFAULT_CONFIG} if it exists)") do |v|
+        @stats.config_path = File.expand_path(v)
+      end
 
       opts.on('--pid-file PATH', 'Write the pid to the file, and remove it when the server stops') do |v|
         @stats.pid_file = File.expand_path(v)
@@ -329,8 +336,9 @@ module Roma
 
       @stats.address = argv[0]
 
-      # Without --config, the settings are the defaults, or what is set in
-      # Roma.configure before.
+      # Without --config and config.rb, the settings are the defaults, or
+      # what is set in Roma.configure before.
+      @stats.config_path ||= File.expand_path(DEFAULT_CONFIG) if File.file?(DEFAULT_CONFIG)
       Roma.load_config(@stats.config_path) if @stats.config_path
 
       @stats.name = Roma.config.name unless @stats.name

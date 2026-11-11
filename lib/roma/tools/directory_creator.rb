@@ -55,7 +55,7 @@ module Roma
           #{dir} has been made. Run the node in it by
             cd #{dir}
             bundle install
-            bundle exec roma server #{address} --config config.rb
+            bundle exec roma server #{address}
         NEXT
       rescue Roma::Configuration::Error => e
         raise Error, e.message
@@ -70,9 +70,9 @@ module Roma
 
       def config_body(settings)
         <<~CONFIG
-          # The config of roma server, made by roma new. Run the server in this
-          # directory by
-          #   roma server ADDRESS --config config.rb
+          # The config of roma server, made by roma new. The server loads it
+          # when it runs in this directory, by
+          #   roma server ADDRESS
           # The paths are from the directory where the server runs. The other
           # settings and their defaults are in roma/configuration.rb.
           Roma.configure do |config|

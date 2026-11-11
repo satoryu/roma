@@ -117,6 +117,9 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `plugin_cmd_aliases.rb`, which had no commands, is removed.
 * `roma config create` doesn't ask for the plugins.
 
+### The default config file
+* Without `--config`, `roma server` loads `config.rb` in the current directory, where `roma config create` and `roma new` make it. Without the file, the server runs with the defaults, as before. The log tells which file the server loaded.
+
 ### roma new
 * `roma new DIR` makes a directory to run a node in: `config.rb`, a `Gemfile`, the routing table of a node in `routing`, and `command_plugins` and `log`. `--address`, `--port`, `--storage` and `--dev` change them.
 
