@@ -76,7 +76,7 @@ end
 
 The `stats` command shows the settings by these names, such as `config.log.path` (`config.LOG_PATH` before). `stats.stream_copy_wait_param`, `stats.stream_show_wait_param` and `stats.size_of_zredundant` are `stats.stream_copy_wait`, `stats.stream_show_wait` and `stats.compression_threshold` [#60](https://github.com/satoryu/roma/issues/60). The option `--divnum` of `roma storage merge` is `--division-count` (`-n` stays).
 
-New settings: `storage.max_value_size`, the largest value in bytes that a node takes (16MB by default), `bind_address`, the address that the server listens on, `connection.pool.timeout` and `connection.event_machine_pool.timeout`, how long to wait for another node, and `connection.max_line_length`, the longest request line [#134](https://github.com/satoryu/roma/issues/134).
+New settings: `storage.max_value_size`, the largest value in bytes that a node takes (16MB by default), `bind_address`, the address that the server listens on, `connection.pool.timeout` and `connection.event_machine_pool.timeout`, how long to wait for another node, `connection.max_line_length`, the longest request line, and `umask`, the umask of the server [#134](https://github.com/satoryu/roma/issues/134).
 
 `log.level` is `:info` by default (`:debug` before), so that the debug log, which has the arguments of commands, isn't written unless asked for [#134](https://github.com/satoryu/roma/issues/134).
 
@@ -133,6 +133,7 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
 
 ### Fixes
+* The files that the server makes (storages, logs, write-behind, routing logs, the pid file) aren't readable by other users: the server sets the umask to `config.umask`, 0o027 by default, at start. They were made by the umask of the process, usually 0o022, so readable by everyone [#134](https://github.com/satoryu/roma/issues/134)
 * `get_expt` doesn't find a deleted or expired key, as `get` doesn't. It replied the expire time of a delete mark (1970) or of an expired key, which told that the key had been there [#134](https://github.com/satoryu/roma/issues/134)
 * An expire time that 32 bits can't hold doesn't wrap around: a later one, such as one in milliseconds, is kept as the latest that they can (2106), and an earlier one than 1970 has expired. `set k 0 4294967296 5` stored a delete mark, which `get` didn't find [#134](https://github.com/satoryu/roma/issues/134)
 * The errors of the alist and mapcount commands are replied without the backtrace, which had the paths of the server; it goes to the log [#134](https://github.com/satoryu/roma/issues/134)
