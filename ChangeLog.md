@@ -35,7 +35,6 @@ These tools are removed, as they are not needed [#51](https://github.com/satoryu
 * `roma_watcher`, which mails by sendmail. `roma cluster check` exits with 1 when the nodes are wrong, so a monitoring tool can call it instead.
 
 ### The config file
-* `log.level` is `:info` by default (`:debug` before), so that the debug log, which has the arguments of commands, isn't written unless asked for [#134](https://github.com/satoryu/roma/issues/134)
 The config file sets the settings in `Roma.configure`, instead of the constants of `Roma::Config` [#53](https://github.com/satoryu/roma/issues/53). The settings have defaults, and a wrong value stops the server with a message. The server doesn't read the old format, and tells so. `roma config create` makes the new format.
 
 ```ruby
@@ -78,6 +77,8 @@ end
 The `stats` command shows the settings by these names, such as `config.log.path` (`config.LOG_PATH` before). `stats.stream_copy_wait_param`, `stats.stream_show_wait_param` and `stats.size_of_zredundant` are `stats.stream_copy_wait`, `stats.stream_show_wait` and `stats.compression_threshold` [#60](https://github.com/satoryu/roma/issues/60). The option `--divnum` of `roma storage merge` is `--division-count` (`-n` stays).
 
 New settings: `storage.max_value_size`, the largest value in bytes that a node takes (16MB by default), `bind_address`, the address that the server listens on, `connection.pool.timeout` and `connection.event_machine_pool.timeout`, how long to wait for another node, and `connection.max_line_length`, the longest request line [#134](https://github.com/satoryu/roma/issues/134).
+
+`log.level` is `:info` by default (`:debug` before), so that the debug log, which has the arguments of commands, isn't written unless asked for [#134](https://github.com/satoryu/roma/issues/134).
 
 ### Routing names
 The abbreviated names of the routing are words now [#60](https://github.com/satoryu/roma/issues/60). ROMA 2.0 doesn't read a routing file of 1.x: make it again by `roma route create`. The routing file is `<node-id>.route.yml` (`<node-id>.route` before), as it is YAML. Its logs are `<node-id>.route.1` and so on as before. The file is a plain YAML of the keys below, without the tag `!ruby/object:Roma::Routing::RoutingData`, and the server reads it by `YAML.safe_load`, which makes no Ruby object. `routingdump yaml` and `roma route change-redundancy` write the same YAML.
