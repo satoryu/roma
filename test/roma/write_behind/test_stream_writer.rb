@@ -73,6 +73,16 @@ class StreamWriterTest < Test::Unit::TestCase
     assert_nil sw.replica_rttable
   end
 
+  # A failed write to the replica cluster logs the key and the length of the
+  # value, not the value.
+  def test_transmit_logs_no_value
+    log = StringIO.new
+    sw = Roma::WriteBehind::StreamWriter.new(Logger.new(log), pool: Pool.new({}))
+    sw.transmit("set key 0 0 6\r\nsecret\r\n", 'key', 'secret')
+    assert_match(/replication error: key=key value=\(6 bytes\)/, log.string)
+    assert_not_match(/secret/, log.string)
+  end
+
   # A node that is down is dropped, and the next one is asked.
   def test_change_mklhash
     sw = writer('replica_1' => nil, 'replica_2' => "new\r\n")

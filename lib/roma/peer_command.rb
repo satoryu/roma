@@ -49,7 +49,7 @@ module Roma
           con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
           unless con
             @routing_table.proc_failed(node_id) if @routing_table
-            @log.error("#{__FILE__}:#{__LINE__}:#{node_id} connection refused,command is #{cmd}.")
+            @log.error("#{__FILE__}:#{__LINE__}:#{node_id} connection refused,command is #{command_line(cmd)}.")
             return nil
           end
           con.write(cmd)
@@ -59,7 +59,7 @@ module Roma
         con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
         unless con
           @routing_table.proc_failed(node_id) if @routing_table
-          @log.error("#{__FILE__}:#{__LINE__}:#{node_id} connection refused,command is #{cmd}.")
+          @log.error("#{__FILE__}:#{__LINE__}:#{node_id} connection refused,command is #{command_line(cmd)}.")
           return nil
         end
         con.write(cmd)
@@ -76,7 +76,8 @@ module Roma
     rescue Exception => e
       @routing_table.proc_failed(node_id) if @routing_table
       @log.error("#{__FILE__}:#{__LINE__}:#{e} #{$@}")
-      @log.error("#{__FILE__}:#{__LINE__}:Send command failed that node-id is #{node_id},command is #{cmd}.")
+      @log.error("#{__FILE__}:#{__LINE__}:Send command failed that node-id is #{node_id}," \
+                 "command is #{command_line(cmd)}.")
       nil
     end
 
@@ -90,6 +91,12 @@ module Roma
     rescue Exception => e
       @log.error("#{e}\n#{$@}")
       nil
+    end
+
+    # The first line of +cmd+, for the log: the value of a command such as
+    # rset, which follows it, isn't logged.
+    def command_line(cmd)
+      cmd[/\A[^\r\n]*/]
     end
   end
 end

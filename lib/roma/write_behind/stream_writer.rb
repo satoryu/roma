@@ -126,7 +126,7 @@ module Roma
         nil
       end
 
-      # value is for error log
+      # +value+ is for the error log, which has its length.
       def transmit(cmd, key, value)
         Timeout.timeout(5) do
           @do_transmit = true
@@ -138,7 +138,7 @@ module Roma
         end
       rescue StandardError => e
         @log.error("#{e}\n#{$@}")
-        @log.error("replication error: key=#{key} value=#{value}\r\n")
+        @log.error("replication error: key=#{key} value=(#{value.to_s.bytesize} bytes)\r\n")
       ensure
         @do_transmit = false
       end

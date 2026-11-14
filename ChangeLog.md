@@ -35,6 +35,7 @@ These tools are removed, as they are not needed [#51](https://github.com/satoryu
 * `roma_watcher`, which mails by sendmail. `roma cluster check` exits with 1 when the nodes are wrong, so a monitoring tool can call it instead.
 
 ### The config file
+* `log.level` is `:info` by default (`:debug` before), so that the debug log, which has the arguments of commands, isn't written unless asked for [#134](https://github.com/satoryu/roma/issues/134)
 The config file sets the settings in `Roma.configure`, instead of the constants of `Roma::Config` [#53](https://github.com/satoryu/roma/issues/53). The settings have defaults, and a wrong value stops the server with a message. The server doesn't read the old format, and tells so. `roma config create` makes the new format.
 
 ```ruby
@@ -131,6 +132,7 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
 
 ### Fixes
+* Values aren't written to the log, only their length: the redundant writes to other nodes, commands sent to a node that fails, async events that run out of retries, and writes to the replica cluster that fail logged the value [#134](https://github.com/satoryu/roma/issues/134)
 * `join`, `leave` and `setroute` take only node ids such as `localhost_11211`, and reply CLIENT_ERROR to others. `join` without a node id put nil in the routing table, which made later joins and broadcast commands fail, and wrote `join ` to the routing log, after which the node didn't start; such a log line is skipped now [#134](https://github.com/satoryu/roma/issues/134)
 * A request can't fill the memory of a node: a value larger than `config.storage.max_value_size` (16MB) and a line longer than `config.connection.max_line_length` (1MB) are replied `SERVER_ERROR object too large: <n> bytes` and `SERVER_ERROR line too long`, and the connection is closed. Keys and values in the stream of `spushv` have the same limit [#134](https://github.com/satoryu/roma/issues/134)
 * A node that accepts connections but doesn't answer can't hang the others: the connections to the other nodes time out after `connection.pool.timeout` and `connection.event_machine_pool.timeout` seconds (10 by default), when connecting and when waiting for an answer. Waiting for the storage clean up to stop is limited too, and `spushv` replies SERVER_ERROR if it doesn't stop within a second, instead of holding the event loop: join, recover and balance push the vnode again later, and release stops as it does in `spushv_protection` [#134](https://github.com/satoryu/roma/issues/134)
