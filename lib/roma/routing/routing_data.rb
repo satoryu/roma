@@ -104,10 +104,11 @@ module Roma
           vnode = i << (digest_bits - divide_bits)
           clocks, len = bin.unpack('Nc')
           routing_data.clocks[vnode] = clocks
+          # A vnode whose nodes are all lost has none.
+          routing_data.routes[vnode] = []
           bin = bin[5..-1]
           len.times do |_i|
             idx, = bin.unpack('n')
-            routing_data.routes[vnode] = [] unless routing_data.routes[vnode]
             routing_data.routes[vnode] << routing_data.nodes[idx]
             bin = bin[2..-1]
           end

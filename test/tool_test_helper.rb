@@ -33,7 +33,7 @@ module ToolTestHelper
 
   # Makes +node+ answer routingdump with +routing_data+.
   def serve_routing(node, routing_data)
-    dump = Marshal.dump(routing_data)
+    dump = routing_data.dump_binary
     node.replies['routingdump'] = "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
   end
 

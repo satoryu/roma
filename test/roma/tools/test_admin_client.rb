@@ -20,6 +20,7 @@ class AdminClientTest < Test::Unit::TestCase
   data('no routing data' => ["0\r\n", /has no routing data/],
        'closed' => [:close, /has no routing data/],
        'stops sending' => ["10\r\nabc", /execution expired/],
+       'not binary' => ["3\r\nabc\r\nEND\r\n", /sent broken routing data/],
        'no reply' => [proc { '' }, /execution expired/])
   def test_routing_data_errors(data)
     reply, message = data
