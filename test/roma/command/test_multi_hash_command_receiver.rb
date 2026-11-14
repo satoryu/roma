@@ -71,4 +71,16 @@ class MultiHashCommandReceiverTest < Test::Unit::TestCase
       assert_equal "CLIENT_ERROR usage:#{command} <name>\r\n", @conn.request("r#{command}")
     end
   end
+
+  # A hash name is a directory, so a name that points elsewhere could make
+  # deletehash remove that directory.
+  data('parent' => '../hash1', 'nested' => 'a/hash1', 'current' => '.', 'up' => '..')
+  def test_invalid_hash_names(name)
+    %w(createhash deletehash mounthash).each do |command|
+      assert_equal "CLIENT_ERROR #{name} is not a valid hash name.\r\n", @conn.request("r#{command} #{name}")
+    end
+    assert_equal "CLIENT_ERROR #{name} is not a valid hash name.\r\n", @conn.request("createhash #{name}")
+    assert_equal [], @conn.broadcasts
+    assert_equal "roma\r\n", @conn.request('hashlist')
+  end
 end

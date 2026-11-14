@@ -31,6 +31,8 @@ module Roma
           @log.error("#{__method__}:wrong number of arguments(#{s})")
           return send_data("CLIENT_ERROR Wrong number of arguments.\r\n")
         end
+        return send_data("CLIENT_ERROR #{s[1]} is not a valid hash name.\r\n") unless valid_hash_name?(s[1])
+
         if @stats.spushv_protection
           @log.info("#{__method__}:In spushv_protection")
           return send_data("SERVER_ERROR In spushv_protection.\r\n")

@@ -129,6 +129,7 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
 
 ### Fixes
+* A hash name must be one path component: `createhash ../x` followed by `deletehash ../x` removed a directory outside the storage path on every node. `createhash`, `deletehash`, `mounthash` and `spushv` reply CLIENT_ERROR to such a name, and a hash whose storage fails to open isn't registered [#134](https://github.com/satoryu/roma/issues/134)
 * The clean up of the storage on memory and of `DbmStorage` deleted the keys that it should keep: roma-storage 0.4.2 or later, and roma-storage-dbm 0.2.1 [#117](https://github.com/satoryu/roma/issues/117)
 * `config.routing.table_class` is taken when a node joins too, a subclass of `ChurnbasedRoutingTable` closes its routing log when the server stops, and a class that isn't one is an error of the config [#117](https://github.com/satoryu/roma/issues/117)
 * `set_latency_avg_calc_rule` didn't start the measurement over on the other nodes: `rset_latency_avg_calc_rule` cleared another variable [#117](https://github.com/satoryu/roma/issues/117)
