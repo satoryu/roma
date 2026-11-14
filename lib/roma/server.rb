@@ -425,7 +425,7 @@ module Roma
         routing_data = Roma::Routing::RoutingData.load(fname)
         raise 'It failed in loading the routing table data.' unless routing_data
 
-        @routing_table = (routing.table_class || Roma::Routing::ChurnbasedRoutingTable).new(routing_data, fname)
+        @routing_table = routing_table_class.new(routing_data, fname)
       end
 
       @routing_table.node_id_substitutions = routing.node_id_substitutions
@@ -478,7 +478,7 @@ module Roma
 
       raise "ROMA has already contained #{@stats.my_node_id}." if routing_data.nodes.include?(@stats.my_node_id)
 
-      @routing_table = Roma::Routing::ChurnbasedRoutingTable.new(routing_data, fname)
+      @routing_table = routing_table_class.new(routing_data, fname)
       nodes = @routing_table.nodes
 
       nodes.each do |node_id|
@@ -491,6 +491,10 @@ module Roma
         raise "Hotscale initialize failed.\n#{node_id} unreachable connection."
       end
       @routing_table.add_node(@stats.my_node_id)
+    end
+
+    def routing_table_class
+      Roma.config.routing.table_class || Roma::Routing::ChurnbasedRoutingTable
     end
 
     def fetch_routedump(node_id)
@@ -767,7 +771,7 @@ module Roma
       @storages.each_value do |st|
         st.closedb
       end
-      @routing_table.close_log if @routing_table.instance_of?(Roma::Routing::ChurnbasedRoutingTable)
+      @routing_table&.close_log
       @log.info("The server has stopped: #{@stats.my_node_id}")
     end
   end

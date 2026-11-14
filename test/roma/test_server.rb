@@ -424,6 +424,22 @@ class ServerInitializeTest < Test::Unit::TestCase
     assert_true File.exist?(fname)
   end
 
+  # routing.table_class is taken when it joins too.
+  def test_initialize_rttable_join_with_table_class
+    node = fake_node
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [node.node_id])
+    node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
+    node.replies['join'] = "ADDED\r\n"
+    @server.stats.join_node_id = node.node_id
+    table_class = Class.new(Roma::Routing::ChurnbasedRoutingTable)
+    Roma.config.routing.table_class = table_class
+    routing_file
+    call(:initialize_rttable)
+    assert_instance_of table_class, @server.routing_table
+  ensure
+    Roma.config.routing.table_class = nil
+  end
+
   def test_initialize_rttable_join_errors
     node = fake_node
     @server.stats.join_node_id = 'localhost_1'
@@ -710,6 +726,16 @@ class ServerSendCmdTest < Test::Unit::TestCase
     set(storages: { 'roma' => storage })
     call(:stop)
     assert_true storage.closed?
+  end
+
+  # The routing log is closed, also that of a subclass of ChurnbasedRoutingTable.
+  def test_stop_closes_routing_log
+    routing_table = Class.new(Roma::Routing::ChurnbasedRoutingTable).allocate
+    def routing_table.close_log = (@log_closed = true)
+    def routing_table.log_closed? = @log_closed
+    set(storages: {}, routing_table: routing_table)
+    call(:stop)
+    assert_true routing_table.log_closed?
   end
 
   def test_stop_clean_up
