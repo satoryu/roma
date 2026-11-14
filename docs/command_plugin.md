@@ -143,6 +143,12 @@ event list. These also add them:
 - starting the server with `--join`,
 - starting the server with `--disable-command-protection`.
 
+A plugin can make its commands system commands by
+`Roma::CommandPlugin.system_commands(self)` in its module, as `debug.rb` does
+for `eval`. A system command skips the latency check, and isn't an error in
+`set_latency_avg_calc_rule`. A plugin is included after a node starts, so its
+commands still wait for all the nodes like the others.
+
 ## Getting started
 
 This section makes a plugin `Hello` with three commands, runs it on a node

@@ -5,6 +5,8 @@ module Roma
     module Debug
       include ::Roma::CommandPlugin
 
+      ::Roma::CommandPlugin.system_commands(self)
+
       # DANGER!!
       def ev_eval(s)
         cmd = s[1..-1].join(' ')

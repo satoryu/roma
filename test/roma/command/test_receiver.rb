@@ -23,4 +23,20 @@ class ReceiverTest < Test::Unit::TestCase
     end
     assert_false Roma::Event::Handler.event_list.key?('createhash')
   end
+
+  # A plugin that CommandPlugin.system_commands names has system commands,
+  # if it is included.
+  def test_system_commands_of_a_plugin
+    require 'roma/command_plugin/debug'
+    receiver = Class.new(Roma::Command::Receiver)
+    assert_false system_command?(receiver, :ev_eval)
+    receiver.include(Roma::CommandPlugin::Debug)
+    assert_true system_command?(receiver, :ev_eval)
+  end
+
+  def system_command?(receiver, command)
+    found = false
+    receiver.each_system_commands { |m| found ||= m == command }
+    found
+  end
 end
