@@ -80,13 +80,10 @@ module Roma
       def createhash(hash_name, msg)
         return "SERVER_ERROR #{hash_name} already exists." if @storages.key?(hash_name)
 
-        st = Roma.config.storage.engine_class.new
-        st.storage_path = "#{Roma.config.storage.path}/#{@stats.my_node_id}/#{hash_name}"
-        st.vn_list = @routing_table.vnodes
-        st.divnum = Roma.config.storage.division_count
-        st.option = Roma.config.storage.option
+        storage = Roma.config.storage
+        st = storage.build("#{storage.path}/#{@stats.my_node_id}/#{hash_name}", @routing_table.vnodes)
         @storages[hash_name] = st
-        @storages[hash_name].opendb
+        st.opendb
         @log.info("createhash #{hash_name}")
         msg
       rescue StandardError => e

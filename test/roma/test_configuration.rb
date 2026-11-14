@@ -72,6 +72,15 @@ class ConfigurationTest < Test::Unit::TestCase
   end
 
   # A storage of another gem, which has roma/storage/<name>.rb.
+  def test_build
+    @config.storage.division_count = 3
+    @config.storage.option = 'opt'
+    st = @config.storage.build('path/roma', [0, 1])
+    assert_instance_of Roma::Storage::HashStorage, st
+    assert_equal ['path/roma', [0, 1], Roma::Storage::HashStorage, 3, 'opt'],
+                 [st.storage_path, st.instance_variable_get(:@vn_list), st.st_class, st.divnum, st.option]
+  end
+
   def test_engine_class_by_name
     with_storage_file('my_kvs', "module Roma\n  module Storage\n    class MyKVSStorage; end\n  end\nend\n") do
       @config.storage.engine = :my_kvs

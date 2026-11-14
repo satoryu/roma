@@ -1037,7 +1037,7 @@ module Roma
       def storage_stat(st)
         ret = {}
         ret['storage.storage_path'] = File.expand_path(st.storage_path)
-        ret['storage.st_class'] = st.st_class.to_s.match(/Roma::Storage::(.*)/)[1]
+        ret['storage.st_class'] = st.st_class.name.delete_prefix('Roma::Storage::')
         ret['storage.divnum'] = st.divnum
         ret['storage.option'] = st.option
         ret['storage.each_vn_dump_sleep'] = st.each_vn_dump_sleep
