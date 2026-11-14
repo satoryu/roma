@@ -771,7 +771,7 @@ module Roma
       @storages.each_value do |st|
         st.closedb
       end
-      @routing_table&.close_log
+      @routing_table.close_log
       @log.info("The server has stopped: #{@stats.my_node_id}")
     end
   end
