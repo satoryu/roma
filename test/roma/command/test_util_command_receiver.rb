@@ -13,6 +13,15 @@ class UtilCommandReceiverTest < Test::Unit::TestCase
     assert_equal 2_592_000, @conn.send(:chg_time_expt, 2_592_000)
   end
 
+  # The storages keep it in 32 bits, which wrapped around: 2**32 was 0, a
+  # delete mark, and a large negative time never expired.
+  def test_chg_time_expt_out_of_32_bits
+    assert_equal 0xffffffff, @conn.send(:chg_time_expt, 2**32)
+    assert_equal 0xffffffff, @conn.send(:chg_time_expt, Time.now.to_i * 1000)
+    assert_equal 1, @conn.send(:chg_time_expt, -(2**40))
+    assert_operator @conn.send(:chg_time_expt, -1), :<, Time.now.to_i
+  end
+
   def test_async_send_cmd
     node = FakeNode.new
     assert_equal 'ROMA', @conn.send(:async_send_cmd, node.node_id, "whoami\r\n")

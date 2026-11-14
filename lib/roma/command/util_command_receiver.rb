@@ -154,13 +154,17 @@ module Roma
       end
 
       # change to actual time for a memcached's expire time value
+      #
+      # The storages keep it in 32 bits, where 0 is a delete mark. A time
+      # before 1970, as -1 - now gives, has expired; a later one than 32 bits
+      # can hold, as one in milliseconds, is the latest that they can.
       def chg_time_expt(expire_time)
         if expire_time == 0
           expire_time = 0x7fffffff
         elsif expire_time < 2_592_000
           expire_time += Time.now.to_i
         end
-        expire_time
+        expire_time.clamp(1, 0xffffffff)
       end
     end
   end
