@@ -247,6 +247,16 @@ class SystemCommandReceiverLatencyTest < Test::Unit::TestCase
     assert_equal [], @conn.broadcasts
   end
 
+  # Both start the measurement over, on this node and the others.
+  data('set' => 'set_latency_avg_calc_rule', 'rset' => 'rset_latency_avg_calc_rule')
+  def test_latency_avg_calc_rule_resets_data(command)
+    ['on 10 get', 'off'].each do |args|
+      @conn.stats.record_latency('get', 0.1)
+      @conn.request("#{command} #{args}")
+      assert_empty @conn.stats.latency_data
+    end
+  end
+
   def test_add_and_del_latency_avg_calc_cmd
     assert_equal replies('DELETED'), @conn.request('del_latency_avg_calc_cmd set delete')
     assert_equal ["rdel_latency_avg_calc_cmd set delete\r\n"], @conn.broadcasts

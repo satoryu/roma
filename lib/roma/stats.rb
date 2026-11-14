@@ -11,7 +11,7 @@ module Roma
     # command options
     attr_accessor :address, :port
     attr_accessor :daemon, :join_node_id, :start_with_failover, :name, :verbose, :replication_in_host,
-                  :command_protection_disabled, :run_sync_routing, :run_iterate_storage, :run_storage_clean_up, :run_receive_a_vnode, :run_release, :run_join, :run_balance, :last_clean_up, :spushv_protection, :stream_show_wait, :dcnice, :clean_up_interval, :read_count, :delete_count, :out_count, :out_message_count, :redundant_count, :hilatency_warn_time, :latency_check_cmd, :latency_check_time_count, :latency_data, :spushv_vlength_warn, :spushv_read_timeout, :reqpushv_timeout_count, :routing_transaction_timeout, :gui_run_gather_logs, :gui_last_snapshot, :log_shift_age, :log_level
+                  :command_protection_disabled, :run_sync_routing, :run_iterate_storage, :run_storage_clean_up, :run_receive_a_vnode, :run_release, :run_join, :run_balance, :last_clean_up, :spushv_protection, :stream_show_wait, :dcnice, :clean_up_interval, :read_count, :delete_count, :out_count, :out_message_count, :redundant_count, :hilatency_warn_time, :spushv_vlength_warn, :spushv_read_timeout, :reqpushv_timeout_count, :routing_transaction_timeout, :gui_run_gather_logs, :gui_last_snapshot, :log_shift_age, :log_level
 
     # proc mode
     attr_accessor :enabled_vnodes_balance
@@ -31,9 +31,8 @@ module Roma
     # for write behind
     attr_accessor :wb_command_map
 
-    # for latency average check
-    attr_accessor :latency_log
-    # attr_accessor :latency_denominator
+    # The latency check, changed by start_latency_check and the others.
+    attr_reader :latency_log, :latency_check_cmd, :latency_check_time_count, :latency_data
 
     # for vnode copy parameter
     attr_accessor :spushv_klength_warn
@@ -77,7 +76,7 @@ module Roma
       @latency_log = false
       @latency_check_cmd = %w(get set delete)
       @latency_check_time_count = false
-      @latency_data = Hash.new { |hash, key| hash[key] = {} } # double hash
+      reset_latency_data
       @spushv_klength_warn = 1024 # 1kB
       @spushv_vlength_warn = 1024 * 1024 # 1MB
       @spushv_read_timeout = 100
@@ -154,6 +153,39 @@ module Roma
       @last_clean_up.to_i + @clean_up_interval < Time.now.to_i
     end
 
+    # Starts the latency check of the commands +cmds+, which logs their
+    # average every +time_count+ seconds, over again.
+    def start_latency_check(cmds, time_count)
+      @latency_check_cmd = cmds
+      @latency_check_time_count = time_count
+      @latency_log = true
+      reset_latency_data
+    end
+
+    def stop_latency_check
+      @latency_check_cmd = []
+      @latency_check_time_count = false
+      @latency_log = false
+      reset_latency_data
+    end
+
+    def watch_latency(cmds)
+      @latency_check_cmd.concat(cmds)
+    end
+
+    def unwatch_latency(cmds)
+      cmds.each do |cmd|
+        @latency_check_cmd.delete(cmd)
+        @latency_data.delete(cmd)
+      end
+    end
+
+    # Logs the averages every +time_count+ seconds, or stops the check if nil.
+    def latency_time_count=(time_count)
+      @latency_check_time_count = time_count || false
+      @latency_log = !time_count.nil?
+    end
+
     # Records +latency+, the seconds that +cmd+ took, in latency_data: the
     # last 10 latencies, the maximum and the minimum. Every
     # latency_check_time_count seconds, logs their average and starts over.
@@ -182,6 +214,10 @@ module Roma
     end
 
     private
+
+    def reset_latency_data
+      @latency_data = Hash.new { |hash, key| hash[key] = {} }
+    end
 
     def log_latency(cmd, data)
       average = data['latency'].sum(0.0) / data['latency'].size

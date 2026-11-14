@@ -8,7 +8,7 @@ class StatsTest < Test::Unit::TestCase
   end
 
   def test_record_latency
-    @stats.latency_check_time_count = 60
+    @stats.latency_time_count = 60
     [0.3, 0.1, 0.2].each { |latency| @stats.record_latency('get', latency) }
     data = @stats.latency_data['get']
     assert_equal [0.3, 0.1, 0.2], data['latency']
@@ -35,5 +35,26 @@ class StatsTest < Test::Unit::TestCase
     @stats.record_latency('set', 0.2)
     assert_equal [0.1], @stats.latency_data['get']['latency']
     assert_equal [0.2], @stats.latency_data['set']['latency']
+  end
+
+  def test_latency_check
+    @stats.record_latency('get', 0.1)
+    @stats.start_latency_check(%w(get), 30)
+    assert_equal [%w(get), 30, true], [@stats.latency_check_cmd, @stats.latency_check_time_count, @stats.latency_log]
+    assert_empty @stats.latency_data
+
+    @stats.watch_latency(%w(set delete))
+    @stats.record_latency('set', 0.1)
+    @stats.unwatch_latency(%w(set))
+    assert_equal %w(get delete), @stats.latency_check_cmd
+    assert_false @stats.latency_data.key?('set')
+
+    @stats.latency_time_count = nil
+    assert_equal [false, false], [@stats.latency_check_time_count, @stats.latency_log]
+    @stats.latency_time_count = 10
+    assert_equal [10, true], [@stats.latency_check_time_count, @stats.latency_log]
+
+    @stats.stop_latency_check
+    assert_equal [[], false, false], [@stats.latency_check_cmd, @stats.latency_check_time_count, @stats.latency_log]
   end
 end
