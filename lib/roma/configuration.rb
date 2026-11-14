@@ -209,6 +209,9 @@ module Roma
     class Settings < Group
       setting :name, 'ROMA', type: String
       setting :port, 12_000, type: Integer, check: ->(v) { (1..65_535).cover?(v) }
+      # The address that the server listens on, such as '0.0.0.0' for all,
+      # or nil for the IPv4 address of the host of the node.
+      setting :bind_address, nil, type: [String, NilClass]
       # The directory of the command plugins. The server requires the *.rb files in it.
       setting :command_plugin_path, './command_plugins', type: String
       # The file that the server writes its pid to, or nil for none.
