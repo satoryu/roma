@@ -632,6 +632,7 @@ module Roma
       def config_stat
         config = Roma.config
         ret = {}
+        ret['config.bind_address'] = config.bind_address
         ret['config.routing.lost_action'] = config.routing.lost_action
         ret['config.log.shift_age'] = config.log.shift_age
         ret['config.log.shift_size'] = config.log.shift_size

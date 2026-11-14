@@ -110,6 +110,7 @@ module Roma
         @log.info('use a select')
       end
 
+      address = bind_address
       @eventloop = true
       while @eventloop
         @eventloop = false
@@ -124,7 +125,7 @@ module Roma
 
           EventMachine.run do
             trap_stop_signals
-            EventMachine.start_server('0.0.0.0', @stats.port,
+            EventMachine.start_server(address, @stats.port,
                                       Roma::Command::Receiver,
                                       @storages, @routing_table)
             # a management of connections lives
@@ -156,7 +157,7 @@ module Roma
               end
             end
 
-            @log.info("Now accepting connections on address #{@stats.address}, port #{@stats.port}")
+            @log.info("Now accepting connections on address #{address}, port #{@stats.port}")
           end
         rescue SignalException => e
           if daemon?
@@ -204,6 +205,14 @@ module Roma
     end
 
     private
+
+    # The address that the server listens on: config.bind_address, or the
+    # IPv4 address of the host of this node, since the other nodes connect
+    # to it by IPv4.
+    def bind_address
+      Roma.config.bind_address ||
+        Addrinfo.getaddrinfo(@stats.address, nil, :INET, :STREAM).first.ip_address
+    end
 
     def initialize_stats
       config = Roma.config

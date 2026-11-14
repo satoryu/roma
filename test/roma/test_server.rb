@@ -689,6 +689,14 @@ class ServerSendCmdTest < Test::Unit::TestCase
     assert_equal ["routingdump bin\r\n"], lines
   end
 
+  # The server listens on the IPv4 address of its host, not on all.
+  def test_bind_address
+    server(ap: 'localhost_11211')
+    assert_equal '127.0.0.1', call(:bind_address)
+    Roma.config.bind_address = '0.0.0.0'
+    assert_equal '0.0.0.0', call(:bind_address)
+  end
+
   def test_stop
     storage = Object.new
     def storage.closedb = (@closed = true)
