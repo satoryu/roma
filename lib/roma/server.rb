@@ -229,7 +229,8 @@ module Roma
       @wb_writer = Roma::WriteBehind::FileWriter.new(
         Roma.config.write_behind.path,
         Roma.config.write_behind.shift_size,
-        @log
+        @log,
+        node_id: @stats.my_node_id
       )
 
       @cluster_replication_writer = Roma::WriteBehind::StreamWriter.new(@log)

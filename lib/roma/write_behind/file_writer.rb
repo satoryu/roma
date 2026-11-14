@@ -1,12 +1,11 @@
-require 'roma/stats'
-
 module Roma
   module WriteBehind
     class FileWriter
       attr_accessor :shift_size
 
-      def initialize(path, shift_size, log)
-        @stats = Roma::Stats.instance
+      # Writes into +path+/+node_id+, a file up to +shift_size+ bytes.
+      def initialize(path, shift_size, log, node_id:)
+        @node_id = node_id
         path.chop! if path[-1] == '/'
         @path = path
         @log = log
@@ -71,7 +70,7 @@ module Roma
 
       def openfile(hash_name)
         t = Time.now
-        path = "#{@path}/#{@stats.my_node_id}/#{hash_name}/#{t.strftime('%Y%m%d')}"
+        path = "#{@path}/#{@node_id}/#{hash_name}/#{t.strftime('%Y%m%d')}"
         mkdir(path)
         # set a next rotation time
         @rotation_time = Time.local(t.year, t.month, t.day, 0, 0, 0) + (24 * 60 * 60)
@@ -87,7 +86,7 @@ module Roma
       end
 
       def path(hash_name)
-        File.expand_path("#{@path}/#{@stats.my_node_id}/#{hash_name}")
+        File.expand_path("#{@path}/#{@node_id}/#{hash_name}")
       end
 
       def current_file_path(hash_name)
