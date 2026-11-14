@@ -116,6 +116,7 @@ The server loads the command plugins by a convention, instead of a list in the c
 * The server requires the `*.rb` files in `./command_plugins`, by their names, after ROMA's plugins. `config.command_plugin_path` sets another directory. The `stats` command shows it as `config.command_plugin_path` (`config.plugins` before).
 * `plugin_cmd_aliases.rb`, which had no commands, is removed.
 * The helpers of `Command::UtilCommandReceiver`, such as `forward_and_one_line_receive` and `push_to_write_behind`, are private: a plugin calls them on itself, as before. `Event::Handler#exit`, which stopped the event loop instead of `Kernel#exit`, is removed [#117](https://github.com/satoryu/roma/issues/117)
+* A connection of `checkout_connection` sends by `write`, as a socket does (`send` before, which hid `Object#send`) [#117](https://github.com/satoryu/roma/issues/117)
 * `roma config create` doesn't ask for the plugins.
 
 ### The default config file

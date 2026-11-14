@@ -29,7 +29,9 @@ module Roma
         Roma::Logging::RLogger.instance.warn("#{__FILE__}:#{__LINE__}:#{e.inspect} #{$@}")
       end
 
-      def send(data)
+      # Sends +data+ to the node, like IO#write of the connections of
+      # Messaging::ConnectionPool.
+      def write(data)
         send_data(data)
       end
 
