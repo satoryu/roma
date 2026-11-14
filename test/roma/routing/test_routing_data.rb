@@ -39,6 +39,15 @@ class RoutingDataTest < Test::Unit::TestCase
     assert_not_match(/!binary \|-/, routing_text)
   end
 
+  # A routing log that has a join without a node id, which an older server
+  # wrote, still loads.
+  def test_parse_log_join_without_a_node_id
+    routing_data = Roma::Routing::RoutingData.create(32, 2, 1, ['roma0_3300'])
+    routing_data.parse_log(Time.now, 'join ')
+    routing_data.parse_log(Time.now, 'join roma1_3300')
+    assert_equal %w(roma0_3300 roma1_3300), routing_data.nodes.sort
+  end
+
   # A vnode without nodes is decoded as one, so that it is found as lost.
   def test_decode_binary_with_a_lost_vnode
     routing_data = Roma::Routing::RoutingData.create(32, 2, 1, ['roma0_3300'])

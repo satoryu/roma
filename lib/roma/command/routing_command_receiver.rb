@@ -3,12 +3,16 @@ module Roma
     module RoutingCommandReceiver
       # join <node id>
       def ev_join(s)
+        return irregular_node_id_error(s[1]) unless valid_node_id?(s[1])
+
         @routing_table.add_node(s[1])
         send_data("ADDED\r\n")
       end
 
       # leave <node id>
       def ev_leave(s)
+        return irregular_node_id_error(s[1]) unless valid_node_id?(s[1])
+
         @log.warn("receive a leave #{s[1]} message.")
         @routing_table.leave(s[1])
         send_data("DELETED\r\n")
@@ -69,12 +73,8 @@ module Roma
         else
           node_ids = []
           s[3..-1].each { |node_id| node_ids << node_id }
-          # check irregular node name
           node_ids.each do |node_id|
-            if !node_id.ascii_only? || node_id.empty?
-              send_data("CLIENT_ERROR : irregular node name was input.[\"#{node_id}\"]\r\n")
-              return
-            end
+            return irregular_node_id_error(node_id) unless valid_node_id?(node_id)
           end
           res = @routing_table.update_route(s[1].to_i, s[2].to_i, node_ids)
           if res.is_a?(Integer)
@@ -289,6 +289,18 @@ module Roma
         send_data(format("vn = %s 0x%x\r\n", vnode, vnode))
         send_data("nodes = #{nodes.inspect}\r\n")
         send_data("END\r\n")
+      end
+
+      private
+
+      # A node id is a host and a port, as in localhost_11211. One without
+      # them breaks the routing table and its log.
+      def valid_node_id?(node_id)
+        node_id.is_a?(String) && node_id.ascii_only? && node_id.match?(/\A[^\s_:]+_\d+\z/)
+      end
+
+      def irregular_node_id_error(node_id)
+        send_data("CLIENT_ERROR : irregular node name was input.[\"#{node_id}\"]\r\n")
       end
     end
   end

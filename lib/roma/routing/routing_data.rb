@@ -202,8 +202,8 @@ module Roma
           @routes[s[1].to_i] = node_ids
           @clocks[s[1].to_i] = s[2].to_i
         when 'join'
-          # join <node-id>
-          @nodes << s[1] unless @nodes.include?(s[1])
+          # join <node-id>; a log may have one without it.
+          @nodes << s[1] unless s[1].nil? || @nodes.include?(s[1])
         when 'leave'
           # leave <node-id>
           @nodes.delete(s[1])

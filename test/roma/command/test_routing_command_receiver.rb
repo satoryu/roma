@@ -44,6 +44,15 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     assert_equal 1, @routing_table.event.size
   end
 
+  # A node id without a host or a port broke the routing table and its log.
+  data('empty' => ['join  ', ''], 'none' => ['join', ''], 'no port' => ['join localhost', 'localhost'],
+       'leave' => ['leave  ', ''])
+  def test_join_and_leave_irregular_node_ids(data)
+    line, node_id = data
+    assert_equal "CLIENT_ERROR : irregular node name was input.[\"#{node_id}\"]\r\n", @conn.request(line)
+    assert_equal [NODE_ID, OTHER_NODE_ID], @routing_table.nodes
+  end
+
   def test_leave
     @routing_table.enabled_failover = true
     assert_equal "DELETED\r\n", @conn.request("leave #{OTHER_NODE_ID}")
@@ -152,6 +161,8 @@ class RoutingCommandReceiverTest < Test::Unit::TestCase
     assert_equal "CLIENT_ERROR\r\n", @conn.request("setroute #{VN} 0")
     assert_equal "CLIENT_ERROR : irregular node name was input.[\"ｎｏｄｅ\"]\r\n",
                  @conn.request("setroute #{VN} 0 #{NODE_ID} ｎｏｄｅ")
+    assert_equal "CLIENT_ERROR : irregular node name was input.[\"node\"]\r\n",
+                 @conn.request("setroute #{VN} 0 #{NODE_ID} node")
     assert_equal "SERVER_ERROR 1 is not found.\r\n", @conn.request("setroute 1 0 #{NODE_ID}")
     assert_equal [@vn_nid], @routing_table.search_nodes(VN)
   end
