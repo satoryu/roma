@@ -36,7 +36,7 @@ class NewFuncTest < Test::Unit::TestCase
 
   def test_stat_log_level
     @sock.write("stat log_level\r\n")
-    assert_equal('stats.log_level debug', @sock.gets.chomp)
+    assert_equal('stats.log_level info', @sock.gets.chomp)
     assert_equal('END', @sock.gets.chomp)
   end
 

@@ -100,7 +100,7 @@ module Roma
 
     class Log < Group
       setting :path, '.', type: String
-      setting :level, :debug, one_of: Roma::Logging::RLogger::Severity::LEVELS.keys
+      setting :level, :info, one_of: Roma::Logging::RLogger::Severity::LEVELS.keys
       # The files to keep, or 'daily', 'weekly' or 'monthly'.
       setting :shift_age, 10, type: [Integer, String]
       setting :shift_size, 1024 * 1024 * 10, type: Integer

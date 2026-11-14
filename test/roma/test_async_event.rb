@@ -1,4 +1,5 @@
 require 'test_helper'
+require 'stringio'
 require 'async_event_harness'
 require 'fake_node'
 
@@ -214,6 +215,21 @@ class AsyncEventHandlerTest < Test::Unit::TestCase
     event, cmd = data
     assert_true @h.call(event, [OTHER_NODE_ID, 'roma', 'key', 1, 2, 0, 'value'])
     assert_equal [[OTHER_NODE_ID, cmd]], @h.sent
+  end
+
+  # Values aren't logged, only their length.
+  def test_redundant_logs_no_value
+    log = StringIO.new
+    @h.instance_variable_set(:@log, Logger.new(log))
+    @h.call(:asyncev_redundant, [OTHER_NODE_ID, 'roma', 'key', 1, 2, 0, 'secret'])
+    assert_match(/"key".*"\(6 bytes\)"/, log.string)
+    assert_not_match(/secret/, log.string)
+  end
+
+  def test_loggable_args
+    assert_equal ['localhost_11212', 'roma', 'key', '(6 bytes)'],
+                 @h.call(:loggable_args, 'zredundant', %w(localhost_11212 roma key secret))
+    assert_equal %w(localhost_11212 roma key 1), @h.call(:loggable_args, 'rdelete', %w(localhost_11212 roma key 1))
   end
 
   data('redundant' => :asyncev_redundant, 'zredundant' => :asyncev_zredundant)

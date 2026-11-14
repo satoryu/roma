@@ -15,7 +15,7 @@ class ConfigurationTest < Test::Unit::TestCase
     assert_equal 12_000, @config.port
     assert_equal './command_plugins', @config.command_plugin_path
     assert_equal :auto_assign, @config.routing.lost_action
-    assert_equal :debug, @config.log.level
+    assert_equal :info, @config.log.level
     assert_equal 5, @config.connection.pool.max
     assert_equal 15, @config.connection.event_machine_pool.max
     assert_equal 30, @config.connection.event_machine_pool.expire_time
@@ -141,7 +141,7 @@ class ConfigurationTest < Test::Unit::TestCase
   def test_to_h
     h = @config.to_h
     assert_equal 12_000, h['port']
-    assert_equal :debug, h['log.level']
+    assert_equal :info, h['log.level']
     assert_equal 5, h['connection.pool.max']
     assert_equal 15, h['connection.event_machine_pool.max']
   end

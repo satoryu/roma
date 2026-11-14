@@ -78,6 +78,8 @@ The `stats` command shows the settings by these names, such as `config.log.path`
 
 New settings: `storage.max_value_size`, the largest value in bytes that a node takes (16MB by default), `bind_address`, the address that the server listens on, `connection.pool.timeout` and `connection.event_machine_pool.timeout`, how long to wait for another node, and `connection.max_line_length`, the longest request line [#134](https://github.com/satoryu/roma/issues/134).
 
+`log.level` is `:info` by default (`:debug` before), so that the debug log, which has the arguments of commands, isn't written unless asked for [#134](https://github.com/satoryu/roma/issues/134).
+
 ### Routing names
 The abbreviated names of the routing are words now [#60](https://github.com/satoryu/roma/issues/60). ROMA 2.0 doesn't read a routing file of 1.x: make it again by `roma route create`. The routing file is `<node-id>.route.yml` (`<node-id>.route` before), as it is YAML. Its logs are `<node-id>.route.1` and so on as before. The file is a plain YAML of the keys below, without the tag `!ruby/object:Roma::Routing::RoutingData`, and the server reads it by `YAML.safe_load`, which makes no Ruby object. `routingdump yaml` and `roma route change-redundancy` write the same YAML.
 
@@ -131,6 +133,7 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
 
 ### Fixes
+* Values aren't written to the log, only their length: the redundant writes to other nodes, commands sent to a node that fails, async events that run out of retries, and writes to the replica cluster that fail logged the value [#134](https://github.com/satoryu/roma/issues/134)
 * `join`, `leave` and `setroute` take only node ids such as `localhost_11211`, and reply CLIENT_ERROR to others. `join` without a node id put nil in the routing table, which made later joins and broadcast commands fail, and wrote `join ` to the routing log, after which the node didn't start; such a log line is skipped now [#134](https://github.com/satoryu/roma/issues/134)
 * A request can't fill the memory of a node: a value larger than `config.storage.max_value_size` (16MB) and a line longer than `config.connection.max_line_length` (1MB) are replied `SERVER_ERROR object too large: <n> bytes` and `SERVER_ERROR line too long`, and the connection is closed. Keys and values in the stream of `spushv` have the same limit [#134](https://github.com/satoryu/roma/issues/134)
 * A node that accepts connections but doesn't answer can't hang the others: the connections to the other nodes time out after `connection.pool.timeout` and `connection.event_machine_pool.timeout` seconds (10 by default), when connecting and when waiting for an answer. Waiting for the storage clean up to stop is limited too, and `spushv` replies SERVER_ERROR if it doesn't stop within a second, instead of holding the event loop: join, recover and balance push the vnode again later, and release stops as it does in `spushv_protection` [#134](https://github.com/satoryu/roma/issues/134)

@@ -51,7 +51,7 @@ module Roma
             end
             t[:name] = __method__
           else
-            @log.error("async event retry out:#{msg.inspect}")
+            @log.error("async event retry out:#{msg.event} #{loggable_args(msg.event, msg.args).inspect}")
             msg.callback.call(msg, false) if msg.callback
           end
         end
@@ -114,7 +114,7 @@ module Roma
     # compressed value. Returns false to retry later.
     def send_redundant(command, args)
       node_id, hash_name, k, d, clock, expire_time, v = args
-      @log.debug("#{__method__} #{args.inspect}")
+      @log.debug("#{__method__} #{command} #{loggable_args('redundant', args).inspect}")
       request = "#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}"
       unless @routing_table.nodes.include?(node_id)
         @log.warn("async #{command} failed:#{node_id} does not found in routing table.#{request}")
@@ -126,6 +126,14 @@ module Roma
         return false # retry
       end
       true
+    end
+
+    # The arguments of the event, for the log: the value of redundant and
+    # zredundant, which is the last one, is logged as its length.
+    def loggable_args(event, args)
+      return args unless %w(redundant zredundant).include?(event.to_s) && args.is_a?(Array) && args.last.is_a?(String)
+
+      args[0..-2] + ["(#{args.last.bytesize} bytes)"]
     end
   end
 end

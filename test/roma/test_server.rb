@@ -651,6 +651,15 @@ class ServerSendCmdTest < Test::Unit::TestCase
     assert_equal 2, @server.routing_table.failure_counts['localhost_1']
   end
 
+  # The value of a command such as rset isn't logged.
+  def test_async_send_cmd_logs_no_value
+    log = StringIO.new
+    set(log: Logger.new(log))
+    assert_nil call(:async_send_cmd, 'localhost_1', "rset key 1 2 0 6\r\nsecret\r\n")
+    assert_match(/command is rset key 1 2 0 6\./, log.string)
+    assert_not_match(/secret/, log.string)
+  end
+
   def test_async_send_cmd_without_a_reply
     @node.replies['quit'] = :close
     assert_nil call(:async_send_cmd, @node.node_id, "quit\r\n")
