@@ -145,8 +145,8 @@ event list. These also add them:
 
 A plugin can make its commands system commands by
 `Roma::CommandPlugin.system_commands(self)` in its module, as `debug.rb` does
-for `eval`. A system command skips the latency check, and isn't an error in
-`set_latency_avg_calc_rule`. A plugin is included after a node starts, so its
+for `eval`. A system command isn't measured by the latency check:
+`set_latency_avg_calc_rule` replies `NOT SUPPORT` for it. A plugin is included after a node starts, so its
 commands still wait for all the nodes like the others.
 
 ## Getting started
