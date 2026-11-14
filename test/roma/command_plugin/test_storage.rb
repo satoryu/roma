@@ -185,6 +185,14 @@ class CommandPluginStorageHashTest < Test::Unit::TestCase
     assert_equal "SERVER_ERROR nohash does not exists.\r\n", @conn.request(line, value)
   end
 
+  # An expire time in milliseconds is kept as the latest time, instead of a
+  # wrapped one: 2**32 was stored as 0, a delete mark, which get didn't find.
+  def test_set_with_an_expire_time_out_of_32_bits
+    assert_equal "STORED\r\n", @conn.request("set key1 0 #{2**32} 5", 'value')
+    assert_equal "VALUE key1 0 5\r\nvalue\r\nEND\r\n", @conn.request('get key1')
+    assert_equal "#{0xffffffff}\r\nEND\r\n", @conn.request('get_expt key1 unix')
+  end
+
   def test_get_expt
     @conn.request('set key1 0 1735700000 5', 'value')
     assert_equal "1735700000\r\nEND\r\n", @conn.request('get_expt key1 unix')
