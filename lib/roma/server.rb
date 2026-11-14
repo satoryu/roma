@@ -6,6 +6,7 @@ require 'roma/command_plugin'
 require 'roma/async_event'
 require 'roma/peer_command'
 require 'roma/cluster_maintenance'
+require 'roma/pid_file'
 require 'roma/write_behind'
 require 'roma/logging/rlogger'
 require 'roma/command/receiver'
@@ -84,7 +85,7 @@ module Roma
         return
       end
 
-      write_pid_file
+      pid_file&.write
       @storages.each do |_hashname, st|
         st.opendb
       end
@@ -171,7 +172,7 @@ module Roma
       stop_write_behind_process
       stop
     ensure
-      remove_pid_file
+      pid_file&.remove
     end
 
     def daemon? = @stats.daemon
@@ -354,47 +355,18 @@ module Roma
       exit 1
     end
 
-    # Exits if the pid file has the pid of a running process, such as
-    # another server, or if the server can't write the file. A file of a
-    # process that is gone is overwritten. It runs before -d makes the
-    # daemon, to tell the error on the standard error.
+    # Exits if the server can't take the pid file. It runs before -d makes
+    # the daemon, to tell the error on the standard error.
     def check_pid_file
-      path = @stats.pid_file
-      return unless path
+      error = pid_file&.error
+      return unless error
 
-      if File.exist?(path)
-        pid = File.read(path).to_i
-        if pid.positive? && process_alive?(pid)
-          warn "#{path} has the pid #{pid}, which is running."
-          exit 1
-        end
-      end
-      return if File.exist?(path) ? File.writable?(path) : File.writable?(File.dirname(path))
-
-      warn "#{path} can't be written."
+      warn error
       exit 1
     end
 
-    def process_alive?(pid)
-      Process.kill(0, pid)
-      true
-    rescue Errno::ESRCH
-      false
-    rescue Errno::EPERM
-      true
-    end
-
-    def write_pid_file
-      File.write(@stats.pid_file, "#{Process.pid}\n") if @stats.pid_file
-    end
-
-    # Removes the pid file if it has the pid of this process: another server
-    # may have overwritten it.
-    def remove_pid_file
-      path = @stats.pid_file
-      return unless path && File.exist?(path) && File.read(path).to_i == Process.pid
-
-      File.delete(path)
+    def pid_file
+      @stats.pid_file && PidFile.new(@stats.pid_file)
     end
 
     def initialize_storages
