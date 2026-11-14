@@ -461,13 +461,10 @@ class AsyncEventPushTest < Test::Unit::TestCase
 
   def test_replicate_existing_data_process
     replica = Struct.new(:routes).new(@h.routing_table.routes.keys.to_h { |vnode| [vnode, [@node.node_id]] })
-    saved = defined?($roma) ? $roma : nil
-    $roma = Struct.new(:cluster_replication_writer).new(Struct.new(:run_existing_data_replication).new(true))
+    @h.instance_variable_set(:@cluster_replication_writer, Struct.new(:run_existing_data_replication).new(true))
     @h.call(:replicate_existing_data_process, [replica])
     assert_equal @h.routing_table.routes.keys.sort, @node.dat.keys.sort
     assert_equal ['key1'], @node.dat[@vnode].keys
-  ensure
-    $roma = saved
   end
 end
 

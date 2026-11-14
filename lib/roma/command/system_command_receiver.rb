@@ -250,34 +250,11 @@ module Roma
       # if you want to copy existing data, add the 'all' after node_id as argument
       # switch_replication <true|false> [node_id] [copy target]
       def ev_switch_replication(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") unless s.length.between?(2, 4)
-        return send_data("CLIENT_ERROR value must be true or false\r\n") unless s[1] =~ /^(true|false)$/
-        return send_data("CLIENT_ERROR [copy target] must be all or nil\r\n") if s[3] && s[3] != 'all'
+        error = switch_replication_error(s)
+        return send_data(error) if error
 
         res = broadcast_cmd("rswitch_replication #{s[1]} #{s[2]} #{s[3]}\r\n")
-
-        Timeout.timeout(1) do
-          case s[1]
-          when 'true'
-            $roma.cluster_replication_writer.update_mklhash(s[2])
-            $roma.cluster_replication_writer.update_nodelist(s[2])
-            $roma.cluster_replication_writer.update_rttable(s[2])
-            $roma.cluster_replication_writer.run_replication = true
-            if s[3] == 'all'
-              $roma.cluster_replication_writer.run_existing_data_replication = true
-              Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process',
-                                                                 [$roma.cluster_replication_writer.replica_rttable]))
-            end
-            res[@stats.my_node_id] = 'ACTIVATED'
-          when 'false'
-            $roma.cluster_replication_writer.replica_mklhash = nil
-            $roma.cluster_replication_writer.replica_nodelist = []
-            $roma.cluster_replication_writer.replica_rttable = nil
-            $roma.cluster_replication_writer.run_replication = false
-            $roma.cluster_replication_writer.run_existing_data_replication = false
-            res[@stats.my_node_id] = 'DEACTIVATED'
-          end
-        end
+        res[@stats.my_node_id] = switch_replication(s)
         send_data("#{res}\r\n")
       rescue StandardError => e
         send_data("#{e.class}: #{e}\r\n")
@@ -285,32 +262,10 @@ module Roma
 
       # rswitch_replication <true|false> [node_id] [copy target]
       def ev_rswitch_replication(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") unless s.length.between?(2, 4)
-        return send_data("CLIENT_ERROR value must be true or false\r\n") unless s[1] =~ /^(true|false)$/
-        return send_data("CLIENT_ERROR [copy target] must be all or nil\r\n") if s[3] && s[3] != 'all'
+        error = switch_replication_error(s)
+        return send_data(error) if error
 
-        Timeout.timeout(1) do
-          case s[1]
-          when 'true'
-            $roma.cluster_replication_writer.update_mklhash(s[2])
-            $roma.cluster_replication_writer.update_nodelist(s[2])
-            $roma.cluster_replication_writer.update_rttable(s[2])
-            $roma.cluster_replication_writer.run_replication = true
-            if s[3] == 'all'
-              $roma.cluster_replication_writer.run_existing_data_replication = true
-              Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process',
-                                                                 [$roma.cluster_replication_writer.replica_rttable]))
-            end
-            send_data("ACTIVATED\r\n")
-          when 'false'
-            $roma.cluster_replication_writer.replica_mklhash = nil
-            $roma.cluster_replication_writer.replica_nodelist = []
-            $roma.cluster_replication_writer.replica_rttable = nil
-            $roma.cluster_replication_writer.run_replication = false
-            $roma.cluster_replication_writer.run_existing_data_replication = false
-            send_data("DEACTIVATED\r\n")
-          end
-        end
+        send_data("#{switch_replication(s)}\r\n")
       rescue StandardError => e
         send_data("#{e.class}: #{e}\r\n")
       end
@@ -960,6 +915,35 @@ module Roma
           "CLIENT_ERROR number of arguments (0 for 2)\r\n"
         elsif s[1] != 'nil' && s[1].to_i < 1
           "<count> must be greater than #{allowed}\r\n"
+        end
+      end
+
+      def switch_replication_error(s)
+        if !s.length.between?(2, 4)
+          "CLIENT_ERROR number of arguments\r\n"
+        elsif s[1] !~ /^(true|false)$/
+          "CLIENT_ERROR value must be true or false\r\n"
+        elsif s[3] && s[3] != 'all'
+          "CLIENT_ERROR [copy target] must be all or nil\r\n"
+        end
+      end
+
+      # Switches the cluster replication of this node by switch_replication,
+      # and returns the reply.
+      def switch_replication(s)
+        writer = $roma.cluster_replication_writer
+        Timeout.timeout(1) do
+          if s[1] == 'true'
+            writer.activate(s[2], existing_data: s[3] == 'all')
+            if s[3] == 'all'
+              Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process',
+                                                                 [writer.replica_rttable]))
+            end
+            'ACTIVATED'
+          else
+            writer.deactivate
+            'DEACTIVATED'
+          end
         end
       end
 

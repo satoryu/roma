@@ -49,9 +49,23 @@ class StreamWriterTest < Test::Unit::TestCase
     assert_kind_of(Roma::Routing::RoutingData, pre_rttable)
   end
 
+  def test_sw_activate_and_deactivate
+    sw = Roma::WriteBehind::StreamWriter.new(Logger.new(nil))
+    sw.activate('localhost_21211', existing_data: true)
+    assert_true sw.run_replication
+    assert_true sw.run_existing_data_replication
+    assert_equal(%w(localhost_21211 localhost_21212), sw.replica_nodelist)
+    assert_kind_of(Roma::Routing::RoutingData, sw.replica_rttable)
+
+    sw.deactivate
+    assert_equal [false, false, nil, [], nil],
+                 [sw.run_replication, sw.run_existing_data_replication, sw.replica_mklhash, sw.replica_nodelist,
+                  sw.replica_rttable]
+  end
+
   def test_sw_change_mkl_hash?
     sw = Roma::WriteBehind::StreamWriter.new(Logger.new(nil))
-    sw.replica_mklhash = 'dummy'
+    sw.instance_variable_set(:@replica_mklhash, 'dummy')
     assert_equal(true, sw.change_mklhash?)
   end
 end

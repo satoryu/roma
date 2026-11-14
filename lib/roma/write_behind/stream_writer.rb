@@ -5,8 +5,8 @@ require 'roma/messaging/connection_pool'
 module Roma
   module WriteBehind
     class StreamWriter
-      attr_accessor :run_replication, :run_existing_data_replication, :replica_mklhash, :replica_nodelist,
-                    :replica_rttable
+      attr_accessor :run_replication, :run_existing_data_replication
+      attr_reader :replica_mklhash, :replica_nodelist, :replica_rttable
 
       def initialize(log)
         @log = log
@@ -25,6 +25,25 @@ module Roma
         ret['write-behind.replica_mklhash'] = @replica_mklhash
         ret['write-behind.replica_nodelist'] = @replica_nodelist
         ret
+      end
+
+      # Starts the replication to the cluster of +node_id+, with its mklhash,
+      # nodes and routing table. With +existing_data+, the data that this
+      # cluster has is copied too.
+      def activate(node_id, existing_data: false)
+        update_mklhash(node_id)
+        update_nodelist(node_id)
+        update_rttable(node_id)
+        @run_replication = true
+        @run_existing_data_replication = true if existing_data
+      end
+
+      def deactivate
+        @replica_mklhash = nil
+        @replica_nodelist = []
+        @replica_rttable = nil
+        @run_replication = false
+        @run_existing_data_replication = false
       end
 
       def change_mklhash?
