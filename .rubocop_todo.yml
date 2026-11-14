@@ -290,6 +290,7 @@ Style/GlobalVars:
   Exclude:
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/command/vnode_command_receiver.rb'
+    - 'lib/roma/command/write_behind_command_receiver.rb'
     - 'lib/roma/command_plugin/alist.rb'
     - 'lib/roma/command_plugin/storage.rb'
     - 'lib/roma/server.rb'
@@ -496,7 +497,7 @@ Style/SlicingWithRange:
     - 'lib/roma/async_event/storage_maintenance.rb'
     - 'lib/roma/command/receiver.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
-    - 'lib/roma/command/system_command_receiver.rb'
+    - 'lib/roma/command/write_behind_command_receiver.rb'
     - 'lib/roma/command_plugin/debug.rb'
     - 'lib/roma/command_plugin/storage.rb'
     - 'lib/roma/event/em_connection.rb'
