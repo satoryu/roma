@@ -52,7 +52,7 @@ module Roma
           vnode, last, clock, expire_time, klen = context_bin.unpack('NNNNN')
           break if klen == 0 # end of dump ?
 
-          k = read_bytes(klen)
+          k = read_stream_bytes(klen)
           vlen_bin = read_bytes(4, @stats.spushv_read_timeout)
           vlen, =  vlen_bin.unpack('N')
           if vlen == 0
@@ -67,7 +67,7 @@ module Roma
           else
             @log.warn("#{__method__}:Too long key: key = #{k}") if klen > @stats.spushv_klength_warn
             @log.warn("#{__method__}:Too long value: key = #{k} vlen = #{vlen}") if vlen > @stats.spushv_vlength_warn
-            v = read_bytes(vlen, @stats.spushv_read_timeout)
+            v = read_stream_bytes(vlen, @stats.spushv_read_timeout)
 
             createhash(s[1], 'CREATED') unless @storages[s[1]]
             if @storages[s[1]].load_stream_dump(vnode, last, clock, expire_time, k, v)

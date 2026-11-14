@@ -57,4 +57,44 @@ class HandlerTest < Test::Unit::TestCase
     assert_equal "get k\r\n", read(pieces: ['get', " k\r\nset"]) { @handler.send(:gets) }
     assert_equal 'set', buffer
   end
+
+  # A line without a newline can't fill the memory.
+  def test_gets_too_long
+    Roma::Event::Handler.max_line_length = 10
+    assert_raise_message('line too long') do
+      read(pieces: ['get ', 'a' * 10, 'b']) { @handler.send(:gets) }
+    end
+  ensure
+    Roma::Event::Handler.max_line_length = 1024 * 1024
+  end
+
+  # A value larger than the limit isn't read at all.
+  def test_read_value_too_large
+    Roma::Event::Handler.max_value_size = 4
+    assert_equal 'abcd', read(pieces: ["abcd\r\n"]) { @handler.send(:read_value, 4) }
+    assert_raise_message('object too large: 5 bytes') do
+      read(pieces: ['']) { @handler.send(:read_value, 5) }
+    end
+    assert_raise(Roma::Event::Handler::RequestTooLarge) do
+      read(pieces: ['']) { @handler.send(:read_stream_bytes, 5) }
+    end
+  ensure
+    Roma::Event::Handler.max_value_size = 16 * 1024 * 1024
+  end
+
+  # It is replied, and the connection is closed after the reply, since the
+  # rest of the request isn't read.
+  def test_dispatcher_replies_a_request_too_large
+    handler = Roma::Event::Handler.allocate
+    replies = []
+    closed = []
+    handler.define_singleton_method(:gets) { raise Roma::Event::Handler::RequestTooLarge, 'line too long' }
+    handler.define_singleton_method(:send_data) { |data| replies << data }
+    handler.define_singleton_method(:close_connection_after_writing) { closed << :after_writing }
+    handler.instance_variable_set(:@connected, true)
+    handler.instance_variable_set(:@log, Logger.new(nil))
+    handler.send(:dispatcher)
+    assert_equal ["SERVER_ERROR line too long\r\n"], replies
+    assert_equal [:after_writing], closed
+  end
 end

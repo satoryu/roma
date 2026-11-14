@@ -242,6 +242,8 @@ module Roma
       end
 
       Event::Handler.connection_expire_time = connection.expire_time
+      Event::Handler.max_line_length = connection.max_line_length
+      Event::Handler.max_value_size = Roma.config.storage.max_value_size
       Messaging::ConnectionPool.instance.expire_time = connection.pool.expire_time
       Messaging::ConnectionPool.instance.maxlength = connection.pool.max
       Messaging::ConnectionPool.instance.timeout = connection.pool.timeout
