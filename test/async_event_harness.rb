@@ -83,7 +83,11 @@ class AsyncEventHarness
     {}
   end
 
-  def stop_clean_up(**) = true # rubocop:disable Naming/PredicateMethod
+  attr_writer :clean_up_stopping
+
+  def stop_clean_up(**) # rubocop:disable Naming/PredicateMethod
+    @clean_up_stopping != false
+  end
 
   private
 
