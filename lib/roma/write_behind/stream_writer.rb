@@ -1,6 +1,7 @@
 require 'socket'
 require 'timeout'
 require 'roma/messaging/connection_pool'
+require 'roma/routing/routing_data'
 
 module Roma
   module WriteBehind
@@ -94,7 +95,7 @@ module Roma
       def update_rttable(node_id)
         Timeout.timeout(1) do
           con = @pool.checkout(node_id)
-          con.write "routingdump\r\n"
+          con.write "routingdump bin\r\n"
           routes_length = con.gets.to_i
           if routes_length <= 0
             con.close
@@ -106,7 +107,7 @@ module Roma
           routes += con.read(routes_length - routes.length) while routes.length != routes_length
           con.read(2) # "\r\n"
           con.gets
-          routing_data = Marshal.load(routes)
+          routing_data = Roma::Routing::RoutingData.decode_binary(routes)
           @pool.checkin(node_id, con)
           @replica_rttable = routing_data
           @log.debug("replica_rttable has updated: [#{@replica_rttable}]")

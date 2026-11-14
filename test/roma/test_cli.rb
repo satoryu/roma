@@ -149,7 +149,7 @@ class CLITest < Test::Unit::TestCase
     node = FakeNode.new
     @fake_nodes << node
     @routing_data = Roma::Routing::RoutingData.create(32, 3, redundancy, [node.node_id, *others], true)
-    dump = Marshal.dump(@routing_data)
+    dump = @routing_data.dump_binary
     node.replies['routingdump'] = "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
     node
   end

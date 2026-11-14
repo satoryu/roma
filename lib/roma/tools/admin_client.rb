@@ -19,14 +19,18 @@ module Roma
       def routing_data(node_id)
         connect(node_id) do |con|
           Timeout.timeout(@timeout) do
-            con.write("routingdump\r\n")
+            con.write("routingdump bin\r\n")
             len = con.gets.to_i
             raise Error, "#{node_id} has no routing data." if len <= 0
 
             dump = con.read(len)
             raise Error, "#{node_id} closed the connection." unless dump && dump.bytesize == len
 
-            Marshal.load(dump)
+            begin
+              Routing::RoutingData.decode_binary(dump)
+            rescue StandardError => e
+              raise Error, "#{node_id} sent broken routing data: #{e.message}"
+            end
           end
         end
       end

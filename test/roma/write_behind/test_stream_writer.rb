@@ -37,6 +37,12 @@ class StreamWriterTest < Test::Unit::TestCase
     def gets
       @in.gets
     end
+
+    def read(length)
+      @in.read(length)
+    end
+
+    def close; end
   end
 
   def writer(replies)
@@ -49,6 +55,22 @@ class StreamWriterTest < Test::Unit::TestCase
     sw.update_mklhash('replica_1')
     assert_equal 'abc', sw.replica_mklhash
     assert_equal ['replica_1'], @pool.checkins
+  end
+
+  # The routing table is read in the binary format, not by Marshal.
+  def test_update_rttable
+    routing_data = Roma::Routing::RoutingData.create(32, 3, 1, %w(replica_1))
+    dump = routing_data.dump_binary
+    sw = writer('replica_1' => "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n")
+    sw.update_rttable('replica_1')
+    assert_equal routing_data.routes, sw.replica_rttable.routes
+  end
+
+  def test_update_rttable_with_marshal
+    dump = Marshal.dump(Roma::Routing::RoutingData.create(32, 3, 1, %w(replica_1)))
+    sw = writer('replica_1' => "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n")
+    sw.update_rttable('replica_1')
+    assert_nil sw.replica_rttable
   end
 
   # A node that is down is dropped, and the next one is asked.

@@ -39,6 +39,15 @@ class RoutingDataTest < Test::Unit::TestCase
     assert_not_match(/!binary \|-/, routing_text)
   end
 
+  # A vnode without nodes is decoded as one, so that it is found as lost.
+  def test_decode_binary_with_a_lost_vnode
+    routing_data = Roma::Routing::RoutingData.create(32, 2, 1, ['roma0_3300'])
+    routing_data.routes[0] = []
+    decoded = Roma::Routing::RoutingData.decode_binary(routing_data.dump_binary)
+    assert_equal routing_data.routes, decoded.routes
+    assert_equal [0], decoded.lost_vnodes
+  end
+
   # The routing file is a plain YAML of a Hash, without the tag of the class.
   def test_file_is_plain_yaml
     Roma::Routing::RoutingData.create(32, 1, 1, ['roma0_3300']).save(@fname)

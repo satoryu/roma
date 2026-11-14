@@ -675,13 +675,18 @@ class ServerSendCmdTest < Test::Unit::TestCase
     assert_equal routing_data.routes, got.routes
   end
 
-  def test_fetch_routedump_falls_back_to_marshal
+  # The Marshal format isn't asked for, so that a node can't make this one
+  # load any object.
+  def test_fetch_routedump_without_marshal
     routing_data = @server.routing_table.instance_variable_get(:@routing_data)
     dump = Marshal.dump(routing_data)
+    lines = []
     @node.replies['routingdump'] = lambda do |line|
+      lines << line
       line.include?('bin') ? "0\r\n" : "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n"
     end
-    assert_equal routing_data.routes, call(:fetch_routedump, @node.node_id).routes
+    assert_nil call(:fetch_routedump, @node.node_id)
+    assert_equal ["routingdump bin\r\n"], lines
   end
 
   def test_stop

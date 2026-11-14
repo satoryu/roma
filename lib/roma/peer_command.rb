@@ -10,15 +10,11 @@ module Roma
   module PeerCommand
     private
 
+    # Takes the binary format, not the Marshal one, so that a node can't make
+    # this one load any object.
     def fetch_routedump(node_id)
       received = receive_routing_dump(node_id, "routingdump bin\r\n")
-      if received
-        routing_data = Routing::RoutingData.decode_binary(received)
-      else
-        received = receive_routing_dump(node_id, "routingdump\r\n")
-        routing_data = Marshal.load(received)
-      end
-      routing_data
+      received && Routing::RoutingData.decode_binary(received)
     rescue StandardError
       nil
     end
