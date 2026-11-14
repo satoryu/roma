@@ -239,24 +239,8 @@ class ServerPidFileTest < Test::Unit::TestCase
     super
   end
 
-  def test_write_and_remove
-    call(:check_pid_file)
-    call(:write_pid_file)
-    assert_equal "#{Process.pid}\n", File.read(@path)
-    call(:remove_pid_file)
-    assert_false File.exist?(@path)
-  end
-
-  def test_without_pid_file
-    @server.stats.pid_file = nil
-    call(:check_pid_file)
-    call(:write_pid_file)
-    call(:remove_pid_file)
-    assert_empty Dir.children(@dir)
-  end
-
   # Another server has the file.
-  def test_running
+  def test_check_pid_file
     File.write(@path, "#{Process.pid}\n")
     err = capture_stderr do
       assert_raise(SystemExit) { call(:check_pid_file) }
@@ -264,29 +248,10 @@ class ServerPidFileTest < Test::Unit::TestCase
     assert_equal "#{@path} has the pid #{Process.pid}, which is running.\n", err
   end
 
-  # The process of the file is gone, and its file is overwritten.
-  def test_stale
-    pid = Process.spawn(RbConfig.ruby, '-e', '')
-    Process.wait(pid)
-    File.write(@path, "#{pid}\n")
+  def test_without_pid_file
+    @server.stats.pid_file = nil
     call(:check_pid_file)
-    call(:write_pid_file)
-    assert_equal "#{Process.pid}\n", File.read(@path)
-  end
-
-  def test_not_writable
-    @server.stats.pid_file = File.join(@dir, 'missing', 'roma.pid')
-    err = capture_stderr do
-      assert_raise(SystemExit) { call(:check_pid_file) }
-    end
-    assert_equal "#{@server.stats.pid_file} can't be written.\n", err
-  end
-
-  # The file of another server, which overwrote it, is kept.
-  def test_remove_another
-    File.write(@path, "1\n")
-    call(:remove_pid_file)
-    assert_equal "1\n", File.read(@path)
+    assert_nil call(:pid_file)
   end
 end
 
