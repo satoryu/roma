@@ -1016,10 +1016,10 @@ module Roma
           vnode, last, clock, expire_time, klen = context_bin.unpack('NNNNN')
           break if klen == 0 # end of dump ?
 
-          k = read_bytes(klen)
+          k = read_stream_bytes(klen)
           vlen_bin = read_bytes(4, 100)
           vlen, =  vlen_bin.unpack('N')
-          v = read_bytes(vlen, 100)
+          v = read_stream_bytes(vlen, 100)
           val = to_alist_value(v)
           if val
             # @log.debug("listdata #{vnode} #{k} #{val.inspect}")

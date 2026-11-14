@@ -146,6 +146,8 @@ class PluginTestHarness
     value
   end
 
+  def read_stream_bytes(size, _timeout = nil) = read_bytes(size)
+
   # Sends the commands this node forwards to +owner+, another harness.
   # Without it, connecting to another node fails.
   def forward_to(owner)

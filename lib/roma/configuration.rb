@@ -133,6 +133,8 @@ module Roma
       }
       # Seconds to keep an accepted connection, or 0 for ever.
       setting :expire_time, 0, type: Numeric
+      # The longest request line in bytes. A longer one closes the connection.
+      setting :max_line_length, 1024 * 1024, type: Integer, check: ->(v) { v.positive? }
       setting :dns_caching, false, one_of: BOOLEAN
       group :pool, Pool
       group :event_machine_pool, EventMachinePool

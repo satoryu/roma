@@ -64,6 +64,31 @@ module Roma
         @@timeout
       end
 
+      # Raised when a request is larger than a limit. The rest of it isn't
+      # read, so it is replied and the connection is closed. It isn't a
+      # StandardError, so that the commands, which rescue those, don't go on
+      # with the rest of the request in the buffer.
+      class RequestTooLarge < Exception; end # rubocop:disable Lint/InheritException
+
+      # The longest request line, and the largest value, in bytes.
+      @@max_line_length = 1024 * 1024
+      def self.max_line_length=(n)
+        @@max_line_length = n
+      end
+
+      def self.max_line_length
+        @@max_line_length
+      end
+
+      @@max_value_size = 16 * 1024 * 1024
+      def self.max_value_size=(n)
+        @@max_value_size = n
+      end
+
+      def self.max_value_size
+        @@max_value_size
+      end
+
       attr_reader :connected, :lastcmd, :last_access, :addr, :port
 
       def initialize(storages, routing_table)
@@ -196,6 +221,10 @@ module Roma
           @log.error('The server will stop')
           @stop_event_loop = true
         end
+      rescue RequestTooLarge => e
+        @log.warn("#{@addr}:#{@port} #{e.message}")
+        send_data("SERVER_ERROR #{e.message}\r\n")
+        close_connection_after_writing
       rescue Exception => e
         @log.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} #{e} #{$@}")
         close_connection
@@ -237,13 +266,24 @@ module Roma
       # Reads a value of +size+ bytes and the CRLF after it, and returns the
       # value.
       def read_value(size, mult = 1)
+        raise RequestTooLarge, "object too large: #{size} bytes" if size > @@max_value_size
+
         read_bytes(size, mult, skip: 2)
+      end
+
+      # Reads a key or a value of +size+ bytes in a stream, such as that of
+      # spushv.
+      def read_stream_bytes(size, mult = 1)
+        raise RequestTooLarge, "object too large: #{size} bytes" if size > @@max_value_size
+
+        read_bytes(size, mult)
       end
 
       def gets
         while @connected
           idx = @read_buffer.index("\n")
           return pop(idx + 1) if idx
+          raise RequestTooLarge, 'line too long' if @read_buffer.bytesize > @@max_line_length
 
           Fiber.yield(@read_buffer.size)
 
