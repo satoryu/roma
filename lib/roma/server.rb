@@ -69,6 +69,7 @@ module Roma
       @startup = true
       @program = program
       options(argv)
+      initialize_umask
       check_pid_file
       initialize_stats
       initialize_connection
@@ -221,6 +222,11 @@ module Roma
     def bind_address
       Roma.config.bind_address ||
         Addrinfo.getaddrinfo(@stats.address, nil, :INET, :STREAM).first.ip_address
+    end
+
+    # Before any file is made, the log among them.
+    def initialize_umask
+      File.umask(Roma.config.umask) if Roma.config.umask
     end
 
     def initialize_stats

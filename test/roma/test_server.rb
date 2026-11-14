@@ -698,6 +698,22 @@ class ServerSendCmdTest < Test::Unit::TestCase
     assert_equal ["routingdump bin\r\n"], lines
   end
 
+  # The files that the server makes aren't readable by the others.
+  def test_initialize_umask
+    saved = File.umask
+    call(:initialize_umask)
+    assert_equal 0o027, File.umask
+    path = File.join(@dir, 'file')
+    File.write(path, 'data')
+    assert_equal 0o640, File.stat(path).mode & 0o777
+    File.umask(0o022)
+    Roma.config.umask = nil
+    call(:initialize_umask)
+    assert_equal 0o022, File.umask
+  ensure
+    File.umask(saved)
+  end
+
   # The server listens on the IPv4 address of its host, not on all.
   def test_bind_address
     server(ap: 'localhost_11211')

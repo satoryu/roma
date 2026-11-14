@@ -222,6 +222,10 @@ module Roma
       setting :command_plugin_path, './command_plugins', type: String
       # The file that the server writes its pid to, or nil for none.
       setting :pid_file, nil, type: [String, NilClass]
+      # The umask of the server, for the files that it makes: the storages,
+      # the logs, write-behind and the routing. 0o027 lets the group read
+      # them and the others nothing; nil keeps that of the process.
+      setting :umask, 0o027, type: [Integer, NilClass], check: ->(v) { v.nil? || (0..0o777).cover?(v) }
       group :routing, Routing
       group :log, Log
       group :connection, Connection

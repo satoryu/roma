@@ -49,6 +49,7 @@ class ConfigurationTest < Test::Unit::TestCase
        'boolean' => [->(c) { c.connection.use_epoll = 'yes' }, /\Aconnection.use_epoll should be one of true, false/],
        'nested' => [->(c) { c.connection.pool.max = 1.5 }, /\Aconnection.pool.max should be a valid Integer: 1.5\z/],
        'continuous limit' => [->(c) { c.connection.continuous_limit = '1:2' }, /continuous_limit should be/],
+       'umask' => [->(c) { c.umask = 0o1777 }, /\Aumask should be/],
        'continuous limit 0:0:0' => [->(c) { c.connection.continuous_limit = '0:0:0' }, /continuous_limit should be/],
        'engine' => [lambda { |c|
          c.storage.engine = :'my-kvs'
