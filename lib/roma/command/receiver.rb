@@ -2,6 +2,7 @@ require 'roma/stats'
 require 'roma/version'
 require 'roma/event/handler'
 require 'roma/messaging/connection_pool'
+require 'roma/command_plugin'
 require 'roma/command/background_command_receiver'
 require 'roma/command/routing_command_receiver'
 require 'roma/command/util_command_receiver'
@@ -32,12 +33,15 @@ module Roma
         end
       end
 
+      # Yields the system commands, those of the cluster and of the plugins
+      # that CommandPlugin.system_commands names, if they are included.
       def self.each_system_commands
         methods = RoutingCommandReceiver.public_instance_methods
         methods << BackgroundCommandReceiver.public_instance_methods
         methods << SystemCommandReceiver.public_instance_methods
-
-        methods << :ev_eval if Receiver.public_method_defined?(:ev_eval)
+        CommandPlugin.system_command_plugins.each do |plugin|
+          methods << plugin.public_instance_methods if include?(plugin)
+        end
         methods.flatten.each do |m|
           yield m if m.to_s.start_with?('ev_')
         end

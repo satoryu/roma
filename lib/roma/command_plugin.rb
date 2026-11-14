@@ -17,6 +17,18 @@ module Roma
       @@plugins << mod
     end
 
+    @@system_command_plugins = []
+    # The plugins whose commands are system commands, like those of the
+    # cluster: they skip the latency check.
+    def self.system_command_plugins
+      @@system_command_plugins.dup
+    end
+
+    # Makes the commands of +plugin+ system commands.
+    def self.system_commands(plugin)
+      @@system_command_plugins << plugin
+    end
+
     # The plugin files in +dir+: its *.rb files, in the order of their names.
     # Files in its subdirectories are not, so they can hold what the plugins
     # require.
