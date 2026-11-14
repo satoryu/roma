@@ -289,21 +289,13 @@ module Roma
 
       def ev_restart(_s)
         res = broadcast_cmd("rrestart\r\n")
-        $roma.eventloop = true
-        @routing_table.enabled_failover = false
-        Messaging::ConnectionPool.instance.close_all
-        Event::EMConnectionPool.instance.close_all
-        EventMachine.stop_event_loop
+        restart_event_loop
         res[@stats.my_node_id] = 'RESTARTED'
         send_data("#{res}\r\n")
       end
 
       def ev_rrestart(_s)
-        $roma.eventloop = true
-        @routing_table.enabled_failover = false
-        Messaging::ConnectionPool.instance.close_all
-        Event::EMConnectionPool.instance.close_all
-        EventMachine.stop_event_loop
+        restart_event_loop
         send_data("RESTARTED\r\n")
       end
 
@@ -403,19 +395,7 @@ module Roma
         return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
 
         res = broadcast_cmd("rswitch_failover #{s[1]}\r\n")
-        if s[1] == 'on'
-          Messaging::ConnectionPool.instance.close_all
-          Event::EMConnectionPool.instance.close_all
-          @routing_table.enabled_failover = true
-          @log.info('failover enabled')
-          res[@stats.my_node_id] = 'ENABLED'
-        elsif s[1] == 'off'
-          @routing_table.enabled_failover = false
-          @log.info('failover disabled')
-          res[@stats.my_node_id] = 'DISABLED'
-        else
-          res[@stats.my_node_id] = 'NOTSWITCHED'
-        end
+        res[@stats.my_node_id] = switch_failover(s[1])
         send_data("#{res}\r\n")
       end
 
@@ -423,19 +403,7 @@ module Roma
       def ev_rswitch_failover(s)
         return send_data("CLIENT_ERROR number of arguments\r\n") if s.length != 2
 
-        if s[1] == 'on'
-          Messaging::ConnectionPool.instance.close_all
-          Event::EMConnectionPool.instance.close_all
-          @routing_table.enabled_failover = true
-          @log.info('failover enabled')
-          send_data("ENABLED\r\n")
-        elsif s[1] == 'off'
-          @routing_table.enabled_failover = false
-          @log.info('failover disabled')
-          send_data("DISABLED\r\n")
-        else
-          send_data("NOTSWITCHED\r\n")
-        end
+        send_data("#{switch_failover(s[1])}\r\n")
       end
 
       # set_descriptor_table_size <size>
@@ -935,6 +903,38 @@ module Roma
             writer.deactivate
             'DEACTIVATED'
           end
+        end
+      end
+
+      # Restarts the event loop of the server, with new connections to the
+      # other nodes, and failover off until the nodes have started.
+      def restart_event_loop
+        $roma.eventloop = true
+        @routing_table.enabled_failover = false
+        close_all_connections
+        EventMachine.stop_event_loop
+      end
+
+      def close_all_connections
+        Messaging::ConnectionPool.instance.close_all
+        Event::EMConnectionPool.instance.close_all
+      end
+
+      # Switches the failover of this node by switch_failover to +value+, on
+      # or off, and returns the reply.
+      def switch_failover(value)
+        case value
+        when 'on'
+          close_all_connections
+          @routing_table.enabled_failover = true
+          @log.info('failover enabled')
+          'ENABLED'
+        when 'off'
+          @routing_table.enabled_failover = false
+          @log.info('failover disabled')
+          'DISABLED'
+        else
+          'NOTSWITCHED'
         end
       end
 
