@@ -77,8 +77,10 @@ Lint/NonLocalExitFromIterator:
 # Offense count: 14
 Lint/RescueException:
   Exclude:
+    - 'lib/roma/cluster_maintenance.rb'
     - 'lib/roma/command_plugin/debug.rb'
     - 'lib/roma/event/handler.rb'
+    - 'lib/roma/peer_command.rb'
     - 'lib/roma/server.rb'
 
 # Offense count: 10
@@ -153,12 +155,12 @@ Naming/MethodParameterName:
 Naming/PredicateMethod:
   Exclude:
     - 'lib/roma/async_event.rb'
+    - 'lib/roma/cluster_maintenance.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/logging/rlogger.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/routing/routing_table.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/tools/check_nodes.rb'
     - 'lib/roma/tools/key_access.rb'
     - 'lib/roma/tools/log_merger.rb'
@@ -210,8 +212,8 @@ Security/MarshalLoad:
     - 'lib/roma/command_plugin/alist.rb'
     - 'lib/roma/command_plugin/map.rb'
     - 'lib/roma/command_plugin/mapcount.rb'
+    - 'lib/roma/peer_command.rb'
     - 'lib/roma/routing/routing_table.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/tools/admin_client.rb'
     - 'lib/roma/write_behind/stream_writer.rb'
     - 'test/fake_node.rb'
@@ -274,12 +276,6 @@ Style/CollectionQuerying:
     - 'lib/roma/command_plugin/mapcount.rb'
     - 'lib/roma/tools/config_creator.rb'
 
-# Offense count: 2
-# This cop supports unsafe autocorrection (--autocorrect-all).
-Style/CombinableLoops:
-  Exclude:
-    - 'lib/roma/command/system_command_receiver.rb'
-
 # Offense count: 47
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: MaxUnannotatedPlaceholdersAllowed, Mode, AllowedMethods, AllowedPatterns.
@@ -287,11 +283,10 @@ Style/CombinableLoops:
 Style/FormatStringToken:
   EnforcedStyle: unannotated
 
-# Offense count: 56
+# Offense count: 28
 # Configuration parameters: AllowedVariables.
 Style/GlobalVars:
   Exclude:
-    - 'lib/roma/async_event.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/command/vnode_command_receiver.rb'
     - 'lib/roma/command_plugin/alist.rb'
@@ -300,7 +295,6 @@ Style/GlobalVars:
     - 'test/command_test_harness.rb'
     - 'test/plugin_test_harness.rb'
     - 'test/rcirb.rb'
-    - 'test/roma/test_async_event.rb'
 
 # Offense count: 7
 # This cop supports unsafe autocorrection (--autocorrect-all).
@@ -332,12 +326,11 @@ Style/InfiniteLoop:
   Exclude:
     - 'lib/roma/tools/config_creator.rb'
 
-# Offense count: 3
+# Offense count: 1
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: InverseMethods, InverseBlocks.
 Style/InverseMethods:
   Exclude:
-    - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/server.rb'
 
 # Offense count: 1
@@ -386,7 +379,7 @@ Style/MutableConstant:
     - 'test/test_protocol.rb'
     - 'test/test_storage_command.rb'
 
-# Offense count: 81
+# Offense count: 80
 # This cop supports unsafe autocorrection (--autocorrect-all).
 # Configuration parameters: EnforcedStyle, AllowedMethods, AllowedPatterns.
 # SupportedStyles: predicate, comparison
@@ -444,8 +437,8 @@ Style/RaiseArgs:
 # Configuration parameters: Methods.
 Style/RedundantArgument:
   Exclude:
+    - 'lib/roma/cluster_maintenance.rb'
     - 'lib/roma/routing/routing_data.rb'
-    - 'lib/roma/server.rb'
     - 'lib/roma/write_behind/stream_writer.rb'
     - 'test/fake_node.rb'
     - 'test/roma/command_plugin/test_mapcount.rb'
@@ -479,6 +472,7 @@ Style/ReturnNilInPredicateMethodDefinition:
 Style/SafeNavigation:
   Exclude:
     - 'lib/roma/async_event.rb'
+    - 'lib/roma/peer_command.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/server.rb'
     - 'lib/roma/tools/admin_client.rb'
@@ -548,7 +542,7 @@ Style/YodaCondition:
   Exclude:
     - 'lib/roma/tools/config_creator.rb'
 
-# Offense count: 38
+# Offense count: 37
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/ZeroLengthPredicate:
   Exclude:
