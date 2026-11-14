@@ -64,11 +64,21 @@ class BenchmarkTest < Test::Unit::TestCase
     assert_match(/^get k=0 localhost_\d+: .*refused/i, @out.string)
   end
 
+  # It sends the three commands at random until it is stopped. A fixed
+  # duration may end before all of them come on a slow machine.
   def test_random
-    benchmark.run(%i(random), key_count: 5, duration: 0.2)
-    names = @kvs.commands.map { |c| c.split.first }.uniq.sort
-    assert_equal %w(delete get set), names
+    bench = benchmark
+    runner = Thread.new { bench.run(%i(random), key_count: 5) }
+    deadline = Time.now + 10
+    sleep 0.01 until command_names.size == 3 || Time.now > deadline
+    bench.stop
+    runner.join
+    assert_equal %w(delete get set), command_names
     assert_empty @out.string.lines.grep(/failed/)
+  end
+
+  def command_names
+    @kvs.commands.map { |c| c.split.first }.uniq.sort
   end
 
   def test_report
