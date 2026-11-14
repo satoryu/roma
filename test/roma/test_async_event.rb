@@ -370,6 +370,13 @@ class AsyncEventPushTest < Test::Unit::TestCase
     assert_equal 'SERVER_ERROR busy', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.node_id)
   end
 
+  # Tried again, not aborted as a SERVER_ERROR would make the release.
+  def test_push_a_vnode_stream_while_the_clean_up_does_not_stop
+    @h.clean_up_stopping = false
+    assert_equal 'CANCELED', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.node_id)
+    assert_equal [], @node.commands
+  end
+
   def test_push_a_vnode_stream_while_the_storage_is_busy
     @h.storage.update_db_status(@h.storage.hdiv[@vnode], :safecopy_flushing)
     assert_equal 'CANCELED', @h.call(:push_a_vnode_stream, 'roma', @vnode, @node.node_id)

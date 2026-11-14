@@ -39,7 +39,9 @@ module Roma
         end
         @stats.run_receive_a_vnode["#{s[1]}_#{s[2]}"] = true
 
-        $roma.stop_clean_up
+        # This runs in the event loop, so it waits only a little; the node
+        # that pushes the vnode tries again.
+        return send_data("SERVER_ERROR The storage clean up didn't stop.\r\n") unless $roma.stop_clean_up(timeout: 1)
 
         send_data("READY\r\n")
 

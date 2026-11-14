@@ -421,7 +421,12 @@ module Roma
       def push_a_vnode_stream(hash_name, vnode, node_id)
         @log.debug("#{__method__}:hash_name=#{hash_name} vnode=#{vnode} node_id=#{node_id}")
 
-        stop_clean_up
+        # Not a SERVER_ERROR, which would make the release process abort; the
+        # push is tried again.
+        unless stop_clean_up
+          @log.error("#{__method__}:the storage clean up didn't stop:hash_name=#{hash_name} vnode=#{vnode}")
+          return 'CANCELED'
+        end
 
         con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
 

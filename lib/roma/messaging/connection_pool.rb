@@ -8,11 +8,15 @@ module Roma
       include Singleton
 
       attr_accessor :maxlength, :expire_time
+      # Seconds to wait for a node to connect, and for each read or write,
+      # so that a node that hangs can't take a thread for ever.
+      attr_accessor :timeout
 
       def initialize(maxlength = 10, expire_time = 30)
         @pool = {}
         @maxlength = maxlength
         @expire_time = expire_time
+        @timeout = 10
         @lock = Mutex.new
       end
 
@@ -35,7 +39,7 @@ module Roma
         unless @pool.key?(ap)
           host, port = ap.split(/[:_]/)
           addr = DNSCache.instance.resolve_name(host)
-          sock = TCPSocket.open(addr, port)
+          sock = TCPSocket.open(addr, port, connect_timeout: @timeout)
           sock.close
         end
         true
@@ -68,7 +72,9 @@ module Roma
       def create_connection(ap)
         host, port = ap.split(/[:_]/)
         addr = DNSCache.instance.resolve_name(host)
-        TCPSocket.new(addr, port)
+        sock = TCPSocket.new(addr, port, connect_timeout: @timeout)
+        sock.timeout = @timeout
+        sock
       end
 
       def delete_connection(ap)

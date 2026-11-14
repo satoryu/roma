@@ -195,13 +195,22 @@ module Roma
       end
     end
 
-    def stop_clean_up
+    # Stops cleaning up the storages, and waits for it up to +timeout+
+    # seconds. Returns false if it didn't stop by then, such as when it waits
+    # for a node that hangs.
+    def stop_clean_up(timeout: Roma.config.connection.pool.timeout) # rubocop:disable Naming/PredicateMethod
       @stats.last_clean_up = Time.now
+      return true unless @stats.run_storage_clean_up
+
+      @log.info('Storage clean up process will be stop.')
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
       while @stats.run_storage_clean_up
-        @log.info('Storage clean up process will be stop.')
+        return false if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+
         @storages.each_value { |st| st.stop_clean_up }
         sleep 0.005
       end
+      true
     end
 
     private
@@ -235,8 +244,10 @@ module Roma
       Event::Handler.connection_expire_time = connection.expire_time
       Messaging::ConnectionPool.instance.expire_time = connection.pool.expire_time
       Messaging::ConnectionPool.instance.maxlength = connection.pool.max
+      Messaging::ConnectionPool.instance.timeout = connection.pool.timeout
       Event::EMConnectionPool.instance.expire_time = connection.event_machine_pool.expire_time
       Event::EMConnectionPool.instance.maxlength = connection.event_machine_pool.max
+      Event::EMConnectionPool.instance.timeout = connection.event_machine_pool.timeout
     end
 
     def initialize_wb_writer

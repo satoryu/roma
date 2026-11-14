@@ -112,11 +112,15 @@ module Roma
       # connection.expire_time.
       setting :expire_time, 30, type: Numeric
       setting :max, 5, type: Integer
+      # Seconds to wait for a node to connect, or to answer.
+      setting :timeout, 10, type: Numeric, check: ->(v) { v.positive? }
     end
 
     class EventMachinePool < Group
       setting :expire_time, 30, type: Numeric
       setting :max, 15, type: Integer
+      # Seconds to wait for a node to connect, or to answer.
+      setting :timeout, 10, type: Numeric, check: ->(v) { v.positive? }
     end
 
     class Connection < Group
