@@ -76,6 +76,8 @@ end
 
 The `stats` command shows the settings by these names, such as `config.log.path` (`config.LOG_PATH` before). `stats.stream_copy_wait_param`, `stats.stream_show_wait_param` and `stats.size_of_zredundant` are `stats.stream_copy_wait`, `stats.stream_show_wait` and `stats.compression_threshold` [#60](https://github.com/satoryu/roma/issues/60). The option `--divnum` of `roma storage merge` is `--division-count` (`-n` stays).
 
+New settings: `storage.max_value_size`, the largest value in bytes that a node takes (16MB by default) [#134](https://github.com/satoryu/roma/issues/134).
+
 ### Routing names
 The abbreviated names of the routing are words now [#60](https://github.com/satoryu/roma/issues/60). ROMA 2.0 doesn't read a routing file of 1.x: make it again by `roma route create`. The routing file is `<node-id>.route.yml` (`<node-id>.route` before), as it is YAML. Its logs are `<node-id>.route.1` and so on as before. The file is a plain YAML of the keys below, without the tag `!ruby/object:Roma::Routing::RoutingData`, and the server reads it by `YAML.safe_load`, which makes no Ruby object. `routingdump yaml` and `roma route change-redundancy` write the same YAML.
 
@@ -129,6 +131,7 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
 
 ### Fixes
+* `rzset` stops inflating a value as soon as it gets larger than `config.storage.max_value_size` (16MB by default), and replies NOT_STORED. A value of 10MB could inflate to 10GB [#134](https://github.com/satoryu/roma/issues/134)
 * `set_continuous_limit` and `config.connection.continuous_limit` refuse a start that isn't less than full. With `0:0:0`, every command on every node raised ZeroDivisionError and the connection was closed [#134](https://github.com/satoryu/roma/issues/134)
 * The alist, map and mapcount plugins load a stored value only if it has nothing but nil, true, false, numbers, Strings, Symbols, and Arrays and Hashes nested up to 3 deep, without links to an Array or a Hash. A value stored by `set` could make the server load an object of any class, or hang it with a value of 107 bytes that grows exponentially when it is walked. Other values are replied SERVER_ERROR. Loading takes 3 to 6 times as long (1.5 to 1.9 times with YJIT) [#134](https://github.com/satoryu/roma/issues/134)
 * A server joining a cluster, `switch_replication` and the roma tools read the routing table of another node in the binary format (`routingdump bin`), not with Marshal, so that a node can't make them load any object. The server doesn't fall back to Marshal when `routingdump bin` fails, and a vnode without nodes is read as one with none, not nil [#134](https://github.com/satoryu/roma/issues/134)

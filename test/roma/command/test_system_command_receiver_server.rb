@@ -187,6 +187,18 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
     assert_equal "NOT_STORED\r\n", @conn.request('rzset key2 0 1 0 6', 'broken')
   end
 
+  # A small value that inflates to more than max_value_size isn't inflated
+  # all the way.
+  def test_rzset_larger_than_max_value_size
+    Roma.config.storage.max_value_size = 1024
+    zdata = Zlib::Deflate.deflate('a' * 1025)
+    assert_equal "NOT_STORED\r\n", @conn.request("rzset key1 0 1 2147483647 #{zdata.bytesize}", zdata)
+    zdata = Zlib::Deflate.deflate('a' * 1024)
+    assert_equal "STORED\r\n", @conn.request("rzset key1 0 1 2147483647 #{zdata.bytesize}", zdata)
+  ensure
+    Roma.config.storage.max_value_size = 16 * 1024 * 1024
+  end
+
   def test_rset_to_unknown_hash
     assert_equal "SERVER_ERROR nohash does not exists.\r\n", @conn.request("rset key1\enohash 0 1 0 6", 'value1')
   end

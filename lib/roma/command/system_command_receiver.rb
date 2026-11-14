@@ -279,8 +279,7 @@ module Roma
           return
         end
 
-        data = Zlib::Inflate.inflate(zdata)
-        # @log.debug("data = #{data}")
+        data = inflate_value(zdata)
         if @storages[hash_name].rset(vnode, key, d, s[3].to_i, s[4].to_i, data)
           send_data("STORED\r\n")
         else
@@ -288,10 +287,30 @@ module Roma
           send_data("NOT_STORED\r\n")
         end
         @stats.redundant_count += 1
-      rescue Zlib::DataError => e
+      rescue Zlib::Error, ValueTooLarge => e
         @log.error("rzset NOT_STORED:#{e} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
         send_data("NOT_STORED\r\n")
       end
+
+      class ValueTooLarge < StandardError; end
+
+      # Inflates +zdata+, and raises ValueTooLarge as soon as the data gets
+      # larger than config.storage.max_value_size, so that a small zdata
+      # can't take all the memory.
+      def inflate_value(zdata)
+        max = Roma.config.storage.max_value_size
+        data = ''.b
+        zi = Zlib::Inflate.new
+        zi.inflate(zdata) do |chunk|
+          data << chunk
+          raise ValueTooLarge, "the inflated value is larger than #{max} bytes" if data.bytesize > max
+        end
+        zi.finish
+        data
+      ensure
+        zi&.close
+      end
+      private :inflate_value
 
       def ev_forcedly_start(_s)
         @log.info('ROMA forcedly start.')
@@ -607,6 +626,7 @@ module Roma
         ret['config.routing.path'] = File.expand_path(config.routing.path)
         ret['config.storage.delete_mark_expire_time'] = config.storage.delete_mark_expire_time
         ret['config.storage.exception_action'] = config.storage.exception_action
+        ret['config.storage.max_value_size'] = config.storage.max_value_size
         ret['config.data_copy.stream_copy_wait'] = config.data_copy.stream_copy_wait
         ret['config.command_plugin_path'] = File.expand_path(config.command_plugin_path)
         ret['config.write_behind.path'] = File.expand_path(config.write_behind.path)

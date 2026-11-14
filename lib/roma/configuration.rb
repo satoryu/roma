@@ -147,6 +147,9 @@ module Roma
       # Seconds to keep deleted and expired keys.
       setting :delete_mark_expire_time, 60 * 60 * 24 * 5, type: Integer
       setting :clean_up_interval, 60 * 5, type: Integer
+      # The largest value in bytes that a node takes, also after inflating
+      # the value of rzset.
+      setting :max_value_size, 16 * 1024 * 1024, type: Integer, check: ->(v) { v.positive? }
 
       # The storage class of engine. A name such as :dbm requires
       # roma/storage/dbm of the gem roma-storage-dbm, and is the class in it
