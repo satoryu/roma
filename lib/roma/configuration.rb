@@ -76,9 +76,13 @@ module Roma
     end
 
     class Routing < Group
+      CHURNBASED_ROUTING_TABLE = 'Roma::Routing::ChurnbasedRoutingTable'.freeze
+
       setting :path, '.', type: String
-      # A subclass of Roma::Routing::RoutingTable, or nil for ChurnbasedRoutingTable.
-      setting :table_class, nil, type: [Class, NilClass]
+      # Roma::Routing::ChurnbasedRoutingTable or a subclass of it, or nil for
+      # ChurnbasedRoutingTable. The server needs its failover and events.
+      setting :table_class, nil, type: [Class, NilClass],
+                                 check: ->(v) { v.nil? || v.ancestors.any? { |c| c.name == CHURNBASED_ROUTING_TABLE } }
       # Replaces the host names in the routing table that a client gets:
       # { '192.168.1.0/24' => { regexp: 'host1', replace: '192.168.1.11' } }
       setting :node_id_substitutions, {}, type: Hash

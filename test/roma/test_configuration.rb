@@ -59,6 +59,19 @@ class ConfigurationTest < Test::Unit::TestCase
     assert_match message, error.message
   end
 
+  def test_table_class
+    require 'roma/routing/churnbased_routing_table'
+    subclass = Class.new(Roma::Routing::ChurnbasedRoutingTable)
+    @config.routing.table_class = subclass
+    assert_same subclass, @config.routing.table_class
+    @config.routing.table_class = nil
+    assert_nil @config.routing.table_class
+
+    # The server needs the failover and the events of ChurnbasedRoutingTable.
+    error = assert_raise(Roma::Configuration::Error) { @config.routing.table_class = Roma::Routing::RoutingTable }
+    assert_match(/\Arouting.table_class should be/, error.message)
+  end
+
   def test_unknown_setting
     assert_raise(NoMethodError) { @config.log.size = 1 }
   end
