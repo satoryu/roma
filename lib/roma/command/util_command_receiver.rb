@@ -9,7 +9,7 @@ module Roma
 
       def send_cmd(node_id, cmd)
         con = checkout_connection(node_id)
-        con.send(cmd)
+        con.write(cmd)
         res = con.gets
         if res.nil?
           @routing_table.proc_failed(node_id)
@@ -90,7 +90,7 @@ module Roma
         buf << "#{data}\r\n" if data
 
         con = checkout_connection(node_id)
-        con.send(buf)
+        con.write(buf)
 
         buf = con.gets
         if buf.nil?

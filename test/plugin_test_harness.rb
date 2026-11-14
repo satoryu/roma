@@ -162,14 +162,14 @@ class PluginTestHarness
   def checkin_connection(_nid, _con); end
 
   # A connection to another node, as the event handler's connection pool
-  # gives (send, gets, read_bytes), that sends each command to a harness.
+  # gives (write, gets, read_bytes), that sends each command to a harness.
   class NodeConnection
     def initialize(harness)
       @harness = harness
       @out = StringIO.new
     end
 
-    def send(data)
+    def write(data)
       line, rest = data.split("\r\n", 2)
       @out = StringIO.new(@harness.dispatch(line, rest || String.new))
     end

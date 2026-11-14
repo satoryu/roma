@@ -398,7 +398,7 @@ module Roma
 
       def forward_get(node_id, k, _d)
         con = checkout_connection(node_id)
-        con.send("fget #{k}\r\n")
+        con.write("fget #{k}\r\n")
         res = con.gets
         if res.nil?
           @routing_table.proc_failed(node_id)
@@ -427,7 +427,7 @@ module Roma
 
       def forward_gets(node_id, keys)
         con = checkout_connection(node_id)
-        con.send("gets #{keys.join(' ')}\r\n")
+        con.write("gets #{keys.join(' ')}\r\n")
         res = {}
         while (line = con.gets) != "END\r\n"
           s = line.chomp.split(/ /)
@@ -445,7 +445,7 @@ module Roma
 
       def forward_get_expt(node_id, _vnode, key, is_unix = nil)
         con = checkout_connection(node_id)
-        con.send("get_expt #{key} #{is_unix}\r\n")
+        con.write("get_expt #{key} #{is_unix}\r\n")
         res = +''
         while (line = con.gets) != "END\r\n"
           raise 'connection closed' unless line
