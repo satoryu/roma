@@ -311,19 +311,10 @@ module Roma
       def ev_set_log_level(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        case s[1].downcase
-        when 'debug'
-          @log.level = Roma::Logging::RLogger::Severity::DEBUG
-        when 'info'
-          @log.level = Roma::Logging::RLogger::Severity::INFO
-        when 'warn'
-          @log.level = Roma::Logging::RLogger::Severity::WARN
-        when 'error'
-          @log.level = Roma::Logging::RLogger::Severity::ERROR
-        else
-          return send_data("CLIENT_ERROR no match log-level string\r\n")
-        end
+        level = Roma::Logging::RLogger::Severity::LEVELS[s[1].downcase.to_sym]
+        return send_data("CLIENT_ERROR no match log-level string\r\n") unless level
 
+        @log.level = level
         @stats.log_level = s[1].downcase
 
         send_data("STORED\r\n")
