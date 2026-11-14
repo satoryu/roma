@@ -57,6 +57,12 @@ class VnodeCommandReceiverTest < Test::Unit::TestCase
     assert_equal "CLIENT_ERROR Wrong number of arguments.\r\n", @conn.request('spushv roma')
   end
 
+  def test_spushv_to_an_invalid_hash_name
+    assert_equal "CLIENT_ERROR ../hash1 is not a valid hash name.\r\n",
+                 @conn.request('spushv ../hash1 0', stream(0, 'key1' => 'v'))
+    assert_nil @conn.storages['../hash1']
+  end
+
   def test_spushv_to_a_new_hash
     @conn.stats.address = 'vnodecommandtest'
     @conn.stats.port = Process.pid.to_s

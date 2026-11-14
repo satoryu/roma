@@ -29,6 +29,7 @@ module Roma
           raise(Roma::Command::Definition::ClientError,
                 'usage:mounthash <name>')
         end
+        check_hash_name(s[1])
         if @storages.key?(s[1])
           raise(Roma::Command::Definition::ServerError,
                 "#{s[1]} already mounted.")
@@ -60,6 +61,7 @@ module Roma
           raise(Roma::Command::Definition::ClientError,
                 'usage:createhash <name>')
         end
+        check_hash_name(s[1])
         createhash(s[1], 'CREATED')
       end
 
@@ -69,6 +71,7 @@ module Roma
           raise(Roma::Command::Definition::ClientError,
                 'usage:deletehash <name>')
         end
+        check_hash_name(s[1])
         deletehash(s[1])
       end
 
@@ -77,13 +80,29 @@ module Roma
         send_data("#{@storages.keys.join ' '}\r\n")
       end
 
+      # A hash keeps its files in a directory named after it, so its name
+      # must be one path component.
+      def valid_hash_name?(hash_name)
+        !hash_name.empty? && !%w(. ..).include?(hash_name) &&
+          File.basename(hash_name) == hash_name && !hash_name.include?("\0")
+      end
+      private :valid_hash_name?
+
+      def check_hash_name(hash_name)
+        return if valid_hash_name?(hash_name)
+
+        raise(Roma::Command::Definition::ClientError, "#{hash_name} is not a valid hash name.")
+      end
+      private :check_hash_name
+
       def createhash(hash_name, msg)
         return "SERVER_ERROR #{hash_name} already exists." if @storages.key?(hash_name)
+        return "NOT #{msg}" unless valid_hash_name?(hash_name)
 
         storage = Roma.config.storage
         st = storage.build("#{storage.path}/#{@stats.my_node_id}/#{hash_name}", @routing_table.vnodes)
-        @storages[hash_name] = st
         st.opendb
+        @storages[hash_name] = st
         @log.info("createhash #{hash_name}")
         msg
       rescue StandardError => e
