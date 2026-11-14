@@ -1,4 +1,5 @@
 require 'test_helper'
+require 'stringio'
 require 'fake_node'
 require 'receiver_command_test_helper'
 
@@ -20,6 +21,49 @@ class UtilCommandReceiverTest < Test::Unit::TestCase
   ensure
     node&.close
     Roma::Messaging::ConnectionPool.instance.close_all
+  end
+
+  # A connection to another node that answers with +reply+.
+  class FakeConnection
+    attr_reader :closed
+
+    def initialize(reply)
+      @reply = StringIO.new(reply)
+    end
+
+    def write(_data); end
+
+    def gets = @reply.gets
+
+    def close_connection
+      @closed = true
+    end
+  end
+
+  def stub_connection(reply)
+    con = FakeConnection.new(reply)
+    checkins = []
+    @conn.define_singleton_method(:checkout_connection) { |_node_id| con }
+    @conn.define_singleton_method(:checkin_connection) { |node_id, _con| checkins << node_id }
+    [con, checkins]
+  end
+
+  def test_send_cmd
+    con, checkins = stub_connection("ROMA\r\n")
+    assert_equal 'ROMA', @conn.send(:send_cmd, OTHER_NODE_ID, "whoami\r\n")
+    assert_equal [OTHER_NODE_ID], checkins
+    assert_nil con.closed
+  end
+
+  # The connection isn't used again after a reply to an unknown command,
+  # which may have more lines, as the one that suggests a command does.
+  data('error' => "ERROR: 'fset' is not roma command.\r\n",
+       'suggestion' => "\r\nERROR: 'fset' is not roma command.\r\nDid you mean this?\r\n\trset\r\n")
+  def test_send_cmd_unknown_command(reply)
+    con, checkins = stub_connection(reply)
+    @conn.send(:send_cmd, OTHER_NODE_ID, "fset key\r\n")
+    assert_equal [], checkins
+    assert_true con.closed
   end
 
   def test_async_broadcast_cmd

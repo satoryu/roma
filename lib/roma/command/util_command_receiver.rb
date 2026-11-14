@@ -14,7 +14,12 @@ module Roma
         if res.nil?
           @routing_table.proc_failed(node_id)
           return nil
-        elsif res.start_with?('ERROR') == false
+        elsif res.start_with?('ERROR') || res == "\r\n"
+          # An unknown command, whose reply may have more lines, such as the
+          # one that starts with an empty line and suggests a command. They
+          # would be read as the reply to the next command.
+          con.close_connection
+        else
           @routing_table.proc_succeed(node_id)
           checkin_connection(node_id, con)
         end

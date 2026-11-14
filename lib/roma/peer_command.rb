@@ -68,7 +68,10 @@ module Roma
       if res.nil?
         @routing_table.proc_failed(node_id) if @routing_table
         return nil
-      elsif res.start_with?('ERROR') == false
+      elsif res.start_with?('ERROR') || res == "\r\n"
+        # The reply may have more lines; see UtilCommandReceiver#send_cmd.
+        con.close
+      else
         @routing_table.proc_succeed(node_id) if @routing_table
         Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
       end
