@@ -169,9 +169,7 @@ module Roma
       def data_load(data)
         SafeMarshal.load(data)
       rescue StandardError => e
-        msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
-        send_data("#{msg}\r\n")
-        @log.error("#{e} #{$@}")
+        reply_server_error(e)
       end
 
       DATE_FORMAT = '%Y-%m-%dT%H:%M:%S +00'

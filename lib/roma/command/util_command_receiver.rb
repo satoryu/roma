@@ -146,9 +146,11 @@ module Roma
       end
 
       # Replies +error+ as SERVER_ERROR in one line, and logs it.
+      # Replies the message of +error+. Its backtrace, which has the paths
+      # of the server, goes only to the log.
       def reply_server_error(error)
-        send_data("#{"SERVER_ERROR #{error} #{$@}".tr("\r\n", ' ')}\r\n")
-        @log.error("#{error} #{$@}")
+        send_data("#{"SERVER_ERROR #{error}".tr("\r\n", ' ')}\r\n")
+        @log.error("#{error} #{error.backtrace&.join(' ')}")
       end
 
       # change to actual time for a memcached's expire time value
