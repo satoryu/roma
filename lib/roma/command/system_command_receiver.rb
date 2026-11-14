@@ -1,9 +1,14 @@
 require 'roma/async_event'
 require 'roma/configuration'
+require 'roma/command/latency_command_receiver'
+require 'roma/command/write_behind_command_receiver'
 
 module Roma
   module Command
     module SystemCommandReceiver
+      include LatencyCommandReceiver
+      include WriteBehindCommandReceiver
+
       # Defines set_<name>, which changes a setting of every node to a value,
       # and rset_<name>, which the other nodes run for it. +check+ returns
       # what is wrong with the value, or nil, and the block changes the
@@ -177,99 +182,6 @@ module Roma
       end
       private :send_stat_result
 
-      # writebehind_rotate [hash_name]
-      def ev_writebehind_rotate(s)
-        return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
-
-        res = broadcast_cmd("rwritebehind_rotate #{s[1]}\r\n")
-
-        res[@stats.my_node_id] = if $roma.wb_writer.rotate(s[1])
-                                   'ROTATED'
-                                 else
-                                   'NOT_OPEND'
-                                 end
-        send_data("#{res}\r\n")
-      end
-
-      # rwritebehind_rotate [hash_name]
-      def ev_rwritebehind_rotate(s)
-        return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
-
-        if $roma.wb_writer.rotate(s[1])
-          send_data("ROTATED\r\n")
-        else
-          send_data("NOT_OPEND\r\n")
-        end
-      end
-
-      # writebehind_get_path [hash_name]
-      def ev_writebehind_get_path(s)
-        return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
-
-        res = broadcast_cmd("rwritebehind_get_path #{s[1]}\r\n")
-
-        ret = $roma.wb_writer.path(s[1])
-        res[@stats.my_node_id] = ret
-
-        send_data("#{res}\r\n")
-      end
-
-      # rwritebehind_get_path [hash_name]
-      def ev_rwritebehind_get_path(s)
-        return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
-
-        ret = $roma.wb_writer.path(s[1])
-        send_data("#{ret}\r\n")
-      end
-
-      # writebehind_get_current_file [hash_name]
-      def ev_writebehind_get_current_file(s)
-        return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
-
-        res = broadcast_cmd("rwritebehind_get_current_file #{s[1]}\r\n")
-
-        ret = $roma.wb_writer.current_file_path(s[1])
-        res[@stats.my_node_id] = (ret || 'NOT_OPEND')
-        send_data("#{res}\r\n")
-      end
-
-      # rwritebehind_get_current_file [hash_name]
-      def ev_rwritebehind_get_current_file(s)
-        return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
-
-        ret = $roma.wb_writer.current_file_path(s[1])
-        if ret
-          send_data("#{ret}\r\n")
-        else
-          send_data("NOT_OPEND\r\n")
-        end
-      end
-
-      # switch_replication command is change status of cluster replication
-      # if you want to activate, assign 1 node_id(addr_port) of replication cluster as argument.
-      # if you want to copy existing data, add the 'all' after node_id as argument
-      # switch_replication <true|false> [node_id] [copy target]
-      def ev_switch_replication(s)
-        error = switch_replication_error(s)
-        return send_data(error) if error
-
-        res = broadcast_cmd("rswitch_replication #{s[1]} #{s[2]} #{s[3]}\r\n")
-        res[@stats.my_node_id] = switch_replication(s)
-        send_data("#{res}\r\n")
-      rescue StandardError => e
-        send_data("#{e.class}: #{e}\r\n")
-      end
-
-      # rswitch_replication <true|false> [node_id] [copy target]
-      def ev_rswitch_replication(s)
-        error = switch_replication_error(s)
-        return send_data(error) if error
-
-        send_data("#{switch_replication(s)}\r\n")
-      rescue StandardError => e
-        send_data("#{e.class}: #{e}\r\n")
-      end
-
       # dcnice command is setting priority for a data-copy thread.
       # a niceness of 1 is the highest priority and 5 is the lowest priority.
       # dcnice <priority:1 to 5>
@@ -411,83 +323,6 @@ module Roma
         EM.set_descriptor_table_size(v.to_i)
       end
 
-      # set_latency_avg_calc_rule <mode> <count> <command1> <command2>....
-      # <mode> is on/off
-      # <count> is denominator to calculate average.
-      # <commandx> is target command
-      def ev_set_latency_avg_calc_rule(s)
-        error = latency_rule_error(s)
-        return send_data(error) if error
-
-        res = broadcast_cmd("rset_latency_avg_calc_rule #{s[1..].join(' ')}\r\n")
-        res[@stats.my_node_id] = apply_latency_rule(s)
-        send_data("#{res}\r\n")
-      end
-
-      def ev_rset_latency_avg_calc_rule(s)
-        error = latency_rule_error(s)
-        return send_data(error) if error
-
-        send_data("#{apply_latency_rule(s)}\r\n")
-      end
-
-      # add_latency_avg_calc_cmd <command1> <command2>....
-      def ev_add_latency_avg_calc_cmd(s)
-        error = latency_add_error(s)
-        return send_data(error) if error
-
-        res = broadcast_cmd("radd_latency_avg_calc_cmd #{s[1..].join(' ')}\r\n")
-        @stats.watch_latency(s[1..])
-        res[@stats.my_node_id] = 'SET'
-        send_data("#{res}\r\n")
-      end
-
-      def ev_radd_latency_avg_calc_cmd(s)
-        error = latency_add_error(s)
-        return send_data(error) if error
-
-        @stats.watch_latency(s[1..])
-        send_data("SET\r\n")
-      end
-
-      # del_latency_avg_calc_cmd <command1> <command2>....
-      def ev_del_latency_avg_calc_cmd(s)
-        error = latency_del_error(s)
-        return send_data(error) if error
-
-        res = broadcast_cmd("rdel_latency_avg_calc_cmd #{s[1..].join(' ')}\r\n")
-        @stats.unwatch_latency(s[1..])
-        res[@stats.my_node_id] = 'DELETED'
-        send_data("#{res}\r\n")
-      end
-
-      def ev_rdel_latency_avg_calc_cmd(s)
-        error = latency_del_error(s)
-        return send_data(error) if error
-
-        @stats.unwatch_latency(s[1..])
-        send_data("DELETED\r\n")
-      end
-
-      # chg_latency_avg_calc_time_count <count>
-      def ev_chg_latency_avg_calc_time_count(s)
-        error = latency_time_count_error(s, 'zero or nil[DEACTIVATE]')
-        return send_data(error) if error
-
-        res = broadcast_cmd("rchg_latency_avg_calc_time_count #{s[1]}\r\n")
-        @stats.latency_time_count = s[1] == 'nil' ? nil : s[1].to_i
-        res[@stats.my_node_id] = 'CHANGED'
-        send_data("#{res}\r\n")
-      end
-
-      def ev_rchg_latency_avg_calc_time_count(s)
-        error = latency_time_count_error(s, 'zero')
-        return send_data(error) if error
-
-        @stats.latency_time_count = s[1] == 'nil' ? nil : s[1].to_i
-        send_data("CHANGED\r\n")
-      end
-
       def ev_set_continuous_limit(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
@@ -617,46 +452,6 @@ module Roma
       # set_spushv_vlength_warn <bytes>
       def_setting_command :spushv_vlength_warn, POSITIVE_SIZE do |v|
         @stats.spushv_vlength_warn = v.to_i
-      end
-
-      # wb_command_map <hash string>
-      # ex.
-      # {:set=>1,:append=>2,:delete=>3}
-      def ev_wb_command_map(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length < 2
-
-        map = {}
-        cmd = s[1..-1].join
-        if cmd =~ /^\{(.+)\}$/
-          ::Regexp.last_match(1).split(',').each do |kv|
-            k, v = kv.split('=>')
-            map[k[1..-1].to_sym] = v.to_i if v && k[0] == ':'
-          end
-
-          res = broadcast_cmd("rwb_command_map #{s[1..-1].join}\r\n")
-          @stats.wb_command_map = map
-          res[@stats.my_node_id] = map.inspect
-          send_data("#{res}\r\n")
-        else
-          send_data("CLIENT_ERROR hash string parse error\r\n")
-        end
-      end
-
-      def ev_rwb_command_map(s)
-        return send_data("CLIENT_ERROR number of arguments\r\n") if s.length < 2
-
-        map = {}
-        cmd = s[1..-1].join
-        if cmd =~ /^\{(.+)\}$/
-          ::Regexp.last_match(1).split(',').each do |kv|
-            k, v = kv.split('=>')
-            map[k[1..-1].to_sym] = v.to_i if v && k[0] == ':'
-          end
-          @stats.wb_command_map = map
-          send_data("#{map}\r\n")
-        else
-          send_data("CLIENT_ERROR hash string parse error\r\n")
-        end
       end
 
       # set_wb_shift_size <size>
@@ -818,92 +613,6 @@ module Roma
         ret['config.write_behind.shift_size'] = config.write_behind.shift_size
         ret['config.connection.descriptor_table_size'] = config.connection.descriptor_table_size
         ret
-      end
-
-      # The error of set_latency_avg_calc_rule for the words +s+, or nil.
-      def latency_rule_error(s)
-        if /^on$|^off$/ !~ s[1]
-          "CLIENT_ERROR argument 1: please input \"on\" or \"off\"\r\n"
-        elsif s[1] == 'on' && (s.length <= 3 || s[2].to_i < 1)
-          "CLIENT_ERROR number of arguments (0 for 3) and <count> must be greater than zero\r\n"
-        elsif s[1] == 'off' && s.length != 2
-          "CLIENT_ERROR number of arguments (0 for 1, or more 3)\r\n"
-        else
-          unsupported_latency_cmd_error(s[3..] || [])
-        end
-      end
-
-      # Starts or stops the latency check by set_latency_avg_calc_rule, and
-      # returns the reply.
-      def apply_latency_rule(s)
-        if s[1] == 'on'
-          @stats.start_latency_check(s[3..], s[2].to_i)
-          'ACTIVATED'
-        else
-          @stats.stop_latency_check
-          'DEACTIVATED'
-        end
-      end
-
-      def latency_add_error(s)
-        return "CLIENT_ERROR number of arguments (0 for 2)\r\n" if s.length < 2
-
-        s[1..].each do |cmd|
-          error = unsupported_latency_cmd_error([cmd])
-          return error if error
-          return "ALREADY SET [#{cmd}] command\r\n" if @stats.latency_check_cmd.include?(cmd)
-        end
-        nil
-      end
-
-      def latency_del_error(s)
-        return "CLIENT_ERROR number of arguments (0 for 2)\r\n" if s.length < 2
-
-        cmd = s[1..].find { |c| !@stats.latency_check_cmd.include?(c) }
-        "[#{cmd}] command is NOT set\r\n" if cmd
-      end
-
-      # A system command or an unknown one can't be checked.
-      def unsupported_latency_cmd_error(cmds)
-        cmd = cmds.find { |c| !Event::Handler.event_list.include?(c) || Event::Handler.system_commands.include?(c) }
-        "NOT SUPPORT [#{cmd}] command\r\n" if cmd
-      end
-
-      def latency_time_count_error(s, allowed)
-        if s.length != 2
-          "CLIENT_ERROR number of arguments (0 for 2)\r\n"
-        elsif s[1] != 'nil' && s[1].to_i < 1
-          "<count> must be greater than #{allowed}\r\n"
-        end
-      end
-
-      def switch_replication_error(s)
-        if !s.length.between?(2, 4)
-          "CLIENT_ERROR number of arguments\r\n"
-        elsif s[1] !~ /^(true|false)$/
-          "CLIENT_ERROR value must be true or false\r\n"
-        elsif s[3] && s[3] != 'all'
-          "CLIENT_ERROR [copy target] must be all or nil\r\n"
-        end
-      end
-
-      # Switches the cluster replication of this node by switch_replication,
-      # and returns the reply.
-      def switch_replication(s)
-        writer = $roma.cluster_replication_writer
-        Timeout.timeout(1) do
-          if s[1] == 'true'
-            writer.activate(s[2], existing_data: s[3] == 'all')
-            if s[3] == 'all'
-              Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process',
-                                                                 [writer.replica_rttable]))
-            end
-            'ACTIVATED'
-          else
-            writer.deactivate
-            'DEACTIVATED'
-          end
-        end
       end
 
       # Restarts the event loop of the server, with new connections to the
