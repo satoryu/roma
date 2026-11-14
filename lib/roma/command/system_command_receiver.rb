@@ -502,203 +502,75 @@ module Roma
       # <count> is denominator to calculate average.
       # <commandx> is target command
       def ev_set_latency_avg_calc_rule(s)
-        # check argument
-        if /^on$|^off$/ !~ s[1]
-          return send_data("CLIENT_ERROR argument 1: please input \"on\" or \"off\"\r\n")
-        elsif s[1] == 'on' && (s.length <= 3 || s[2].to_i < 1)
-          return send_data("CLIENT_ERROR number of arguments (0 for 3) and <count> must be greater than zero\r\n")
-        elsif s[1] == 'off' && !(s.length == 2)
-          return send_data("CLIENT_ERROR number of arguments (0 for 1, or more 3)\r\n")
-        end
+        error = latency_rule_error(s)
+        return send_data(error) if error
 
-        # check support commands
-        s.each_index do |idx|
-          if idx >= 3 && (!Event::Handler.event_list.include?(s[idx]) || Event::Handler.system_commands.include?(s[idx]))
-            return send_data("NOT SUPPORT [#{s[idx]}] command\r\n")
-          end
-        end
-
-        arg = 'rset_latency_avg_calc_rule'
-        s.each_index do |idx|
-          arg += " #{s[idx]}" if idx >= 1
-        end
-        res = broadcast_cmd("#{arg}\r\n")
-
-        if s[1] == 'on'
-          @stats.latency_check_cmd = [] # reset
-          s.each_index do |idx|
-            @stats.latency_check_cmd.push(s[idx]) if idx >= 3
-          end
-          @stats.latency_check_time_count = s[2].to_i
-          @stats.latency_log = true
-          res[@stats.my_node_id] = 'ACTIVATED'
-        elsif s[1] == 'off'
-          @stats.latency_check_cmd = [] # reset
-          @stats.latency_check_time_count = false
-          @stats.latency_log = false
-          res[@stats.my_node_id] = 'DEACTIVATED'
-        end
-        @stats.latency_data = Hash.new { |hash, key| hash[key] = {} }
+        res = broadcast_cmd("rset_latency_avg_calc_rule #{s[1..].join(' ')}\r\n")
+        res[@stats.my_node_id] = apply_latency_rule(s)
         send_data("#{res}\r\n")
       end
 
       def ev_rset_latency_avg_calc_rule(s)
-        if /^on$|^off$/ !~ s[1]
-          return send_data("CLIENT_ERROR argument 1: please input \"on\" or \"off\"\r\n")
-        elsif s[1] == 'on' && (s.length <= 3 || s[2].to_i < 1)
-          return send_data("CLIENT_ERROR number of arguments (0 for 3) and <count> must be greater than zero\r\n")
-        elsif s[1] == 'off' && !(s.length == 2)
-          return send_data("CLIENT_ERROR number of arguments (0 for 1, or more 3)\r\n")
-        end
+        error = latency_rule_error(s)
+        return send_data(error) if error
 
-        s.each_index do |idx|
-          if idx >= 3 && (!Event::Handler.event_list.include?(s[idx]) || Event::Handler.system_commands.include?(s[idx]))
-            return send_data("NOT SUPPORT [#{s[idx]}] command\r\n")
-          end
-        end
-
-        if s[1] == 'on'
-          @latency_data = Hash.new { |hash, key| hash[key] = {} }
-          @stats.latency_check_cmd = []
-          s.each_index do |idx|
-            @stats.latency_check_cmd.push(s[idx]) if idx >= 3
-          end
-          @stats.latency_check_time_count = s[2].to_i
-          @stats.latency_log = true
-          send_data("ACTIVATED\r\n")
-        elsif s[1] == 'off'
-          @latency_data = Hash.new { |hash, key| hash[key] = {} }
-          @stats.latency_check_cmd = []
-          @stats.latency_check_time_count = false
-          @stats.latency_log = false
-          send_data("DEACTIVATED\r\n")
-        end
+        send_data("#{apply_latency_rule(s)}\r\n")
       end
 
-      # add_calc_latency_average <command1> <command2>....
+      # add_latency_avg_calc_cmd <command1> <command2>....
       def ev_add_latency_avg_calc_cmd(s)
-        # check argument
-        return send_data("CLIENT_ERROR number of arguments (0 for 2)\r\n") if s.length < 2
+        error = latency_add_error(s)
+        return send_data(error) if error
 
-        # check support commands
-        s.each_index do |idx|
-          if idx >= 1 && (!Event::Handler.event_list.include?(s[idx]) || Event::Handler.system_commands.include?(s[idx]))
-            return send_data("NOT SUPPORT [#{s[idx]}] command\r\n")
-          end
-          if idx >= 1 && @stats.latency_check_cmd.include?(s[idx])
-            return send_data("ALREADY SET [#{s[idx]}] command\r\n")
-          end
-        end
-
-        arg = 'radd_latency_avg_calc_cmd'
-        s.each_index do |idx|
-          arg += " #{s[idx]}" if idx >= 1
-        end
-        res = broadcast_cmd("#{arg}\r\n")
-
-        s.each_index do |idx|
-          @stats.latency_check_cmd.push(s[idx]) if idx >= 1
-        end
+        res = broadcast_cmd("radd_latency_avg_calc_cmd #{s[1..].join(' ')}\r\n")
+        @stats.watch_latency(s[1..])
         res[@stats.my_node_id] = 'SET'
         send_data("#{res}\r\n")
       end
 
       def ev_radd_latency_avg_calc_cmd(s)
-        return send_data("CLIENT_ERROR number of arguments (0 for 2)\r\n") if s.length < 2
+        error = latency_add_error(s)
+        return send_data(error) if error
 
-        s.each_index do |idx|
-          if idx >= 1 && (!Event::Handler.event_list.include?(s[idx]) || Event::Handler.system_commands.include?(s[idx]))
-            return send_data("NOT SUPPORT [#{s[idx]}] command\r\n")
-          end
-          if idx >= 1 && @stats.latency_check_cmd.include?(s[idx])
-            return send_data("ALREADY SET [#{s[idx]}] command\r\n")
-          end
-        end
-
-        s.each_index do |idx|
-          @stats.latency_check_cmd.push(s[idx]) if idx >= 1
-        end
+        @stats.watch_latency(s[1..])
         send_data("SET\r\n")
       end
 
-      # del_calc_latency_average <command1> <command2>....
+      # del_latency_avg_calc_cmd <command1> <command2>....
       def ev_del_latency_avg_calc_cmd(s)
-        # check argument
-        return send_data("CLIENT_ERROR number of arguments (0 for 2)\r\n") if s.length < 2
+        error = latency_del_error(s)
+        return send_data(error) if error
 
-        # check support commands
-        s.each_index do |idx|
-          if idx >= 1 && !@stats.latency_check_cmd.include?(s[idx])
-            return send_data("[#{s[idx]}] command is NOT set\r\n")
-          end
-        end
-
-        arg = 'rdel_latency_avg_calc_cmd'
-        s.each_index do |idx|
-          arg += " #{s[idx]}" if idx >= 1
-        end
-        res = broadcast_cmd("#{arg}\r\n")
-
-        s.each_index do |idx|
-          @stats.latency_check_cmd.delete(s[idx]) if idx >= 1
-          @stats.latency_data.delete(s[idx]) if idx >= 1
-        end
+        res = broadcast_cmd("rdel_latency_avg_calc_cmd #{s[1..].join(' ')}\r\n")
+        @stats.unwatch_latency(s[1..])
         res[@stats.my_node_id] = 'DELETED'
         send_data("#{res}\r\n")
       end
 
       def ev_rdel_latency_avg_calc_cmd(s)
-        return send_data("CLIENT_ERROR number of arguments (0 for 2)\r\n") if s.length < 2
+        error = latency_del_error(s)
+        return send_data(error) if error
 
-        # reset
-        s.each_index do |idx|
-          if idx >= 1 && !@stats.latency_check_cmd.include?(s[idx])
-            return send_data("[#{s[idx]}] command is NOT set\r\n")
-          end
-        end
-        s.each_index do |idx|
-          @stats.latency_check_cmd.delete(s[idx]) if idx >= 1
-          @stats.latency_data.delete(s[idx]) if idx >= 1
-        end
+        @stats.unwatch_latency(s[1..])
         send_data("DELETED\r\n")
       end
 
-      # chg_calc_latency_average_denominator <count>
+      # chg_latency_avg_calc_time_count <count>
       def ev_chg_latency_avg_calc_time_count(s)
-        # check argument
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments (0 for 2)\r\n")
-        elsif s[1] != 'nil' && s[1].to_i < 1
-          return send_data("<count> must be greater than zero or nil[DEACTIVATE]\r\n")
-        end
+        error = latency_time_count_error(s, 'zero or nil[DEACTIVATE]')
+        return send_data(error) if error
 
         res = broadcast_cmd("rchg_latency_avg_calc_time_count #{s[1]}\r\n")
-
-        if s[1] != 'nil'
-          @stats.latency_check_time_count = s[1].to_i
-          @stats.latency_log = true
-        elsif s[1] == 'nil'
-          @stats.latency_check_time_count = false
-          @stats.latency_log = false
-        end
+        @stats.latency_time_count = s[1] == 'nil' ? nil : s[1].to_i
         res[@stats.my_node_id] = 'CHANGED'
         send_data("#{res}\r\n")
       end
 
       def ev_rchg_latency_avg_calc_time_count(s)
-        if s.length != 2
-          return send_data("CLIENT_ERROR number of arguments (0 for 2)\r\n")
-        elsif s[1] != 'nil' && s[1].to_i < 1
-          return send_data("<count> must be greater than zero\r\n")
-        end
+        error = latency_time_count_error(s, 'zero')
+        return send_data(error) if error
 
-        if s[1] != 'nil'
-          @stats.latency_check_time_count = s[1].to_i
-          @stats.latency_log = true
-        elsif s[1] == 'nil'
-          @stats.latency_check_time_count = false
-          @stats.latency_log = false
-        end
+        @stats.latency_time_count = s[1] == 'nil' ? nil : s[1].to_i
         send_data("CHANGED\r\n")
       end
 
@@ -1032,6 +904,63 @@ module Roma
         ret['config.write_behind.shift_size'] = config.write_behind.shift_size
         ret['config.connection.descriptor_table_size'] = config.connection.descriptor_table_size
         ret
+      end
+
+      # The error of set_latency_avg_calc_rule for the words +s+, or nil.
+      def latency_rule_error(s)
+        if /^on$|^off$/ !~ s[1]
+          "CLIENT_ERROR argument 1: please input \"on\" or \"off\"\r\n"
+        elsif s[1] == 'on' && (s.length <= 3 || s[2].to_i < 1)
+          "CLIENT_ERROR number of arguments (0 for 3) and <count> must be greater than zero\r\n"
+        elsif s[1] == 'off' && s.length != 2
+          "CLIENT_ERROR number of arguments (0 for 1, or more 3)\r\n"
+        else
+          unsupported_latency_cmd_error(s[3..] || [])
+        end
+      end
+
+      # Starts or stops the latency check by set_latency_avg_calc_rule, and
+      # returns the reply.
+      def apply_latency_rule(s)
+        if s[1] == 'on'
+          @stats.start_latency_check(s[3..], s[2].to_i)
+          'ACTIVATED'
+        else
+          @stats.stop_latency_check
+          'DEACTIVATED'
+        end
+      end
+
+      def latency_add_error(s)
+        return "CLIENT_ERROR number of arguments (0 for 2)\r\n" if s.length < 2
+
+        s[1..].each do |cmd|
+          error = unsupported_latency_cmd_error([cmd])
+          return error if error
+          return "ALREADY SET [#{cmd}] command\r\n" if @stats.latency_check_cmd.include?(cmd)
+        end
+        nil
+      end
+
+      def latency_del_error(s)
+        return "CLIENT_ERROR number of arguments (0 for 2)\r\n" if s.length < 2
+
+        cmd = s[1..].find { |c| !@stats.latency_check_cmd.include?(c) }
+        "[#{cmd}] command is NOT set\r\n" if cmd
+      end
+
+      # A system command or an unknown one can't be checked.
+      def unsupported_latency_cmd_error(cmds)
+        cmd = cmds.find { |c| !Event::Handler.event_list.include?(c) || Event::Handler.system_commands.include?(c) }
+        "NOT SUPPORT [#{cmd}] command\r\n" if cmd
+      end
+
+      def latency_time_count_error(s, allowed)
+        if s.length != 2
+          "CLIENT_ERROR number of arguments (0 for 2)\r\n"
+        elsif s[1] != 'nil' && s[1].to_i < 1
+          "<count> must be greater than #{allowed}\r\n"
+        end
       end
 
       def storage_stat(st)
