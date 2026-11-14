@@ -45,7 +45,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'jaro_winkler', '~> 1.7'
   s.add_dependency 'logger'
   s.add_dependency 'readline'
-  s.add_dependency 'roma-storage', '~> 0.4'
+  s.add_dependency 'roma-storage', '~> 0.4', '>= 0.4.2'
   s.add_dependency 'thor', '~> 1.3'
 
   s.add_development_dependency 'ffi'
