@@ -141,6 +141,12 @@ class CommandPluginMapcountTest < Test::Unit::TestCase
     assert_recent_date(json('mapcount_update'))
   end
 
+  # A stored value with an object of a class isn't loaded.
+  def test_crafted_value
+    @conn.storage.set(0, 'key1', 0, 0x7fffffff, Marshal.dump({ 'subkey1' => Object.new }))
+    assert_match(/\ASERVER_ERROR /, request('mapcount_get', 'key1', ''))
+  end
+
   def test_update_expt
     json('mapcount_countup', 'subkey1')
     json('mapcount_update', '', Time.now.to_i - 1)

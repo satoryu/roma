@@ -1,4 +1,5 @@
 require 'roma/command_plugin'
+require 'roma/safe_marshal'
 require 'timeout'
 require 'roma/messaging/connection_pool'
 require 'json'
@@ -24,7 +25,7 @@ module Roma
         @stats.read_count += 1
         return send_data("END\r\n") unless ddata
 
-        values = Marshal.load(ddata)[0]
+        values = SafeMarshal.load(ddata)[0]
         return send_data("END\r\n") if values.length <= s[2].to_i
 
         ret = values.at(s[2].to_i)
@@ -66,7 +67,7 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        values, times = Marshal.load(ddata)
+        values, times = SafeMarshal.load(ddata)
         return send_data("NOT_DELETED\r\n") unless values.include?(data)
 
         while (idx = values.index(data))
@@ -94,7 +95,7 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        values, times = Marshal.load(ddata)
+        values, times = SafeMarshal.load(ddata)
         dret = values.delete_at(s[2].to_i)
         return send_data("NOT_DELETED\r\n") unless dret
 
@@ -122,7 +123,7 @@ module Roma
 
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        values, _times = Marshal.load(ddata)
+        values, _times = SafeMarshal.load(ddata)
         ret = values.empty?
 
         send_data("#{ret}\r\n")
@@ -146,7 +147,7 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        values = Marshal.load(ddata)[0]
+        values = SafeMarshal.load(ddata)[0]
         return send_data("END\r\n") if values.length == 0
 
         ret = values.first
@@ -174,7 +175,7 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        values = Marshal.load(ddata)[0]
+        values = SafeMarshal.load(ddata)[0]
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[2]
           if ::Regexp.last_match(1)
             return send_data("END\r\n") if values.length <= ::Regexp.last_match(1).to_i
@@ -217,7 +218,7 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        values, times = Marshal.load(ddata)
+        values, times = SafeMarshal.load(ddata)
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[2]
           if ::Regexp.last_match(1)
             return send_data("END\r\n") if values.length <= ::Regexp.last_match(1).to_i
@@ -257,7 +258,7 @@ module Roma
 
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        values = Marshal.load(ddata)[0]
+        values = SafeMarshal.load(ddata)[0]
         ret = values.include?(data)
 
         send_data("#{ret}\r\n")
@@ -279,7 +280,7 @@ module Roma
 
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        values = Marshal.load(ddata)[0]
+        values = SafeMarshal.load(ddata)[0]
         ret = values.index(data)
         if ret
           send_data("#{ret}\r\n")
@@ -300,7 +301,7 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        values, times = ddata ? Marshal.load(ddata) : [[], []]
+        values, times = ddata ? SafeMarshal.load(ddata) : [[], []]
 
         values.insert(s[2].to_i, data)
         times.insert(s[2].to_i, Time.now.to_i)
@@ -326,7 +327,7 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        values, times = ddata ? Marshal.load(ddata) : [[], []]
+        values, times = ddata ? SafeMarshal.load(ddata) : [[], []]
 
         values.insert(0, data)
         values = values[0..(s[2].to_i - 1)]
@@ -355,7 +356,7 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        values, times = ddata ? Marshal.load(ddata) : [[], []]
+        values, times = ddata ? SafeMarshal.load(ddata) : [[], []]
 
         idx = values.index(data)
         if idx
@@ -387,7 +388,7 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        values, times = ddata ? Marshal.load(ddata) : [[], []]
+        values, times = ddata ? SafeMarshal.load(ddata) : [[], []]
 
         idx = values.index(data)
         if idx
@@ -510,7 +511,7 @@ module Roma
         @stats.read_count += 1
         return send_data("END\r\n") unless ddata
 
-        values, times = Marshal.load(ddata)
+        values, times = SafeMarshal.load(ddata)
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[3]
           if ::Regexp.last_match(1)
             return send_data("END\r\n") if values.length <= ::Regexp.last_match(1).to_i
@@ -555,7 +556,7 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        values = Marshal.load(ddata)[0]
+        values = SafeMarshal.load(ddata)[0]
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[3]
           if ::Regexp.last_match(1)
             return send_data("END\r\n") if values.length <= ::Regexp.last_match(1).to_i
@@ -591,7 +592,7 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        values = Marshal.load(ddata)[0]
+        values = SafeMarshal.load(ddata)[0]
         ret = nil
         if /(?:^(\d+)$|^(\d+)..((?:-)?\d+)$)/ =~ s[2]
           if ::Regexp.last_match(1)
@@ -625,7 +626,7 @@ module Roma
 
         return send_data("END\r\n") unless ddata
 
-        values = Marshal.load(ddata)[0]
+        values = SafeMarshal.load(ddata)[0]
         return send_data("END\r\n") if values.length == 0
 
         ret = values.last
@@ -646,7 +647,7 @@ module Roma
 
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        values = Marshal.load(ddata)[0]
+        values = SafeMarshal.load(ddata)[0]
         ret = values.length
         send_data("#{ret}\r\n")
       rescue StandardError => e
@@ -667,7 +668,7 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("END\r\n") unless ddata
 
-        values, times = Marshal.load(ddata)
+        values, times = SafeMarshal.load(ddata)
         return send_data("END\r\n") if values.length == 0
 
         retv = values.pop
@@ -692,7 +693,7 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        values, times = ddata ? Marshal.load(ddata) : [[], []]
+        values, times = ddata ? SafeMarshal.load(ddata) : [[], []]
 
         values.push(data)
         times.push(Time.now.to_i)
@@ -716,7 +717,7 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        values, times = ddata ? Marshal.load(ddata) : [[], []]
+        values, times = ddata ? SafeMarshal.load(ddata) : [[], []]
 
         max = s[2].to_i
         return send_data("NOT_PUSHED\r\n") if values.length >= max
@@ -746,7 +747,7 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        values, times = ddata ? Marshal.load(ddata) : [[], []]
+        values, times = ddata ? SafeMarshal.load(ddata) : [[], []]
 
         idx = values.index(data)
         if idx
@@ -776,7 +777,7 @@ module Roma
         return forward_and_one_line_receive(nodes[0], s, data) if nodes[0] != @my_node_id
 
         ddata = @storages[hash_name].get(vnode, k, d)
-        values, times = ddata ? Marshal.load(ddata) : [[], []]
+        values, times = ddata ? SafeMarshal.load(ddata) : [[], []]
 
         max = s[2].to_i
 
@@ -897,7 +898,7 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("NOT_FOUND\r\n") unless ddata
 
-        values, times = Marshal.load(ddata)
+        values, times = SafeMarshal.load(ddata)
 
         idx = s[2].to_i
         return send_data("NOT_FOUND\r\n") if idx < 0 || values.length <= idx
@@ -929,7 +930,7 @@ module Roma
         ddata = @storages[hash_name].get(vnode, k, d)
         return send_data("END\r\n") unless ddata
 
-        values, times = Marshal.load(ddata)
+        values, times = SafeMarshal.load(ddata)
         return send_data("END\r\n") if values.length == 0
 
         retv = values.shift
@@ -1090,7 +1091,7 @@ module Roma
         # array.length fixednum format 7 (7-5=2)
         return nil if v.nil? || v[0..3] != "\x04\b[\a"
 
-        val = Marshal.load(v)
+        val = SafeMarshal.load(v)
         return val if val[0].instance_of?(Array) && val[1].instance_of?(Array)
 
         nil
@@ -1101,7 +1102,7 @@ module Roma
       def merge_list(hash_name, vnode, last, clock, expire_time, k, v, val)
         ddata = @storages[hash_name].get(vnode, k, 0)
         if ddata
-          lv = Marshal.load(ddata)
+          lv = SafeMarshal.load(ddata)
           lv[0].each do |buf|
             idx = val[0].index(buf)
             if idx

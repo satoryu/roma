@@ -1,3 +1,5 @@
+require 'roma/safe_marshal'
+
 module Roma
   module Command
     module Definition
@@ -122,6 +124,8 @@ module Roma
         send_data("CLIENT_ERROR #{e.message}\r\n")
       rescue ServerError => e
         send_data("SERVER_ERROR #{e.message}\r\n")
+      rescue SafeMarshal::Error => e
+        send_data("SERVER_ERROR stored data can't be loaded: #{e.message}\r\n")
       rescue LocalJumpError => e
         @log.warn("#{e} #{$@}")
         e.exit_value
