@@ -148,9 +148,13 @@ module Roma
       # stats [regexp]
       def ev_stats(s) = ev_stat(s)
 
+      # Seconds that the regexp of stat may take on a key, since it runs in
+      # the event loop.
+      STAT_REGEXP_TIMEOUT = 0.1
+
       # stat [regexp]
       def ev_stat(s)
-        regexp = s[1] if s.length == 2
+        regexp = Regexp.new(s[1], timeout: STAT_REGEXP_TIMEOUT) if s.length == 2
         h = {}
         h['version'] = Roma::VERSION
         send_stat_result(nil, h, regexp)
@@ -164,6 +168,10 @@ module Roma
         send_stat_result(nil, connection_stat, regexp)
         send_stat_result(nil, DNSCache.instance.stat, regexp)
         send_data("END\r\n")
+      rescue Regexp::TimeoutError
+        send_data("SERVER_ERROR the regexp took too long.\r\n")
+      rescue RegexpError => e
+        send_data("CLIENT_ERROR #{e.message}\r\n")
       end
 
       def send_stat_result(prefix, h, regexp = nil)
@@ -174,7 +182,7 @@ module Roma
                   "#{k}"
                 end
           if regexp
-            send_data("#{key} #{v}\r\n") if key =~ /#{regexp}/
+            send_data("#{key} #{v}\r\n") if regexp.match?(key)
           else
             send_data("#{key} #{v}\r\n")
           end
@@ -547,6 +555,11 @@ module Roma
         # failover check
         return send_data("CLIENT_ERROR failover disable now!!\r\n") unless @routing_table.enabled_failover
 
+        begin
+          Regexp.new(s[1])
+        rescue RegexpError => e
+          return send_data("CLIENT_ERROR #{e.message}\r\n")
+        end
         @storages.each do |_hash_name, st|
           st.cleanup_regexp = s[1]
           st.stop_clean_up
