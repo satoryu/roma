@@ -30,9 +30,14 @@ module Roma
       def process_loop
         loop do
           while dat = @@queue.pop
-            # dat ====> [hash_name, cmd, key, value]
-            @cluster_replication_writer.transmit(dat[1], dat[2], dat[3]) unless dat[0]
-            @wb_writer.write(dat[0], dat[1], dat[2], dat[3])
+            # dat ====> [hash_name, cmd, key, value]; without a hash name,
+            # cmd is a command line for the replica cluster, not one for
+            # the write-behind files.
+            if dat[0]
+              @wb_writer.write(dat[0], dat[1], dat[2], dat[3])
+            else
+              @cluster_replication_writer.transmit(dat[1], dat[2], dat[3])
+            end
           end
         end
       rescue StandardError => e

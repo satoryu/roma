@@ -133,6 +133,7 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
 
 ### Fixes
+* A write that is sent to the replica cluster isn't also written to the write-behind files, where it made a file `wb/<node>//<date>/<n>.wb` and raised TypeError for each write [#134](https://github.com/satoryu/roma/issues/134)
 * The files that the server makes (storages, logs, write-behind, routing logs, the pid file) aren't readable by other users: the server sets the umask to `config.umask`, 0o027 by default, at start. They were made by the umask of the process, usually 0o022, so readable by everyone [#134](https://github.com/satoryu/roma/issues/134)
 * `get_expt` doesn't find a deleted or expired key, as `get` doesn't. It replied the expire time of a delete mark (1970) or of an expired key, which told that the key had been there [#134](https://github.com/satoryu/roma/issues/134)
 * An expire time that 32 bits can't hold doesn't wrap around: a later one, such as one in milliseconds, is kept as the latest that they can (2106), and an earlier one than 1970 has expired. `set k 0 4294967296 5` stored a delete mark, which `get` didn't find [#134](https://github.com/satoryu/roma/issues/134)
