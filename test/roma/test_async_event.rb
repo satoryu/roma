@@ -579,14 +579,32 @@ class AsyncEventStorageTest < Test::Unit::TestCase
 
   def test_storage_clean_up_process
     vnode = @h.store('expired', 'v', expire_time: Time.now.to_i - 10)
+    clock = @h.storage.raw(vnode, 'expired', 0)[2]
     @h.store('alive', 'v')
     @h.call(:storage_clean_up_process)
     assert_nil @h.storage.get(vnode, 'expired', digest('expired'))
     alive_vn = @h.store('alive', 'v')
     assert_equal 'v', @h.storage.get(alive_vn, 'alive', digest('alive'))
-    # The other node of the vnode is told to delete it too.
-    assert_equal [[OTHER_NODE_ID, "out expired\eroma #{vnode}\r\n"]], @h.sent
+    # The other node of the vnode is told to delete that record too.
+    assert_equal [[OTHER_NODE_ID, "out expired\eroma #{vnode} #{clock}\r\n"]], @h.sent
     assert_equal 1, @h.stats.out_count
+  end
+
+  # A key that a client set again after the clean up found it is neither
+  # deleted nor sent to the other node.
+  def test_storage_clean_up_process_of_a_key_set_again
+    vnode = @h.store('expired', 'v', expire_time: Time.now.to_i - 10)
+    storage = @h.storage
+    original = storage.method(:each_clean_up)
+    storage.define_singleton_method(:each_clean_up) do |t, vnhash, &block|
+      original.call(t, vnhash) do |key, vn|
+        set(vn, key, 0, 0x7fffffff, 'new')
+        block.call(key, vn)
+      end
+    end
+    @h.call(:storage_clean_up_process)
+    assert_equal [], @h.sent
+    assert_equal 'new', storage.get(vnode, 'expired', 0)
   end
 
   def test_storage_clean_up_process_soon_after_the_last
