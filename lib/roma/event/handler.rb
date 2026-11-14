@@ -129,10 +129,6 @@ module Roma
         @@event_list[c] = m
       end
 
-      def exit
-        EventMachine.stop_event_loop
-      end
-
       private
 
       def checkout_connection(ap)

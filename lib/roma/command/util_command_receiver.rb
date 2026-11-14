@@ -2,7 +2,11 @@ require 'roma/messaging/connection_pool'
 
 module Roma
   module Command
+    # The helpers of the commands, private, since a connection dispatches
+    # only the ev_ methods.
     module UtilCommandReceiver
+      private
+
       def send_cmd(node_id, cmd)
         con = checkout_connection(node_id)
         con.send(cmd)

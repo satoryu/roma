@@ -116,23 +116,6 @@ module Roma
       rescue StandardError => e
         @log.error("#{e}\n#{$@}")
       end
-
-      def req_push_a_vnode(vnode, src_node_id, is_primary)
-        con = Roma::Messaging::ConnectionPool.instance.checkout(src_node_id)
-        con.write("reqpushv #{vnode} #{@my_node_id} #{is_primary}\r\n")
-        con.gets # receive 'PUSHED\r\n' | 'REJECTED\r\n'
-        Roma::Messaging::ConnectionPool.instance.checkin(src_node_id, con)
-        # waiting for pushv
-        count = 0
-        while @routing_table.search_nodes(vnode).include?(@my_node_id) == false && count < 300
-          sleep 0.1
-          count += 1
-        end
-      rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
-        @routing_table.proc_failed(src_node_id)
-        false
-      end
     end
   end
 end
