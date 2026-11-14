@@ -6,14 +6,13 @@
 # Note that changes in the inspected code, or installation of new
 # versions of RuboCop, may require this file to be generated again.
 
-# Offense count: 31
+# Offense count: 29
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: Max, AllowHeredoc, AllowURI, AllowQualifiedName, URISchemes, AllowRBSInlineAnnotation, AllowCopDirectives, AllowedPatterns, SplitStrings.
 # URISchemes: http, https
 Layout/LineLength:
   Exclude:
     - 'Rakefile'
-    - 'lib/roma/async_event.rb'
     - 'lib/roma/cli/log.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/command/system_command_receiver.rb'
@@ -126,7 +125,7 @@ Naming/MethodName:
 # AllowedNames: as, at, by, cc, db, id, if, in, io, ip, of, on, os, pp, to
 Naming/MethodParameterName:
   Exclude:
-    - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/log_gathering.rb'
     - 'lib/roma/async_message.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/command_plugin/alist.rb'
@@ -155,6 +154,8 @@ Naming/MethodParameterName:
 Naming/PredicateMethod:
   Exclude:
     - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/storage_maintenance.rb'
+    - 'lib/roma/async_event/vnode_transfer.rb'
     - 'lib/roma/cluster_maintenance.rb'
     - 'lib/roma/event/handler.rb'
     - 'lib/roma/logging/rlogger.rb'
@@ -204,7 +205,7 @@ Security/Eval:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Security/IoMethods:
   Exclude:
-    - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/log_gathering.rb'
 
 # Offense count: 59
 Security/MarshalLoad:
@@ -254,7 +255,7 @@ Style/CaseEquality:
 # AllowedMethods: ==, equal?, eql?
 Style/ClassEqualityComparison:
   Exclude:
-    - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/log_gathering.rb'
     - 'lib/roma/tools/config_creator.rb'
     - 'test/roma_test_utils.rb'
 
@@ -283,7 +284,7 @@ Style/CollectionQuerying:
 Style/FormatStringToken:
   EnforcedStyle: unannotated
 
-# Offense count: 28
+# Offense count: 27
 # Configuration parameters: AllowedVariables.
 Style/GlobalVars:
   Exclude:
@@ -343,7 +344,7 @@ Style/LineEndConcatenation:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/MapIntoArray:
   Exclude:
-    - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/log_gathering.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/routing/routing_data.rb'
     - 'lib/roma/routing/routing_table.rb'
@@ -386,7 +387,8 @@ Style/MutableConstant:
 Style/NumericPredicate:
   Exclude:
     - 'spec/**/*'
-    - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/storage_maintenance.rb'
+    - 'lib/roma/async_event/vnode_transfer.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/command/system_command_receiver.rb'
     - 'lib/roma/command/util_command_receiver.rb'
@@ -472,6 +474,7 @@ Style/ReturnNilInPredicateMethodDefinition:
 Style/SafeNavigation:
   Exclude:
     - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/vnode_transfer.rb'
     - 'lib/roma/peer_command.rb'
     - 'lib/roma/routing/churnbased_routing_table.rb'
     - 'lib/roma/server.rb'
@@ -490,7 +493,7 @@ Style/SafeNavigation:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/SlicingWithRange:
   Exclude:
-    - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/storage_maintenance.rb'
     - 'lib/roma/command/receiver.rb'
     - 'lib/roma/command/routing_command_receiver.rb'
     - 'lib/roma/command/system_command_receiver.rb'
@@ -509,6 +512,8 @@ Style/SlicingWithRange:
 Style/SpecialGlobalVars:
   Exclude:
     - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/log_gathering.rb'
+    - 'lib/roma/async_event/vnode_transfer.rb'
     - 'test/fake_node.rb'
     - 'test/optional_test/test_routing_logic.rb'
     - 'test/roma_test_utils.rb'
@@ -546,7 +551,8 @@ Style/YodaCondition:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/ZeroLengthPredicate:
   Exclude:
-    - 'lib/roma/async_event.rb'
+    - 'lib/roma/async_event/storage_maintenance.rb'
+    - 'lib/roma/async_event/vnode_transfer.rb'
     - 'lib/roma/command_plugin/alist.rb'
     - 'lib/roma/event/em_connection_pool.rb'
     - 'lib/roma/event/handler.rb'
