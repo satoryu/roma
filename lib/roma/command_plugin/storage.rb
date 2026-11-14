@@ -289,14 +289,10 @@ module Roma
           return
         end
 
-        data = @storages[hash_name].db_get(vnode, key)
-        if data
-          expire_time = if is_unix
-                          data.unpack('NNNNa*')[3]
-                        else
-                          Time.at(data.unpack('NNNNa*')[3])
-                        end
-          send_data("#{expire_time}\r\n")
+        _vn, _last, _clock, expire_time, = @storages[hash_name].raw(vnode, key, d)
+        # A delete mark (0) or an expired key is not found, as with get.
+        if expire_time && expire_time != 0 && Time.now.to_i <= expire_time
+          send_data("#{is_unix ? expire_time : Time.at(expire_time)}\r\n")
         end
         send_data("END\r\n")
       end

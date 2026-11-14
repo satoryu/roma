@@ -102,8 +102,8 @@ class CommandPluginStorageForwardTest < Test::Unit::TestCase
   end
 
   def test_get_expt
-    @owner.request('set key1 0 1735700000 5', 'value')
-    assert_equal "1735700000\r\nEND\r\n", @conn.request('get_expt key1 unix')
+    @owner.request('set key1 0 2000000000 5', 'value')
+    assert_equal "2000000000\r\nEND\r\n", @conn.request('get_expt key1 unix')
     assert_equal "END\r\n", @conn.request('get_expt key2 unix')
   end
 
@@ -194,11 +194,16 @@ class CommandPluginStorageHashTest < Test::Unit::TestCase
   end
 
   def test_get_expt
-    @conn.request('set key1 0 1735700000 5', 'value')
-    assert_equal "1735700000\r\nEND\r\n", @conn.request('get_expt key1 unix')
-    assert_equal "#{Time.at(1_735_700_000)}\r\nEND\r\n", @conn.request('get_expt key1')
+    @conn.request('set key1 0 2000000000 5', 'value')
+    assert_equal "2000000000\r\nEND\r\n", @conn.request('get_expt key1 unix')
+    assert_equal "#{Time.at(2_000_000_000)}\r\nEND\r\n", @conn.request('get_expt key1')
     assert_equal "END\r\n", @conn.request('get_expt key2')
     assert_equal "CLIENT_ERROR Wrong format of arguments.\r\n", @conn.request('get_expt key1 utc')
+    # Deleted and expired keys aren't found, as with get.
+    @conn.request('delete key1')
+    assert_equal "END\r\n", @conn.request('get_expt key1')
+    @conn.request('set key3 0 1000000000 5', 'value')
+    assert_equal "END\r\n", @conn.request('get_expt key3 unix')
     assert_equal "CLIENT_ERROR Wrong number of arguments.\r\n", @conn.request('get_expt')
   end
 
