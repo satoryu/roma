@@ -56,6 +56,8 @@ module Roma
     # The config file that the server loads without --config, in the
     # current directory.
     DEFAULT_CONFIG = 'config.rb'.freeze
+    # Seconds that any regexp may take on a string in the server.
+    REGEXP_TIMEOUT = 1.0
 
     attr_reader :storages, :routing_table, :stats, :wb_writer, :cluster_replication_writer
 
@@ -86,6 +88,9 @@ module Roma
       end
 
       pid_file&.write
+      # A regexp that a client gives, such as that of set_cleanup_regexp,
+      # can't take a thread for long.
+      Regexp.timeout = REGEXP_TIMEOUT
       @storages.each do |_hashname, st|
         st.opendb
       end

@@ -50,6 +50,18 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
     assert_equal "END\r\n", @conn.request('stat no_such_key')
   end
 
+  def test_stat_with_invalid_regexp
+    assert_equal "CLIENT_ERROR end pattern with unmatched parenthesis: /(/\r\n", @conn.request('stat (')
+  end
+
+  # A regexp that backtracks exponentially stops at the timeout, instead of
+  # taking the event loop.
+  def test_stat_with_slow_regexp
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    assert_equal "SERVER_ERROR the regexp took too long.\r\n", @conn.request('stat \A(?:(.|.)\1?)*\z(?<=[0-9])')
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 1
+  end
+
   def test_writebehind_rotate
     @conn.server.wb_writer.current_files['roma'] = 'wb/0.wb'
     @conn.relay_reply = 'ROTATED'
@@ -240,6 +252,8 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
     assert_equal "STORED\r\n", @conn.request('set_cleanup_regexp ^tmp')
     assert_equal '^tmp', @conn.storage.cleanup_regexp
     assert_equal "CLIENT_ERROR number of arguments 0 to 1\r\n", @conn.request('set_cleanup_regexp')
+    assert_match(/\ACLIENT_ERROR /, @conn.request('set_cleanup_regexp ('))
+    assert_equal '^tmp', @conn.storage.cleanup_regexp
   end
 
   def test_forcedly_start
