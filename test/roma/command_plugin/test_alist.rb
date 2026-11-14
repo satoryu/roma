@@ -74,7 +74,10 @@ class CommandPluginAlistTest < Test::Unit::TestCase
   # An unknown hash makes every command fail, and the error is replied.
   data(COMMANDS.keys.to_h { |name| [name, name] })
   def test_error(name)
-    assert_match(/\ASERVER_ERROR /, request(name, key: "key1\enohash"))
+    reply = request(name, key: "key1\enohash")
+    assert_match(/\ASERVER_ERROR /, reply)
+    # The backtrace goes only to the log.
+    assert_not_match(/\.rb:\d+/, reply)
   end
 
   data(WRITES.keys.to_h { |name| [name, name] })

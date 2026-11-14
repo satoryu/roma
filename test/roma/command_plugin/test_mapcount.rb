@@ -144,7 +144,9 @@ class CommandPluginMapcountTest < Test::Unit::TestCase
   # A stored value with an object of a class isn't loaded.
   def test_crafted_value
     @conn.storage.set(0, 'key1', 0, 0x7fffffff, Marshal.dump({ 'subkey1' => Object.new }))
-    assert_match(/\ASERVER_ERROR /, request('mapcount_get', 'key1', ''))
+    reply = request('mapcount_get', 'key1', '')
+    assert_match(/\ASERVER_ERROR /, reply)
+    assert_not_match(/\.rb:\d+/, reply)
   end
 
   def test_update_expt
