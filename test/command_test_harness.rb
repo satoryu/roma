@@ -7,6 +7,7 @@ require 'roma/command/receiver'
 require 'roma/event/em_connection_pool'
 require 'roma/routing/churnbased_routing_table'
 require 'roma/storage/hash'
+require 'roma/write_behind/stream_writer'
 
 # Runs ROMA's own commands (stat, balse, set_*/rset_*, the routing, vnode,
 # background and multi-hash commands and so on) in-process, without a server
@@ -82,14 +83,9 @@ class CommandTestHarness
 
   # Stands in for the writer of cluster replication. update_* would ask a
   # node of the replica cluster; here they just make up the answers.
-  class ClusterReplicationWriter
-    attr_accessor :run_replication, :run_existing_data_replication,
-                  :replica_mklhash, :replica_nodelist, :replica_rttable
-
+  class ClusterReplicationWriter < Roma::WriteBehind::StreamWriter
     def initialize
-      @run_replication = false
-      @run_existing_data_replication = false
-      @replica_nodelist = []
+      super(Logger.new(nil))
     end
 
     def update_mklhash(node_id)

@@ -824,12 +824,12 @@ module Roma
     end
 
     def asyncev_start_replicate_existing_data_process(args)
-      # args is [$roma.cluster_replication_writer.replica_rttable])
+      # args is [@cluster_replication_writer.replica_rttable])
       start_thread(__method__) do
-        $roma.cluster_replication_writer.run_existing_data_replication = true
+        @cluster_replication_writer.run_existing_data_replication = true
         replicate_existing_data_process(args)
       ensure
-        $roma.cluster_replication_writer.run_existing_data_replication = false
+        @cluster_replication_writer.run_existing_data_replication = false
       end
     end
 
@@ -838,7 +838,7 @@ module Roma
 
       @storages.each_key do |hash_name|
         @routing_table.routes.each_key do |vnode|
-          raise unless $roma.cluster_replication_writer.run_existing_data_replication
+          raise unless @cluster_replication_writer.run_existing_data_replication
 
           args[0].routes[vnode].each do |replica_node_id|
             res = push_a_vnode_stream(hash_name, vnode, replica_node_id)
