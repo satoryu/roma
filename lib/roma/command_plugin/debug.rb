@@ -14,6 +14,9 @@ module Roma
         send_data("#{e}\r\n")
       end
 
+      private
+
+      # Tells where +key+ is, for eval: eval key_info('key')
       def key_info(key)
         d = @routing_table.digest(key)
         vnode = @routing_table.vnode_id(d)
