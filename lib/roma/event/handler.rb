@@ -31,7 +31,8 @@ module Roma
           s = ::Regexp.last_match(1).to_i
           r = ::Regexp.last_match(2).to_i
           f = ::Regexp.last_match(3).to_i
-          return false if s < 0 || f < 0 || r < 0 || r > 100 || s > f
+          # The rate is raised in proportion to full - start.
+          return false if r > 100 || s >= f
 
           @@continuous_limit_start = s
           @@continuous_limit_rate = r

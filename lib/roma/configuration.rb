@@ -122,8 +122,11 @@ module Roma
     class Connection < Group
       setting :use_epoll, true, one_of: BOOLEAN
       setting :descriptor_table_size, 4096, type: Integer
-      # Like MaxStartups of sshd_config: 'start:rate:full'.
-      setting :continuous_limit, '200:30:300', type: String, check: ->(v) { v.match?(/\A\d+(:\d+:\d+)?\z/) }
+      # Like MaxStartups of sshd_config: 'start:rate:full', where start is
+      # less than full and rate is up to 100.
+      setting :continuous_limit, '200:30:300', type: String, check: lambda { |v|
+        (m = v.match(/\A(\d+):(\d+):(\d+)\z/)) && m[2].to_i <= 100 && m[1].to_i < m[3].to_i
+      }
       # Seconds to keep an accepted connection, or 0 for ever.
       setting :expire_time, 0, type: Numeric
       setting :dns_caching, false, one_of: BOOLEAN
