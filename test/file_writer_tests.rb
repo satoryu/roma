@@ -5,7 +5,7 @@ module FileWriterTests
   # making and writing test
   def test_wb_write
     system('rm -rf wb_test')
-    fw = Roma::WriteBehind::FileWriter.new('wb_test', 1024 * 1024, Logger.new(nil))
+    fw = Roma::WriteBehind::FileWriter.new('wb_test', 1024 * 1024, Logger.new(nil), node_id: 'roma0_11211')
     path = "wb_test/roma0_11211/roma/#{Time.now.strftime('%Y%m%d')}/"
 
     assert(!File.exist?("#{path}/0.wb"))
@@ -36,7 +36,7 @@ module FileWriterTests
   # rotation test per data
   def test_wb_rotation
     system('rm -rf wb_test')
-    fw = Roma::WriteBehind::FileWriter.new('wb_test', 900, Logger.new(nil))
+    fw = Roma::WriteBehind::FileWriter.new('wb_test', 900, Logger.new(nil), node_id: 'roma0_11211')
     path = "wb_test/roma0_11211/roma/#{Time.now.strftime('%Y%m%d')}/"
 
     100.times do |i|
@@ -55,7 +55,7 @@ module FileWriterTests
   # rotation test per time
   def test_rotation2
     system('rm -rf wb_test')
-    fw = Roma::WriteBehind::FileWriter.new('wb_test', 1024 * 1024, Logger.new(nil))
+    fw = Roma::WriteBehind::FileWriter.new('wb_test', 1024 * 1024, Logger.new(nil), node_id: 'roma0_11211')
     path = "wb_test/roma0_11211/roma/#{Time.now.strftime('%Y%m%d')}/"
 
     # rottime's usec have some value,from instance was created
@@ -93,7 +93,7 @@ module FileWriterTests
   # rotation test from outside
   def test_wb_rotation3
     system('rm -rf wb_test')
-    fw = Roma::WriteBehind::FileWriter.new('wb_test', 1024 * 1024, Logger.new(nil))
+    fw = Roma::WriteBehind::FileWriter.new('wb_test', 1024 * 1024, Logger.new(nil), node_id: 'roma0_11211')
     path = "wb_test/roma0_11211/roma/#{Time.now.strftime('%Y%m%d')}/"
 
     # confirming file don't exist
@@ -134,7 +134,7 @@ module FileWriterTests
 
   def test_current_file_path
     system('rm -rf wb_test')
-    fw = Roma::WriteBehind::FileWriter.new('wb_test', 900, Logger.new(nil))
+    fw = Roma::WriteBehind::FileWriter.new('wb_test', 900, Logger.new(nil), node_id: 'roma0_11211')
 
     assert_nil(fw.current_file_path('roma'))
 
@@ -152,7 +152,7 @@ module FileWriterTests
 
   def test_path
     system('rm -rf wb_test')
-    fw = Roma::WriteBehind::FileWriter.new('wb_test', 900, Logger.new(nil))
+    fw = Roma::WriteBehind::FileWriter.new('wb_test', 900, Logger.new(nil), node_id: 'roma0_11211')
     path = File.expand_path('./wb_test/roma0_11211/roma')
     assert_equal(path, fw.path('roma'))
   end
