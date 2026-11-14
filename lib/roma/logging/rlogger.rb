@@ -17,6 +17,9 @@ module Roma
         ERROR = 3
         FATAL = 4
         UNKNOWN = 5
+
+        # The levels that the config and set_log_level take, by their names.
+        LEVELS = { debug: DEBUG, info: INFO, warn: WARN, error: ERROR }.freeze
       end
       include Severity
 

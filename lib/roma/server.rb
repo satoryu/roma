@@ -273,17 +273,7 @@ module Roma
                                                        log.shift_age,
                                                        log.shift_size)
       @log = Roma::Logging::RLogger.instance
-
-      case log.level
-      when :debug
-        @log.level = Roma::Logging::RLogger::Severity::DEBUG
-      when :info
-        @log.level = Roma::Logging::RLogger::Severity::INFO
-      when :warn
-        @log.level = Roma::Logging::RLogger::Severity::WARN
-      when :error
-        @log.level = Roma::Logging::RLogger::Severity::ERROR
-      end
+      @log.level = Roma::Logging::RLogger::Severity::LEVELS.fetch(log.level)
     end
 
     def options(argv)
