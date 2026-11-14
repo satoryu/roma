@@ -57,6 +57,15 @@ class VnodeCommandReceiverTest < Test::Unit::TestCase
     assert_equal "CLIENT_ERROR Wrong number of arguments.\r\n", @conn.request('spushv roma')
   end
 
+  def test_spushv_while_the_clean_up_does_not_stop
+    @conn.server.clean_up_stopping = false
+    assert_equal "SERVER_ERROR The storage clean up didn't stop.\r\n",
+                 @conn.request('spushv roma 0', stream(0, 'key1' => 'v'))
+    assert_equal({}, @conn.stats.run_receive_a_vnode)
+  ensure
+    @conn.server.clean_up_stopping = true
+  end
+
   def test_spushv_to_an_invalid_hash_name
     assert_equal "CLIENT_ERROR ../hash1 is not a valid hash name.\r\n",
                  @conn.request('spushv ../hash1 0', stream(0, 'key1' => 'v'))

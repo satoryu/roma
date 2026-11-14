@@ -421,7 +421,7 @@ module Roma
       def push_a_vnode_stream(hash_name, vnode, node_id)
         @log.debug("#{__method__}:hash_name=#{hash_name} vnode=#{vnode} node_id=#{node_id}")
 
-        stop_clean_up
+        return "SERVER_ERROR The storage clean up didn't stop." unless stop_clean_up
 
         con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
 

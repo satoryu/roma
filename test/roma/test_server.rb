@@ -718,8 +718,20 @@ class ServerSendCmdTest < Test::Unit::TestCase
 
   def test_stop_clean_up
     @server.stats.run_storage_clean_up = false
-    call(:stop_clean_up)
+    assert_true call(:stop_clean_up)
     assert_not_nil @server.stats.last_clean_up
+  end
+
+  # A clean up that doesn't stop, such as one waiting for a node that hangs,
+  # is waited for up to the timeout.
+  def test_stop_clean_up_times_out
+    storage = Object.new
+    def storage.stop_clean_up = nil
+    set(storages: { 'roma' => storage })
+    @server.stats.run_storage_clean_up = true
+    assert_false @server.stop_clean_up(timeout: 0.05)
+  ensure
+    @server.stats.run_storage_clean_up = false
   end
 
   def test_daemon

@@ -114,8 +114,11 @@ class CommandTestHarness
       @clean_up_stops = 0
     end
 
-    def stop_clean_up
+    attr_writer :clean_up_stopping
+
+    def stop_clean_up(**)
       @clean_up_stops += 1
+      @clean_up_stopping != false
     end
 
     def write_behind_stat
