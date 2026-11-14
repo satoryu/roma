@@ -232,7 +232,9 @@ module Roma
         send_data("STORED\r\n")
       end
 
-      # out <key> <vnode>
+      # out <key> [<vnode> [<logical clock>]]
+      # The clean up of the primary gives the clock of the record that has
+      # expired, so that a newer one, which a client has set since, stays.
       def ev_out(s)
         key, hash_name = s[1].split("\e")
         hash_name ||= @default_hash_name
@@ -241,6 +243,10 @@ module Roma
         else
           d = @routing_table.digest(key)
           vnode = @routing_table.vnode_id(d)
+        end
+        if s.length >= 4
+          _vn, _last, clock, = @storages[hash_name].raw(vnode, key, 0)
+          return send_data("NOT_DELETED\r\n") unless clock == s[3].to_i
         end
         res = @storages[hash_name].out(vnode, key, 0)
         @stats.out_message_count += 1

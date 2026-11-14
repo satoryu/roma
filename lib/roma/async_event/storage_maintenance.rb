@@ -40,13 +40,16 @@ module Roma
 
           st.each_clean_up(t, vnhash) do |key, vnode|
             # @log.debug("#{__method__}:key=#{key} vnode=#{vnode}")
-            if @stats.run_receive_a_vnode.key?("#{hash_name}_#{vnode}")
+            # A client may have set the key again since it was found.
+            clock = expired_clock(st, vnode, key, t)
+            if @stats.run_receive_a_vnode.key?("#{hash_name}_#{vnode}") || clock.nil?
               false
             else
               nodes = @routing_table.search_nodes_for_write(vnode)
               if nodes && nodes.length > 1
                 nodes[1..-1].each do |node_id|
-                  res = async_send_cmd(node_id, "out #{key}\e#{hash_name} #{vnode}\r\n")
+                  # With the clock, a node deletes only that record, not a newer one.
+                  res = async_send_cmd(node_id, "out #{key}\e#{hash_name} #{vnode} #{clock}\r\n")
                   @log.warn("send out command failed:#{key}\e#{hash_name} #{vnode} -> #{node_id}") unless res
                   # @log.debug("#{__method__}:res=#{res}")
                 end
@@ -69,6 +72,17 @@ module Roma
         end
       ensure
         @log.info("#{__method__}:stop")
+      end
+
+      # The logical clock of the record of +key+ if it has expired, or is a
+      # delete mark older than +delete_mark_time+; nil if it hasn't, or is
+      # gone.
+      def expired_clock(storage, vnode, key, delete_mark_time)
+        _vn, last, clock, expire_time, = storage.raw(vnode, key, 0)
+        return nil unless clock
+
+        expired = expire_time == 0 ? delete_mark_time > last : Time.now.to_i > expire_time
+        clock if expired
       end
 
       def asyncev_start_storage_flush_process(args)

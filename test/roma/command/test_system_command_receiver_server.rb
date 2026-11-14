@@ -179,6 +179,19 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
     assert_equal 2, @conn.stats.out_message_count
   end
 
+  # With a clock, from the clean up of the primary, only the record of that
+  # clock is deleted, not a newer one that a client has set since.
+  def test_out_with_a_clock
+    vnode = @conn.routing_table.vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.routing_table.hash_space_size)
+    @conn.storage.set(vnode, 'key1', 0, 0x7fffffff, 'value1')
+    clock = @conn.storage.raw(vnode, 'key1', 0)[2]
+    assert_equal "NOT_DELETED\r\n", @conn.request("out key1 #{vnode} #{clock - 1}")
+    assert_equal 'value1', @conn.storage.get(vnode, 'key1', 0)
+    assert_equal "DELETED\r\n", @conn.request("out key1 #{vnode} #{clock}")
+    assert_nil @conn.storage.get(vnode, 'key1', 0)
+    assert_equal "NOT_DELETED\r\n", @conn.request("out key1 #{vnode} #{clock}")
+  end
+
   def test_rset
     assert_equal "STORED\r\n", @conn.request('rset key1 0 1 2147483647 6', 'value1')
     vnode = @conn.routing_table.vnode_id(Digest::SHA1.hexdigest('key1').hex % @conn.routing_table.hash_space_size)
