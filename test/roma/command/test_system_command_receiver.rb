@@ -401,7 +401,8 @@ class SystemCommandReceiverProcessSettingTest < Test::Unit::TestCase
     assert_equal '10:5:20', Roma::Event::Handler.continuous_limit
   end
 
-  data('format' => '100:20', 'rate over 100' => '1:101:2', 'start over full' => '300:20:200')
+  data('format' => '100:20', 'rate over 100' => '1:101:2', 'start over full' => '300:20:200',
+       'start equal to full' => '0:0:0')
   def test_set_continuous_limit_with_invalid_value(value)
     before = Roma::Event::Handler.continuous_limit
     assert_equal replies('NOT_STORED'), @conn.request("set_continuous_limit #{value}")
