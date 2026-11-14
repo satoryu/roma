@@ -1,4 +1,5 @@
 require 'roma/command_plugin'
+require 'roma/safe_marshal'
 require 'json'
 require 'roma/command/definition'
 
@@ -166,7 +167,7 @@ module Roma
       end
 
       def data_load(data)
-        Marshal.load(data)
+        SafeMarshal.load(data)
       rescue StandardError => e
         msg = "SERVER_ERROR #{e} #{$@}".tr("\r\n", ' ')
         send_data("#{msg}\r\n")

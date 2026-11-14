@@ -97,6 +97,23 @@ class CommandPluginAlistTest < Test::Unit::TestCase
     end
   end
 
+  # A value stored by set that only looks like a list isn't loaded: one with
+  # an object of a class, or one whose links make it huge when walked.
+  def self.crafted_lists
+    a = ['x']
+    40.times { a = [a, a] }
+    { 'object' => Marshal.dump([[Object.new], []]), 'blow up' => Marshal.dump([[a], []]) }
+  end
+
+  data((COMMANDS.keys - ['alist_clear']).product(crafted_lists.to_a).to_h do |name, (kind, dump)|
+    ["#{name} #{kind}", [name, dump]]
+  end)
+  def test_crafted_list(data)
+    name, dump = data
+    @conn.request("set key1 0 0 #{dump.bytesize}", dump)
+    assert_match(/\ASERVER_ERROR /, request(name))
+  end
+
   data('alist_expired_swap_and_insert' => 'alist_expired_swap_and_insert key1 x 1',
        'alist_expired_swap_and_sized_insert' => 'alist_expired_swap_and_sized_insert key1 x 5 1',
        'alist_expired_swap_and_push' => 'alist_expired_swap_and_push key1 x 1',

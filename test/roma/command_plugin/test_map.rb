@@ -55,6 +55,14 @@ class CommandPluginMapTest < Test::Unit::TestCase
     assert_equal 1, @conn.stats.read_count
   end
 
+  # A stored value with an object of a class isn't loaded.
+  data(%w(map_get map_size map_keys map_to_s).to_h { |cmd| [cmd, cmd] })
+  def test_crafted_map(cmd)
+    @conn.storage.set(0, 'key1', 0, 0x7fffffff, Marshal.dump({ 'mapkey1' => Object.new }))
+    line = cmd == 'map_get' ? 'map_get key1 mapkey1' : "#{cmd} key1"
+    assert_match(/\ASERVER_ERROR /, @conn.request(line))
+  end
+
   def test_map_get_missing
     assert_equal "END\r\n", @conn.request('map_get key1 mapkey1')
     map_set('key1', 'mapkey1', 'value1')
