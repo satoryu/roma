@@ -407,31 +407,11 @@ module Roma
       @storages = {}
       storage = Roma.config.storage
       path = "#{storage.path}/#{@stats.my_node_id}"
-      st_class = storage.engine_class
-      st_division_count = storage.division_count
-      st_option = storage.option
-      Dir.glob("#{path}/*").each do |f|
-        next unless File.directory?(f)
-
-        hash_name = File.basename(f)
-        st = st_class.new
-        st.storage_path = "#{path}/#{hash_name}"
-        st.vn_list = @routing_table.vnodes
-        st.st_class = st_class
-        st.divnum = st_division_count
-        st.option = st_option
-        @storages[hash_name] = st
+      hash_names = Dir.glob("#{path}/*").select { |f| File.directory?(f) }.map { |f| File.basename(f) }
+      hash_names = ['roma'] if hash_names.empty?
+      hash_names.each do |hash_name|
+        @storages[hash_name] = storage.build("#{path}/#{hash_name}", @routing_table.vnodes)
       end
-      return unless @storages.length == 0
-
-      hash_name = 'roma'
-      st = st_class.new
-      st.storage_path = "#{path}/#{hash_name}"
-      st.vn_list = @routing_table.vnodes
-      st.st_class = st_class
-      st.divnum = st_division_count
-      st.option = st_option
-      @storages[hash_name] = st
     end
 
     def initialize_rttable

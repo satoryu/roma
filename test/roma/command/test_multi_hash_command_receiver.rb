@@ -43,6 +43,13 @@ class MultiHashCommandReceiverTest < Test::Unit::TestCase
     assert_false File.exist?("#{@path}/hash1")
   end
 
+  # A hash made by createhash is like those made at start.
+  def test_createhash_stat
+    @conn.request('rcreatehash hash1')
+    assert_equal "storages[hash1].storage.st_class HashStorage\r\nEND\r\n",
+                 @conn.request('stat storages\\[hash1\\].storage.st_class')
+  end
+
   def test_mounthash_and_umounthash
     @conn.request('rcreatehash hash1')
     # HashStorage keeps no files; make the directory a hash would have.

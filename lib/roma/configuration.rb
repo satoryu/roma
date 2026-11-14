@@ -163,6 +163,19 @@ module Roma
 
         Roma::Storage.const_get(name)
       end
+
+      # A storage of engine with these settings, for the files in
+      # +storage_path+ and the vnodes +vn_list+. It isn't opened.
+      def build(storage_path, vn_list)
+        engine = engine_class
+        engine.new.tap do |st|
+          st.storage_path = storage_path
+          st.vn_list = vn_list
+          st.st_class = engine
+          st.divnum = division_count
+          st.option = option
+        end
+      end
     end
 
     class DataCopy < Group
