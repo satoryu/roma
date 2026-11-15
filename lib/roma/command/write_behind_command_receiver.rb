@@ -1,11 +1,19 @@
 require 'timeout'
 require 'roma/async_event'
+require 'roma/command/authentication'
 
 module Roma
   module Command
     # The commands of write-behind and of the cluster replication.
     # SystemCommandReceiver includes it, so that they are system commands.
     module WriteBehindCommandReceiver
+      extend Authentication
+
+      # switch_replication sends the data to the nodes of another cluster.
+      # The r* commands are those that the other nodes relay.
+      require_authentication :switch_replication, :rswitch_replication, :rwb_command_map,
+                             :rwritebehind_rotate, :rwritebehind_get_path, :rwritebehind_get_current_file
+
       # writebehind_rotate [hash_name]
       def ev_writebehind_rotate(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
@@ -78,11 +86,7 @@ module Roma
       # if you want to activate, assign 1 node_id(addr_port) of replication cluster as argument.
       # if you want to copy existing data, add the 'all' after node_id as argument
       # switch_replication <true|false> [node_id] [copy target]
-      # It needs the authentication, since it sends the data to the nodes of
-      # another cluster.
       def ev_switch_replication(s)
-        return reply_authentication_required unless authenticated?
-
         error = switch_replication_error(s)
         return send_data(error) if error
 
@@ -95,8 +99,6 @@ module Roma
 
       # rswitch_replication <true|false> [node_id] [copy target]
       def ev_rswitch_replication(s)
-        return reply_authentication_required unless authenticated?
-
         error = switch_replication_error(s)
         return send_data(error) if error
 

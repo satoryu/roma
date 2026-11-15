@@ -1,10 +1,16 @@
 require 'roma/async_event'
 require 'roma/messaging/connection_pool'
+require 'roma/command/authentication'
 require 'roma/command/vnode_command_receiver'
 
 module Roma
   module Command
     module BackgroundCommandReceiver
+      extend Authentication
+
+      # The commands that the other nodes relay.
+      require_authentication :rbalance, :rrecover
+
       include VnodeCommandReceiver
 
       def ev_balance(_s)

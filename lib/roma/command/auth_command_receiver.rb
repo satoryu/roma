@@ -1,10 +1,11 @@
 require 'roma/configuration'
 require 'roma/peer_auth'
+require 'roma/command/authentication'
 
 module Roma
   module Command
     # The authentication of a connection by config.cluster_secret, which the
-    # commands that change the cluster need. See PeerAuth.
+    # commands of Authentication.commands need. See PeerAuth.
     module AuthCommandReceiver
       # auth_nonce
       def ev_auth_nonce(_s)
@@ -25,16 +26,6 @@ module Roma
           @log.warn("#{@addr}:#{@port} failed in the authentication")
           send_data("CLIENT_ERROR authentication failed\r\n")
         end
-      end
-
-      private
-
-      def authenticated?
-        Roma.config.cluster_secret.nil? || @authenticated == true
-      end
-
-      def reply_authentication_required
-        send_data("CLIENT_ERROR authentication required\r\n")
       end
     end
   end

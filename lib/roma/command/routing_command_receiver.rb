@@ -1,11 +1,19 @@
+require 'roma/command/authentication'
+
 module Roma
   module Command
     module RoutingCommandReceiver
+      extend Authentication
+
+      # setroute also adds the nodes that the routing table doesn't have. The
+      # r* commands are those that the other nodes relay.
+      require_authentication :join, :leave, :setroute,
+                             :radd_rttable_sub_nid, :rdelete_rttable_sub_nid, :rclear_rttable_sub_nid,
+                             :rset_auto_recover, :rset_lost_action, :rset_threshold_for_failover,
+                             :rset_gap_for_failover
+
       # join <node id>
-      # It needs the authentication, so that only a node with the secret of
-      # the cluster joins it.
       def ev_join(s)
-        return reply_authentication_required unless authenticated?
         return irregular_node_id_error(s[1]) unless valid_node_id?(s[1])
 
         @routing_table.add_node(s[1])
@@ -14,7 +22,6 @@ module Roma
 
       # leave <node id>
       def ev_leave(s)
-        return reply_authentication_required unless authenticated?
         return irregular_node_id_error(s[1]) unless valid_node_id?(s[1])
 
         @log.warn("receive a leave #{s[1]} message.")
@@ -71,12 +78,8 @@ module Roma
       end
 
       # setroute <vnode-id> <clock> <node-id> ...
-      # It needs the authentication, since it also adds the nodes that the
-      # routing table doesn't have.
       def ev_setroute(s)
-        if !authenticated?
-          reply_authentication_required
-        elsif s.length < 4
+        if s.length < 4
           send_data("CLIENT_ERROR\r\n")
         else
           node_ids = []

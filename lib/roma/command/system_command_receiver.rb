@@ -1,5 +1,6 @@
 require 'roma/async_event'
 require 'roma/configuration'
+require 'roma/command/authentication'
 require 'roma/command/latency_command_receiver'
 require 'roma/command/write_behind_command_receiver'
 
@@ -8,6 +9,13 @@ module Roma
     module SystemCommandReceiver
       include LatencyCommandReceiver
       include WriteBehindCommandReceiver
+      extend Authentication
+
+      # rset, rzset and out write the data of this node directly. The other
+      # r* commands are those that the other nodes relay.
+      require_authentication :rset, :rzset, :out, :rbalse, :rshutdown, :rrestart, :rswitch_failover,
+                             :rswitch_dns_caching, :rdcnice, :rset_continuous_limit,
+                             :rset_emconnection_pool_expire_time
 
       # Defines set_<name>, which changes a setting of every node to a value,
       # and rset_<name>, which the other nodes run for it. +check+ returns
@@ -24,6 +32,7 @@ module Roma
           send_data("#{res}\r\n")
         end
 
+        require_authentication :"rset_#{name}"
         define_method(:"ev_rset_#{name}") do |s|
           error = setting_error(s, check)
           return send_data("CLIENT_ERROR #{error}\r\n") if error

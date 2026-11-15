@@ -135,7 +135,9 @@ The server loads the command plugins by a convention, instead of a list in the c
 ### The secret of the cluster
 `config.cluster_secret`, a secret of 16 bytes or longer that the nodes of a cluster share, lets only a node with it join the cluster [#153](https://github.com/satoryu/roma/issues/153). Without it (the default), any node joins, as before.
 
-* `join`, `leave`, `setroute`, `switch_replication` and `rswitch_replication` need a connection authenticated by the secret, or reply `CLIENT_ERROR authentication required`. A node that joins without the secret stops with "needs the secret of the cluster".
+* The commands that change the cluster, `join`, `leave`, `setroute` and `switch_replication`, and the commands that only the nodes send to each other need a connection authenticated by the secret, or reply `CLIENT_ERROR authentication required`. These are `rset`, `rzset`, `rdelete`, `out`, `spushv`, `alist_spushv`, `reqpushv`, and the `r*` commands that a node relays to the others, such as `rbalse` for `balse` and `rset_log_shift_size` for `set_log_shift_size`. A node that joins without the secret stops with "needs the secret of the cluster".
+* A plugin names its commands that need the secret by `require_authentication` of `Roma::Command::Authentication`. The `r<cmd>` of `def_command_with_relay` needs it. See [Command plugins](docs/command_plugin.md#commands-only-for-the-nodes).
+* `switch_replication ... all` copies the data to the replica cluster by `spushv`, so the replica cluster needs the same secret, or none.
 * A connection is authenticated by `auth_nonce`, which replies a nonce, and `auth <digest>`, the HMAC-SHA256 of the nonce by the secret, which replies `AUTHENTICATED`. The secret isn't sent. The connections between the nodes are authenticated when they are made.
 * The tools, such as `roma node send`, take the secret from the environment variable `ROMA_CLUSTER_SECRET`.
 * `reqpushv` pushes a vnode only to a node in the routing table, with or without the secret. It pushed to any host.

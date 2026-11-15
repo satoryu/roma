@@ -1,10 +1,16 @@
 require 'roma/messaging/connection_pool'
 require 'roma/async_event'
 require 'roma/configuration'
+require 'roma/command/authentication'
 
 module Roma
   module Command
     module VnodeCommandReceiver
+      extend Authentication
+
+      # spushv writes the data of a vnode, and reqpushv sends it.
+      require_authentication :spushv, :reqpushv
+
       # spushv_protection <true/false>
       def ev_spushv_protection(s)
         if s.length == 1
