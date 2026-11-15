@@ -1,8 +1,16 @@
+require 'roma/command/authentication'
+
 module Roma
   module Command
     # The commands that measure the latency of the commands, by Stats.
     # SystemCommandReceiver includes it, so that they are system commands.
     module LatencyCommandReceiver
+      extend Authentication
+
+      # The commands that the other nodes relay.
+      require_authentication :radd_latency_avg_calc_cmd, :rdel_latency_avg_calc_cmd,
+                             :rchg_latency_avg_calc_time_count, :rset_latency_avg_calc_rule
+
       # set_latency_avg_calc_rule <mode> <count> <command1> <command2>....
       # <mode> is on/off
       # <count> is denominator to calculate average.

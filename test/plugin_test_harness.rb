@@ -3,6 +3,7 @@ require 'logger'
 require 'stringio'
 require 'roma/storage/hash'
 require 'roma/command/util_command_receiver'
+require 'roma/command/auth_command_receiver'
 require 'roma/routing/routing_data'
 require 'roma_test_client'
 
@@ -24,6 +25,7 @@ require 'roma_test_client'
 #   conn = klass.new(nodes: [REPLICA_NODE_ID, NODE_ID]).forward_to(owner)
 #   conn.request('get key1') # forwarded to owner
 class PluginTestHarness
+  include Roma::Command::AuthCommandReceiver
   include Roma::Command::UtilCommandReceiver
 
   NODE_ID = 'localhost_11211'

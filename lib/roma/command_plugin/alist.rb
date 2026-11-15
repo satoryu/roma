@@ -4,11 +4,16 @@ require 'timeout'
 require 'roma/messaging/connection_pool'
 require 'json'
 require 'roma/configuration'
+require 'roma/command/authentication'
 
 module Roma
   module CommandPlugin
     module Alist
       include ::Roma::CommandPlugin
+      extend ::Roma::Command::Authentication
+
+      # It writes the data of a vnode, as spushv does.
+      require_authentication :alist_spushv
 
       # alist_at <key> <index> [forward]\r\n
       #

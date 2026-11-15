@@ -455,6 +455,40 @@ node. `createhash` in
 [lib/roma/command/multi_hash_command_receiver.rb](../lib/roma/command/multi_hash_command_receiver.rb)
 is an example: the reply above is of `createhash`.
 
+`r<cmd>` needs a connection authenticated by the secret of the cluster, as the
+next section says, so only the other nodes run it.
+
+#### Commands only for the nodes
+
+With `config.cluster_secret`, a command that only the nodes send to each other
+needs a connection authenticated by the secret, so that a client can't send it.
+Name such commands by `require_authentication` of
+`Roma::Command::Authentication`:
+
+```ruby
+require 'roma/command/authentication'
+
+module Roma
+  module CommandPlugin
+    module Hello
+      include ::Roma::CommandPlugin
+      extend ::Roma::Command::Authentication
+
+      require_authentication :rhello_reset
+
+      def ev_rhello_reset(_s) = send_data("RESET\r\n")
+    end
+  end
+end
+```
+
+Without the authentication, they reply `CLIENT_ERROR authentication required`.
+The nodes authenticate their connections to each other, so `send_cmd` and
+`broadcast_cmd` reach them. The tools take the secret from the environment
+variable `ROMA_CLUSTER_SECRET`. Without `config.cluster_secret`, anyone can run
+them. The other commands of a plugin, such as those of the clients, need no
+secret.
+
 ### Errors
 
 In the block of a macro, raise `Roma::Command::Definition::ClientError` for a

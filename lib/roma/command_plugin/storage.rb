@@ -1,11 +1,17 @@
 require 'roma/command_plugin'
 require 'zlib'
 require 'roma/async_event'
+require 'roma/command/authentication'
 
 module Roma
   module CommandPlugin
     module Storage
       include ::Roma::CommandPlugin
+      extend ::Roma::Command::Authentication
+
+      # rdelete deletes the data of this node directly, and
+      # rset_size_of_zredundant is relayed by the other nodes.
+      require_authentication :rdelete, :rset_size_of_zredundant
 
       # "set" means "store this data".
       # <command name> <key> <flags> <exptime> <bytes> [noreply]\r\n
