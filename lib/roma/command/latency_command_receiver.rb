@@ -7,8 +7,10 @@ module Roma
     module LatencyCommandReceiver
       extend Authentication
 
-      # The commands that the other nodes relay.
-      require_authentication :radd_latency_avg_calc_cmd, :rdel_latency_avg_calc_cmd,
+      # The admin commands, and those that the other nodes relay.
+      require_authentication :add_latency_avg_calc_cmd, :del_latency_avg_calc_cmd,
+                             :chg_latency_avg_calc_time_count, :set_latency_avg_calc_rule,
+                             :radd_latency_avg_calc_cmd, :rdel_latency_avg_calc_cmd,
                              :rchg_latency_avg_calc_time_count, :rset_latency_avg_calc_rule
 
       # set_latency_avg_calc_rule <mode> <count> <command1> <command2>....

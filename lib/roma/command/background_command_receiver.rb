@@ -8,8 +8,8 @@ module Roma
     module BackgroundCommandReceiver
       extend Authentication
 
-      # The commands that the other nodes relay.
-      require_authentication :rbalance, :rrecover
+      # The admin commands, and those that the other nodes relay.
+      require_authentication :balance, :recover, :release, :rbalance, :rrecover
 
       include VnodeCommandReceiver
 

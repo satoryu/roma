@@ -9,7 +9,7 @@ module Roma
       extend Authentication
 
       # spushv writes the data of a vnode, and reqpushv sends it.
-      require_authentication :spushv, :reqpushv
+      require_authentication :spushv, :reqpushv, :spushv_protection
 
       # spushv_protection <true/false>
       def ev_spushv_protection(s)

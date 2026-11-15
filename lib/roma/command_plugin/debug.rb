@@ -1,11 +1,16 @@
 require 'roma/command_plugin'
+require 'roma/command/authentication'
 
 module Roma
   module CommandPlugin
     module Debug
       include ::Roma::CommandPlugin
 
+      extend ::Roma::Command::Authentication
+
       ::Roma::CommandPlugin.system_commands(self)
+      # eval runs any Ruby code.
+      require_authentication :eval
 
       # DANGER!!
       def ev_eval(s)

@@ -11,9 +11,14 @@ module Roma
       include WriteBehindCommandReceiver
       extend Authentication
 
+      # The admin commands, which stop the nodes or change their settings.
       # rset, rzset and out write the data of this node directly. The other
       # r* commands are those that the other nodes relay.
-      require_authentication :rset, :rzset, :out, :rbalse, :rshutdown, :rrestart, :rswitch_failover,
+      require_authentication :balse, :shutdown, :shutdown_self, :restart, :forcedly_start, :dcnice,
+                             :switch_failover, :switch_dns_caching, :set_log_level, :set_continuous_limit,
+                             :set_emconnection_pool_expire_time, :set_storage_status, :set_gui_run_snapshot,
+                             :set_cleanup_regexp,
+                             :rset, :rzset, :out, :rbalse, :rshutdown, :rrestart, :rswitch_failover,
                              :rswitch_dns_caching, :rdcnice, :rset_continuous_limit,
                              :rset_emconnection_pool_expire_time
 
@@ -32,7 +37,7 @@ module Roma
           send_data("#{res}\r\n")
         end
 
-        require_authentication :"rset_#{name}"
+        require_authentication :"set_#{name}", :"rset_#{name}"
         define_method(:"ev_rset_#{name}") do |s|
           error = setting_error(s, check)
           return send_data("CLIENT_ERROR #{error}\r\n") if error

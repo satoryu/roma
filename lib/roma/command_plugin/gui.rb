@@ -1,10 +1,15 @@
 require 'roma/command_plugin'
+require 'roma/command/authentication'
 require 'json'
 
 module Roma
   module CommandPlugin
     module Gui
       include ::Roma::CommandPlugin
+      extend ::Roma::Command::Authentication
+
+      # They read the logs of every node.
+      require_authentication :gather_logs, :show_logs
 
       # get_routing_history
       def ev_get_routing_history(_s)

@@ -11,8 +11,10 @@ module Roma
 
       # switch_replication sends the data to the nodes of another cluster.
       # The r* commands are those that the other nodes relay.
-      require_authentication :switch_replication, :rswitch_replication, :rwb_command_map,
-                             :rwritebehind_rotate, :rwritebehind_get_path, :rwritebehind_get_current_file
+      require_authentication :switch_replication, :wb_command_map, :writebehind_rotate,
+                             :writebehind_get_path, :writebehind_get_current_file,
+                             :rswitch_replication, :rwb_command_map, :rwritebehind_rotate,
+                             :rwritebehind_get_path, :rwritebehind_get_current_file
 
       # writebehind_rotate [hash_name]
       def ev_writebehind_rotate(s)

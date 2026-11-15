@@ -25,11 +25,12 @@ module Roma
 
         # Defines the command +cmd+, which runs the block here and on the
         # other nodes and replies the results of all, and r+cmd+, which the
-        # other nodes run, and which needs the authentication.
+        # other nodes run. Both need the authentication, as they change the
+        # cluster.
         def def_command_with_relay(cmd, &)
           raise "ev_#{cmd} already defined." if public_method_defined? :"ev_#{cmd}"
 
-          require_authentication :"r#{cmd}"
+          require_authentication cmd, :"r#{cmd}"
 
           define_method "ev_#{cmd}" do |s|
             replying_errors do

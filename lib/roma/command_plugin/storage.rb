@@ -10,8 +10,9 @@ module Roma
       extend ::Roma::Command::Authentication
 
       # rdelete deletes the data of this node directly, and
-      # rset_size_of_zredundant is relayed by the other nodes.
-      require_authentication :rdelete, :rset_size_of_zredundant
+      # rset_size_of_zredundant is relayed by the other nodes for the admin
+      # command set_size_of_zredundant.
+      require_authentication :rdelete, :set_size_of_zredundant, :rset_size_of_zredundant
 
       # "set" means "store this data".
       # <command name> <key> <flags> <exptime> <bytes> [noreply]\r\n
