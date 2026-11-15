@@ -455,15 +455,16 @@ node. `createhash` in
 [lib/roma/command/multi_hash_command_receiver.rb](../lib/roma/command/multi_hash_command_receiver.rb)
 is an example: the reply above is of `createhash`.
 
-`r<cmd>` needs a connection authenticated by the secret of the cluster, as the
-next section says, so only the other nodes run it.
+Both need a connection authenticated by the secret of the cluster, as the next
+section says, since they change every node: `<cmd>` is an admin command, and
+`r<cmd>` is only for the other nodes.
 
-#### Commands only for the nodes
+#### Commands only for the nodes and the admins
 
-With `config.cluster_secret`, a command that only the nodes send to each other
-needs a connection authenticated by the secret, so that a client can't send it.
-Name such commands by `require_authentication` of
-`Roma::Command::Authentication`:
+With `config.cluster_secret`, a command that only the nodes send to each other,
+or an admin command, such as one that changes a setting, needs a connection
+authenticated by the secret, so that a client can't send it. Name such commands
+by `require_authentication` of `Roma::Command::Authentication`:
 
 ```ruby
 require 'roma/command/authentication'

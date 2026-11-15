@@ -133,15 +133,19 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
 
 ### The secret of the cluster
-`config.cluster_secret`, a secret of 16 bytes or longer that the nodes of a cluster share, lets only a node with it join the cluster [#153](https://github.com/satoryu/roma/issues/153). Without it (the default), any node joins, as before.
+`config.cluster_secret`, a secret of 16 bytes or longer that the nodes of a cluster share, lets only the nodes and the tools with it join the cluster, write the data of a node directly, and run the admin commands [#153](https://github.com/satoryu/roma/issues/153). Without it (the default), anyone can, as before.
 
-* The commands that change the cluster, `join`, `leave`, `setroute` and `switch_replication`, and the commands that only the nodes send to each other need a connection authenticated by the secret, or reply `CLIENT_ERROR authentication required`. These are `rset`, `rzset`, `rdelete`, `out`, `spushv`, `alist_spushv`, `reqpushv`, and the `r*` commands that a node relays to the others, such as `rbalse` for `balse` and `rset_log_shift_size` for `set_log_shift_size`. A node that joins without the secret stops with "needs the secret of the cluster".
-* A plugin names its commands that need the secret by `require_authentication` of `Roma::Command::Authentication`. The `r<cmd>` of `def_command_with_relay` needs it. See [Command plugins](docs/command_plugin.md#commands-only-for-the-nodes).
+* These commands need a connection authenticated by the secret, or reply `CLIENT_ERROR authentication required`:
+  * The commands that change the cluster: `join`, `leave`, `setroute`, `switch_replication`, `create_nodes_from_v_idx` and the `*_rttable_sub_nid` commands.
+  * The commands that only the nodes send to each other: `rset`, `rzset`, `rdelete`, `out`, `spushv`, `alist_spushv`, `reqpushv`, and the `r*` commands that a node relays to the others, such as `rbalse` for `balse`.
+  * The admin commands: `balse`, `shutdown`, `shutdown_self`, `restart`, `forcedly_start`, `release`, `recover`, `balance`, `dcnice`, `switch_failover`, `switch_dns_caching`, `spushv_protection`, the `set_*` commands of the settings (not `set_expt`), the latency, write-behind and hash commands (`createhash`, `deletehash`, ...), `gather_logs` and `show_logs`, and `eval` of `debug.rb`.
+  * The clients' commands, and those that read the cluster, such as `stats`, `nodelist`, `routingdump` and `whoami`, don't need it.
+* A node that joins without the secret stops with "needs the secret of the cluster".
+* A plugin names its commands that need the secret by `require_authentication` of `Roma::Command::Authentication`. Both commands of `def_command_with_relay` need it. See [Command plugins](docs/command_plugin.md#commands-only-for-the-nodes-and-the-admins).
 * `switch_replication ... all` copies the data to the replica cluster by `spushv`, so the replica cluster needs the same secret, or none.
 * A connection is authenticated by `auth_nonce`, which replies a nonce, and `auth <digest>`, the HMAC-SHA256 of the nonce by the secret, which replies `AUTHENTICATED`. The secret isn't sent. The connections between the nodes are authenticated when they are made.
 * The tools, such as `roma node send`, take the secret from the environment variable `ROMA_CLUSTER_SECRET`.
 * `reqpushv` pushes a vnode only to a node in the routing table, with or without the secret. It pushed to any host.
-* The clients' commands and `routingdump` don't need the secret.
 
 ### Fixes
 * A write that is sent to the replica cluster isn't also written to the write-behind files, where it made a file `wb/<node>//<date>/<n>.wb` and raised TypeError for each write [#134](https://github.com/satoryu/roma/issues/134)

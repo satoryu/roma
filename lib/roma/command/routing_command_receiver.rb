@@ -5,9 +5,13 @@ module Roma
     module RoutingCommandReceiver
       extend Authentication
 
-      # setroute also adds the nodes that the routing table doesn't have. The
-      # r* commands are those that the other nodes relay.
-      require_authentication :join, :leave, :setroute,
+      # The commands that change the routing: setroute also adds the nodes
+      # that the routing table doesn't have. The r* commands are those that
+      # the other nodes relay.
+      require_authentication :join, :leave, :setroute, :create_nodes_from_v_idx,
+                             :add_rttable_sub_nid, :delete_rttable_sub_nid, :clear_rttable_sub_nid,
+                             :set_auto_recover, :set_lost_action, :set_threshold_for_failover,
+                             :set_gap_for_failover,
                              :radd_rttable_sub_nid, :rdelete_rttable_sub_nid, :rclear_rttable_sub_nid,
                              :rset_auto_recover, :rset_lost_action, :rset_threshold_for_failover,
                              :rset_gap_for_failover
