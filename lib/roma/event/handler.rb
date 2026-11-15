@@ -160,6 +160,7 @@ module Roma
       def checkout_connection(ap)
         con = Roma::Event::EMConnectionPool.instance.checkout(ap)
         con.fiber = @fiber
+        Roma::Event::EMConnectionPool.instance.authenticate(con)
         con
       end
 

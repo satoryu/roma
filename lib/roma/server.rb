@@ -256,6 +256,8 @@ module Roma
       Event::EMConnectionPool.instance.expire_time = connection.event_machine_pool.expire_time
       Event::EMConnectionPool.instance.maxlength = connection.event_machine_pool.max
       Event::EMConnectionPool.instance.timeout = connection.event_machine_pool.timeout
+      Messaging::ConnectionPool.instance.secret = Roma.config.cluster_secret
+      Event::EMConnectionPool.instance.secret = Roma.config.cluster_secret
     end
 
     def initialize_wb_writer
@@ -482,13 +484,19 @@ module Roma
       nodes = @routing_table.nodes
 
       nodes.each do |node_id|
-        con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
-        con.write("join #{@stats.my_node_id}\r\n")
-        raise "Hotscale initialize failed.\n#{node_id} is busy." if con.gets != "ADDED\r\n"
+        res = begin
+          con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
+          con.write("join #{@stats.my_node_id}\r\n")
+          con.gets
+        rescue StandardError
+          raise "Hotscale initialize failed.\n#{node_id} unreachable connection."
+        end
+        if res == "CLIENT_ERROR authentication required\r\n"
+          raise "Hotscale initialize failed.\n#{node_id} needs the secret of the cluster, config.cluster_secret."
+        end
+        raise "Hotscale initialize failed.\n#{node_id} is busy." if res != "ADDED\r\n"
 
         Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
-      rescue StandardError
-        raise "Hotscale initialize failed.\n#{node_id} unreachable connection."
       end
       @routing_table.add_node(@stats.my_node_id)
     end

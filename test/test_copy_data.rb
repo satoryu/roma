@@ -104,6 +104,9 @@ class CopyDataTest < Test::Unit::TestCase
   def reqpushv(_hname, vnode, is_primary = false)
     @node.dat.delete(vnode)
     con = Roma::Messaging::ConnectionPool.instance.checkout('localhost_11211')
+    # A vnode is pushed only to a node in the routing table.
+    con.write("join #{@node.node_id}\r\n")
+    assert_equal("ADDED\r\n", con.gets)
     res = nil
     10.times do
       con.write("reqpushv #{vnode} #{@node.node_id} #{is_primary}\r\n")

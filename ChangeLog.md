@@ -132,6 +132,15 @@ The server loads the command plugins by a convention, instead of a list in the c
 ### PID file
 * `roma server --pid-file PATH` writes the pid of the server to the file, and the server removes it when it stops by INT, TERM, HUP or a command. `config.pid_file` sets it in the config file, and `--pid-file` is taken over it. If the file has the pid of a running process, the server doesn't start. The `stats` command shows it as `stats.pid_file`.
 
+### The secret of the cluster
+`config.cluster_secret`, a secret of 16 bytes or longer that the nodes of a cluster share, lets only a node with it join the cluster [#153](https://github.com/satoryu/roma/issues/153). Without it (the default), any node joins, as before.
+
+* `join`, `leave`, `setroute`, `switch_replication` and `rswitch_replication` need a connection authenticated by the secret, or reply `CLIENT_ERROR authentication required`. A node that joins without the secret stops with "needs the secret of the cluster".
+* A connection is authenticated by `auth_nonce`, which replies a nonce, and `auth <digest>`, the HMAC-SHA256 of the nonce by the secret, which replies `AUTHENTICATED`. The secret isn't sent. The connections between the nodes are authenticated when they are made.
+* The tools, such as `roma node send`, take the secret from the environment variable `ROMA_CLUSTER_SECRET`.
+* `reqpushv` pushes a vnode only to a node in the routing table, with or without the secret. It pushed to any host.
+* The clients' commands and `routingdump` don't need the secret.
+
 ### Fixes
 * A write that is sent to the replica cluster isn't also written to the write-behind files, where it made a file `wb/<node>//<date>/<n>.wb` and raised TypeError for each write [#134](https://github.com/satoryu/roma/issues/134)
 * The files that the server makes (storages, logs, write-behind, routing logs, the pid file) aren't readable by other users: the server sets the umask to `config.umask`, 0o027 by default, at start. They were made by the umask of the process, usually 0o022, so readable by everyone [#134](https://github.com/satoryu/roma/issues/134)

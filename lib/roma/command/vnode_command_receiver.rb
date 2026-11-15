@@ -110,6 +110,11 @@ module Roma
           send_data("CLIENT_ERROR usage:reqpushv vnode-id node-id primary-flag(true/false)\r\n")
           return
         end
+        # The vnode is pushed only to a node of the cluster, which joined it.
+        unless @routing_table.nodes.include?(s[2])
+          send_data("CLIENT_ERROR #{s[2]} is not in the routing table\r\n")
+          return
+        end
         if @stats.run_iterate_storage || @stats.run_join || @stats.run_balance
           @log.warn("reqpushv rejected:#{s}")
           send_data("REJECTED\r\n")

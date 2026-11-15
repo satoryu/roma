@@ -7,6 +7,7 @@ require 'eventmachine'
 require 'roma/logging/rlogger'
 require 'roma/dns_cache'
 require 'roma/event/em_connection'
+require 'roma/peer_auth'
 
 module Roma
   module Event
@@ -19,6 +20,9 @@ module Roma
       # connection is checked out. EventMachine closes the connection then,
       # and a fiber waiting for the answer gets nil.
       attr_accessor :timeout
+      # The secret of the cluster, by which a new connection is
+      # authenticated, or nil. See PeerAuth.
+      attr_accessor :secret
 
       def initialize
         @pool = {}
@@ -38,6 +42,20 @@ module Roma
         ret = create_connection(ap) if ret.nil? || ret.connected != true
         ret.comm_inactivity_timeout = @timeout
         ret
+      end
+
+      # Authenticates the connection +con+ by the secret, unless it was. It
+      # waits for the replies in the fiber of +con+, so it is called after
+      # checkout sets it. A node that rejects the secret still takes the
+      # commands without it.
+      def authenticate(con)
+        return if @secret.nil? || !con.authenticated.nil?
+
+        con.authenticated = PeerAuth.authenticate(con, @secret)
+        Logging::RLogger.instance.warn("#{con.ap} rejected the secret of the cluster") unless con.authenticated
+      rescue StandardError
+        con.close_connection
+        raise
       end
 
       def checkin(ap, con)

@@ -78,7 +78,11 @@ module Roma
       # if you want to activate, assign 1 node_id(addr_port) of replication cluster as argument.
       # if you want to copy existing data, add the 'all' after node_id as argument
       # switch_replication <true|false> [node_id] [copy target]
+      # It needs the authentication, since it sends the data to the nodes of
+      # another cluster.
       def ev_switch_replication(s)
+        return reply_authentication_required unless authenticated?
+
         error = switch_replication_error(s)
         return send_data(error) if error
 
@@ -91,6 +95,8 @@ module Roma
 
       # rswitch_replication <true|false> [node_id] [copy target]
       def ev_rswitch_replication(s)
+        return reply_authentication_required unless authenticated?
+
         error = switch_replication_error(s)
         return send_data(error) if error
 

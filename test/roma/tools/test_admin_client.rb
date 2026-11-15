@@ -2,6 +2,7 @@ require 'test_helper'
 require 'tool_test_helper'
 require 'roma/routing/routing_data'
 require 'roma/tools/admin_client'
+require 'auth_node'
 
 class AdminClientTest < Test::Unit::TestCase
   include ToolTestHelper
@@ -77,5 +78,42 @@ class AdminClientTest < Test::Unit::TestCase
     node_id = down_node
     error = assert_raise(Roma::Tools::Error) { client.command(node_id, 'whoami') }
     assert_match(/\A#{node_id}: .*refused/i, error.message)
+  end
+
+  SECRET = 'a secret of the cluster'.freeze
+
+  def test_request_with_the_secret
+    node = AuthNode.new(SECRET)
+    client = Roma::Tools::AdminClient.new(timeout: 0.5, secret: SECRET)
+    assert_equal 'AUTHENTICATED', client.request(node.node_id, 'whoami')
+  ensure
+    node&.close
+  end
+
+  def test_secret_from_the_environment
+    node = AuthNode.new(SECRET)
+    saved = ENV.fetch('ROMA_CLUSTER_SECRET', nil)
+    ENV['ROMA_CLUSTER_SECRET'] = SECRET
+    assert_equal 'AUTHENTICATED', client.request(node.node_id, 'whoami')
+  ensure
+    ENV['ROMA_CLUSTER_SECRET'] = saved
+    node&.close
+  end
+
+  def test_secret_rejected
+    node = AuthNode.new('another secret of a cluster')
+    client = Roma::Tools::AdminClient.new(timeout: 0.5, secret: SECRET)
+    assert_raise_message("#{node.node_id} rejected the secret of ROMA_CLUSTER_SECRET.") do
+      client.request(node.node_id, 'whoami')
+    end
+  ensure
+    node&.close
+  end
+
+  # A node that doesn't know the authentication.
+  def test_secret_to_a_node_without_the_authentication
+    node = fake_node
+    client = Roma::Tools::AdminClient.new(timeout: 0.5, secret: SECRET)
+    assert_raise(Roma::Tools::Error) { client.request(node.node_id, 'whoami') }
   end
 end

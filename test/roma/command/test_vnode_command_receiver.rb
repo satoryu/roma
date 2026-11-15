@@ -88,6 +88,13 @@ class VnodeCommandReceiverTest < Test::Unit::TestCase
     assert_equal ['reqpushv', ['0', OTHER_NODE_ID, 'true']], [msg.event, msg.args]
   end
 
+  # A vnode is pushed only to a node of the cluster, not to any host.
+  def test_reqpushv_to_a_node_out_of_the_routing_table
+    assert_equal "CLIENT_ERROR attacker_11211 is not in the routing table\r\n",
+                 @conn.request('reqpushv 0 attacker_11211 true')
+    assert_true Roma::AsyncEvent.queue.empty?
+  end
+
   data('iterating storage' => :run_iterate_storage, 'joining' => :run_join, 'balancing' => :run_balance)
   def test_reqpushv_rejected(flag)
     @conn.stats.send("#{flag}=", true)

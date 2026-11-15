@@ -188,4 +188,15 @@ class ConfigurationTest < Test::Unit::TestCase
       assert_match(/#{Regexp.escape(path)} defines Roma::Config, which ROMA 2.0 doesn't read\./, err)
     end
   end
+
+  # The error doesn't tell the secret.
+  def test_cluster_secret
+    assert_nil @config.cluster_secret
+    @config.cluster_secret = 'a secret of 16 b'
+    assert_equal 'a secret of 16 b', @config.cluster_secret
+    error = assert_raise(Roma::Configuration::Error) { @config.cluster_secret = 'too short' }
+    assert_not_include error.message, 'too short'
+    @config.cluster_secret = nil
+    assert_nil @config.cluster_secret
+  end
 end

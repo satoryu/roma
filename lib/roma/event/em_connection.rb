@@ -7,6 +7,9 @@ module Roma
       attr_writer :fiber
       attr_reader :connected
       attr_accessor :ap, :last_access
+      # Whether the node took the secret of the cluster, or nil before it is
+      # asked. See EMConnectionPool#authenticate.
+      attr_accessor :authenticated
 
       def post_init
         @read_buffer = ''
