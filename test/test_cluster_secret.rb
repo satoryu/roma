@@ -62,7 +62,11 @@ class ClusterSecretTest < Test::Unit::TestCase
     wait_join(JOIN_NODE)
 
     assert_equal "#{[*DEFAULT_NODES, JOIN_NODE].join(' ')}\r\n", request(DEFAULT_NODES[0], 'nodelist')
-    assert_operator @rc.stats(node: JOIN_NODE)['routing.primary'].to_i, :>, 0
+    # wait_join may return before the join process starts on a slow node.
+    assert_eventually_equal(true) do
+      stats = @rc.stats(node: JOIN_NODE)
+      stats['routing.primary'].to_i.positive? && stats['stats.run_join'] == 'false'
+    end
     @rc.update_rttable
     10.times { |i| assert_equal "value#{i}", @rc.get("key#{i}") }
   end
