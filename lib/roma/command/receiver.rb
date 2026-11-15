@@ -3,6 +3,7 @@ require 'roma/version'
 require 'roma/event/handler'
 require 'roma/messaging/connection_pool'
 require 'roma/command_plugin'
+require 'roma/command/auth_command_receiver'
 require 'roma/command/background_command_receiver'
 require 'roma/command/routing_command_receiver'
 require 'roma/command/util_command_receiver'
@@ -12,6 +13,7 @@ require 'roma/command/system_command_receiver'
 module Roma
   module Command
     class Receiver < Roma::Event::Handler
+      include AuthCommandReceiver
       include BackgroundCommandReceiver
       include RoutingCommandReceiver
       include UtilCommandReceiver
@@ -36,7 +38,8 @@ module Roma
       # Yields the system commands, those of the cluster and of the plugins
       # that CommandPlugin.system_commands names, if they are included.
       def self.each_system_commands
-        methods = RoutingCommandReceiver.public_instance_methods
+        methods = AuthCommandReceiver.public_instance_methods
+        methods << RoutingCommandReceiver.public_instance_methods
         methods << BackgroundCommandReceiver.public_instance_methods
         methods << SystemCommandReceiver.public_instance_methods
         CommandPlugin.system_command_plugins.each do |plugin|

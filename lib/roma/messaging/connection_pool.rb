@@ -1,6 +1,7 @@
 require 'socket'
 require 'singleton'
 require 'roma/dns_cache'
+require 'roma/peer_auth'
 
 module Roma
   module Messaging
@@ -11,6 +12,9 @@ module Roma
       # Seconds to wait for a node to connect, and for each read or write,
       # so that a node that hangs can't take a thread for ever.
       attr_accessor :timeout
+      # The secret of the cluster, by which a new connection is
+      # authenticated, or nil. See PeerAuth.
+      attr_accessor :secret
 
       def initialize(maxlength = 10, expire_time = 30)
         @pool = {}
@@ -74,7 +78,19 @@ module Roma
         addr = DNSCache.instance.resolve_name(host)
         sock = TCPSocket.new(addr, port, connect_timeout: @timeout)
         sock.timeout = @timeout
+        authenticate(ap, sock) if @secret
         sock
+      end
+
+      # A node that rejects the secret, such as one of another cluster for
+      # the cluster replication, still takes the commands without it.
+      def authenticate(ap, sock)
+        return if PeerAuth.authenticate(sock, @secret)
+
+        Logging::RLogger.instance.warn("#{ap} rejected the secret of the cluster")
+      rescue StandardError
+        sock.close
+        raise
       end
 
       def delete_connection(ap)

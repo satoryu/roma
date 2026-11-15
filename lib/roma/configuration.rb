@@ -19,8 +19,9 @@ module Roma
       BOOLEAN = [true, false].freeze
 
       # Declares a setting with its default. The value must be one of +one_of+,
-      # or of a class in +type+, or else +check+ returns false for it.
-      def self.setting(name, default, type: nil, one_of: nil, check: nil)
+      # or of a class in +type+, or else +check+ returns false for it. The
+      # error of a +secret+ one doesn't tell the value.
+      def self.setting(name, default, type: nil, one_of: nil, check: nil, secret: false)
         settings[name] = default
         attr_reader name
 
@@ -32,7 +33,7 @@ module Roma
                   end
           unless valid
             expected = one_of ? "one of #{one_of.map(&:inspect).join(', ')}" : "a valid #{Array(type).join(' or ')}"
-            raise Error, "#{path_of(name)} should be #{expected}: #{value.inspect}"
+            raise Error, "#{path_of(name)} should be #{expected}#{": #{value.inspect}" unless secret}"
           end
           instance_variable_set("@#{name}", value)
         end
@@ -226,6 +227,12 @@ module Roma
       # the logs, write-behind and the routing. 0o027 lets the group read
       # them and the others nothing; nil keeps that of the process.
       setting :umask, 0o027, type: [Integer, NilClass], check: ->(v) { v.nil? || (0..0o777).cover?(v) }
+      # The secret that the nodes of the cluster share, which a node needs to
+      # join it, and the commands that change it need, such as leave and
+      # setroute. The tools take it from the environment variable
+      # ROMA_CLUSTER_SECRET. It is 16 bytes or longer, and nil lets any node
+      # and tool do them.
+      setting :cluster_secret, nil, type: [String, NilClass], check: ->(v) { v.nil? || v.bytesize >= 16 }, secret: true
       group :routing, Routing
       group :log, Log
       group :connection, Connection

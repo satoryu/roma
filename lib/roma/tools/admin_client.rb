@@ -2,6 +2,7 @@ require 'io/wait'
 require 'socket'
 require 'timeout'
 require 'roma/tcp_fast_fallback'
+require 'roma/peer_auth'
 require 'roma/routing/routing_data'
 require 'roma/tools/error'
 
@@ -10,9 +11,12 @@ module Roma
     # Sends admin commands to nodes. The tools use it instead of the Sender
     # of roma-client, so that ROMA doesn't depend on its client.
     class AdminClient
-      # +timeout+ is how long to wait for a node, in seconds.
-      def initialize(timeout: 5)
+      # +timeout+ is how long to wait for a node, in seconds. With +secret+,
+      # the secret of the cluster, each connection is authenticated, so that
+      # the commands that need it are taken. See PeerAuth.
+      def initialize(timeout: 5, secret: ENV.fetch('ROMA_CLUSTER_SECRET', nil))
         @timeout = timeout
+        @secret = secret
       end
 
       # Gets the routing data of the node +node_id+. Raises Error if it can't.
@@ -71,11 +75,20 @@ module Roma
       def connect(node_id)
         host, port = node_id.split(/[:_]/)
         con = Timeout.timeout(@timeout) { TCPSocket.new(host, port) }
+        authenticate(node_id, con) if @secret
         yield con
-      rescue SystemCallError, SocketError, IOError, Timeout::Error => e
+      rescue SystemCallError, SocketError, IOError, Timeout::Error, PeerAuth::Error => e
         raise Error, "#{node_id}: #{e.message}"
       ensure
         con.close if con
+      end
+
+      private
+
+      def authenticate(node_id, con)
+        return if Timeout.timeout(@timeout) { PeerAuth.authenticate(con, @secret) }
+
+        raise Error, "#{node_id} rejected the secret of ROMA_CLUSTER_SECRET."
       end
     end
   end

@@ -31,6 +31,7 @@ require 'roma/write_behind/stream_writer'
 #   conn.broadcasts                           # => ["rset_hilatency_warn_time 3\r\n"]
 #   conn.close
 class CommandTestHarness
+  include Roma::Command::AuthCommandReceiver
   include Roma::Command::UtilCommandReceiver
   include Roma::Command::SystemCommandReceiver
   include Roma::Command::RoutingCommandReceiver
