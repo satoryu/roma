@@ -91,7 +91,8 @@ module Roma
 
       attr_reader :connected, :lastcmd, :last_access, :addr, :port
 
-      def initialize(storages, routing_table)
+      # +server+ is the Roma::Server that the connection is to.
+      def initialize(server)
         @read_buffer = ''
         unless has_event?
           public_methods.each do |m|
@@ -102,8 +103,9 @@ module Roma
         @close_rate = 70
         @th2 = 200
 
-        @storages = storages
-        @routing_table = routing_table
+        @server = server
+        @storages = server.storages
+        @routing_table = server.routing_table
         @log = Roma::Logging::RLogger.instance
         @last_access = Time.now
       end

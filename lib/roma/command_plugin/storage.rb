@@ -397,7 +397,7 @@ module Roma
       end
 
       # Whether the writes are sent to the replica cluster too.
-      def cluster_replication? = $roma.cluster_replication_writer.run_replication
+      def cluster_replication? = @server.cluster_replication_writer.run_replication
 
       def forward_get(node_id, k, _d)
         con = checkout_connection(node_id)

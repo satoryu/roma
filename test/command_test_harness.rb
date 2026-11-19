@@ -22,8 +22,8 @@ require 'roma/write_behind/stream_writer'
 #   answered with +relay_reply+.
 # - A fresh Roma::Stats and a real routing table of two nodes are made for
 #   each harness, so tests don't share settings.
-# - $roma (the running server) and the command lists of Roma::Event::Handler
-#   are replaced only while a command runs.
+# - The command lists of Roma::Event::Handler are replaced only while a
+#   command runs.
 #
 #   conn = CommandTestHarness.new
 #   conn.request('set_hilatency_warn_time 3') # => "{...}\r\n"
@@ -102,7 +102,7 @@ class CommandTestHarness
     end
   end
 
-  # Stands in for $roma, the running server.
+  # Stands in for the running server.
   class Server
     attr_accessor :wb_writer, :cluster_replication_writer, :eventloop, :startup
     # How many times the storage clean up was stopped.
@@ -219,15 +219,12 @@ class CommandTestHarness
   private
 
   def with_globals
-    saved_server = defined?($roma) ? $roma : nil
     saved_event_list = Roma::Event::Handler.event_list.dup
     saved_system_commands = Roma::Event::Handler.system_commands.dup
-    $roma = @server
     Roma::Event::Handler.event_list.replace(EVENT_LIST)
     Roma::Event::Handler.system_commands.replace(SYSTEM_COMMANDS)
     yield
   ensure
-    $roma = saved_server
     Roma::Event::Handler.event_list.replace(saved_event_list)
     Roma::Event::Handler.system_commands.replace(saved_system_commands)
   end

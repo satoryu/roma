@@ -35,7 +35,7 @@ class PluginTestHarness
   Stats = Struct.new(:wb_command_map, :read_count, :write_count, :delete_count,
                      :compression_threshold, :my_node_id)
 
-  # Stands in for $roma, the running server, which some commands look at.
+  # Stands in for the running server, which some commands look at.
   Server = Struct.new(:cluster_replication_writer)
   ClusterReplicationWriter = Struct.new(:run_replication)
 
@@ -123,14 +123,7 @@ class PluginTestHarness
     @read_buffer = rest.dup
     @wbuf = String.new
     s = line.split(/ /)
-    # Set $roma only while the command runs, so it doesn't leak into other tests.
-    saved_server = defined?($roma) ? $roma : nil
-    $roma = @server
-    begin
-      send("ev_#{s[0]}", s)
-    ensure
-      $roma = saved_server
-    end
+    send("ev_#{s[0]}", s)
     @wbuf
   end
 

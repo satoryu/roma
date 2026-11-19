@@ -76,13 +76,12 @@ module RequestPath
 
     Dir.chdir(dir)
     require 'roma/server'
-    # The commands find the node in $roma, as in roma server.
-    server = $roma = Roma::Server.new(%w(localhost -p 11211 --config config.rb --disable-command-protection)) # rubocop:disable Style/GlobalVars
+    server = Roma::Server.new(%w(localhost -p 11211 --config config.rb --disable-command-protection))
     server.storages.each_value(&:opendb)
     # The dispatcher asks how many connections there are.
     EventMachine.define_singleton_method(:connection_count) { 1 }
     conn = Roma::Command::Receiver.allocate
-    conn.send(:initialize, server.storages, server.routing_table)
+    conn.send(:initialize, server)
     conn.extend(Offline)
     conn.instance_eval do
       @replies = String.new

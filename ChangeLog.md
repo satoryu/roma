@@ -122,6 +122,7 @@ The server loads the command plugins by a convention, instead of a list in the c
 * The helpers of `Command::UtilCommandReceiver`, such as `forward_and_one_line_receive` and `push_to_write_behind`, are private: a plugin calls them on itself, as before. `Event::Handler#exit`, which stopped the event loop instead of `Kernel#exit`, is removed [#117](https://github.com/satoryu/roma/issues/117)
 * A connection of `checkout_connection` sends by `write`, as a socket does (`send` before, which hid `Object#send`) [#117](https://github.com/satoryu/roma/issues/117)
 * `roma config create` doesn't ask for the plugins.
+* The global variable `$roma` is removed. A command reaches the running server by `@server`, which `Event::Handler.new` takes instead of the storages and the routing table [#157](https://github.com/satoryu/roma/issues/157)
 
 ### The default config file
 * Without `--config`, `roma server` loads `config.rb` in the current directory, where `roma config create` and `roma new` make it. Without the file, the server runs with the defaults, as before. The log tells which file the server loaded.
