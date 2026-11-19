@@ -431,24 +431,34 @@ module Roma
       raise "ROMA has already contained #{@stats.my_node_id}." if routing_data.nodes.include?(@stats.my_node_id)
 
       @routing_table = routing_table_class.new(routing_data, fname)
-      nodes = @routing_table.nodes
-
-      nodes.each do |node_id|
-        res = begin
-          con = Roma::Messaging::ConnectionPool.instance.checkout(node_id)
-          con.write("join #{@stats.my_node_id}\r\n")
-          con.gets
-        rescue StandardError
-          raise "Hotscale initialize failed.\n#{node_id} unreachable connection."
-        end
-        if res == "CLIENT_ERROR authentication required\r\n"
-          raise "Hotscale initialize failed.\n#{node_id} needs the secret of the cluster, config.cluster_secret."
-        end
-        raise "Hotscale initialize failed.\n#{node_id} is busy." if res != "ADDED\r\n"
-
-        Roma::Messaging::ConnectionPool.instance.checkin(node_id, con)
-      end
+      @routing_table.nodes.each { |node_id| request_join(node_id) }
       @routing_table.add_node(@stats.my_node_id)
+    end
+
+    # Asks +node_id+ to add this node to its routing table. Raises if it
+    # doesn't.
+    def request_join(node_id)
+      case send_join(node_id)
+      when "ADDED\r\n"
+        nil
+      when "CLIENT_ERROR authentication required\r\n"
+        raise "Hotscale initialize failed.\n#{node_id} needs the secret of the cluster, config.cluster_secret."
+      else
+        raise "Hotscale initialize failed.\n#{node_id} is busy."
+      end
+    end
+
+    # Sends join to +node_id+, and returns the reply, or nil if the
+    # connection is closed. Raises if it can't connect.
+    def send_join(node_id)
+      pool = Roma::Messaging::ConnectionPool.instance
+      con = pool.checkout(node_id)
+      con.write("join #{@stats.my_node_id}\r\n")
+      reply = con.gets
+      pool.checkin(node_id, con) if reply
+      reply
+    rescue StandardError
+      raise "Hotscale initialize failed.\n#{node_id} unreachable connection."
     end
 
     def routing_table_class
