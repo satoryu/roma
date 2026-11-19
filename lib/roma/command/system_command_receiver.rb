@@ -53,7 +53,7 @@ module Roma
       POSITIVE_INTEGER_TIME = ->(v) { 'time value must be lager than 0' if v.to_i <= 0 }
       POSITIVE_SIZE = ->(v) { 'size value must be larger than 0' if v.to_i <= 0 }
       LOG_SHIFT_AGE = lambda do |v|
-        'invalid arguments' if v.to_i < 1 && !%w(0 min hour daily weekly monthly).include?(v)
+        'invalid arguments' if v.to_i < 1 && v != '0' && !Configuration::Log::PERIODS.include?(v)
       end
 
       # balse [reason]
@@ -237,8 +237,8 @@ module Roma
       def ev_set_log_level(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        level = Roma::Logging::RLogger::Severity::LEVELS[s[1].downcase.to_sym]
-        return send_data("CLIENT_ERROR no match log-level string\r\n") unless level
+        level = s[1].downcase.to_sym
+        return send_data("CLIENT_ERROR no match log-level string\r\n") unless Configuration::Log::LEVELS.include?(level)
 
         @logger.level = level
         @stats.log_level = s[1].downcase
@@ -589,15 +589,15 @@ module Roma
 
       # set_log_shift_size <size>
       def_setting_command :log_shift_size, POSITIVE_LENGTH do |v|
-        @logger.shift_size = v.to_i
+        @logger.reopen(nil, nil, v.to_i)
         @stats.log_shift_size = v.to_i
       end
 
       # set_log_shift_age <age>
-      # The age is a number of files, or min, hour, daily, weekly or monthly.
+      # The age is a number of files, or daily, weekly or monthly.
       def_setting_command :log_shift_age, LOG_SHIFT_AGE do |v|
         age = v.to_i > 0 || v == '0' ? v.to_i : v
-        @logger.shift_age = age
+        @logger.reopen(nil, age)
         @stats.log_shift_age = age
       end
 

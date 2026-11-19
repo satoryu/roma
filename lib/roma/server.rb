@@ -7,7 +7,7 @@ require 'roma/peer_command'
 require 'roma/cluster_maintenance'
 require 'roma/pid_file'
 require 'roma/write_behind'
-require 'roma/logging/rlogger'
+require 'logger'
 require 'roma/command/receiver'
 require 'roma/messaging/connection_pool'
 require 'roma/event/em_connection_pool'
@@ -315,8 +315,8 @@ module Roma
 
     def initialize_logger
       log = Roma.config.log
-      @logger = Roma::Logging::RLogger.new("#{log.path}/#{@stats.my_node_id}.log", log.shift_age, log.shift_size)
-      @logger.level = Roma::Logging::RLogger::Severity::LEVELS.fetch(log.level)
+      @logger = Logger.new("#{log.path}/#{@stats.my_node_id}.log", log.shift_age, log.shift_size)
+      @logger.level = log.level
     end
 
     def initialize_options(address, port:, join:, name:, config:, pid_file:, daemon:, verbose:,

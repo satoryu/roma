@@ -1,5 +1,3 @@
-require 'roma/logging/rlogger'
-
 module Roma
   # The settings of roma server. A config file sets them in Roma.configure:
   #
@@ -20,8 +18,9 @@ module Roma
 
       # Declares a setting with its default. The value must be one of +one_of+,
       # or of a class in +type+, or else +check+ returns false for it. The
-      # error of a +secret+ one doesn't tell the value.
-      def self.setting(name, default, type: nil, one_of: nil, check: nil, secret: false)
+      # error tells +expected+, what the value should be, and the value unless
+      # it is +secret+.
+      def self.setting(name, default, type: nil, one_of: nil, check: nil, expected: nil, secret: false)
         settings[name] = default
         attr_reader name
 
@@ -32,7 +31,7 @@ module Roma
                     Array(type).any? { |t| t === value } && (check.nil? || check.call(value))
                   end
           unless valid
-            expected = one_of ? "one of #{one_of.map(&:inspect).join(', ')}" : "a valid #{Array(type).join(' or ')}"
+            expected ||= one_of ? "one of #{one_of.map(&:inspect).join(', ')}" : "a valid #{Array(type).join(' or ')}"
             raise Error, "#{path_of(name)} should be #{expected}#{": #{value.inspect}" unless secret}"
           end
           instance_variable_set("@#{name}", value)
@@ -101,10 +100,17 @@ module Roma
     end
 
     class Log < Group
+      # The levels that level and set_log_level take.
+      LEVELS = %i(debug info warn error).freeze
+      # The periods that shift_age and set_log_shift_age take, besides a
+      # number of files.
+      PERIODS = %w(daily weekly monthly).freeze
+
       setting :path, '.', type: String
-      setting :level, :info, one_of: Roma::Logging::RLogger::Severity::LEVELS.keys
+      setting :level, :info, one_of: LEVELS
       # The files to keep, or 'daily', 'weekly' or 'monthly'.
-      setting :shift_age, 10, type: [Integer, String]
+      setting :shift_age, 10, type: [Integer, String], check: ->(v) { v.is_a?(Integer) ? v >= 0 : PERIODS.include?(v) },
+                              expected: "a number of files, or one of #{PERIODS.join(', ')}"
       setting :shift_size, 1024 * 1024 * 10, type: Integer
       setting :stream_show_wait, 0.001, type: Numeric
     end

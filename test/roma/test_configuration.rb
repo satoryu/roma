@@ -42,6 +42,12 @@ class ConfigurationTest < Test::Unit::TestCase
     assert_nil @config.storage.option
   end
 
+  data('files' => 3, 'none' => 0, 'daily' => 'daily', 'weekly' => 'weekly', 'monthly' => 'monthly')
+  def test_log_shift_age(age)
+    @config.log.shift_age = age
+    assert_equal age, @config.log.shift_age
+  end
+
   data('type' => [->(c) { c.port = '11211' }, /\Aport should be a valid Integer: "11211"\z/],
        'check' => [->(c) { c.port = 0 }, /\Aport should be a valid Integer: 0\z/],
        'one of' => [->(c) { c.routing.lost_action = :foo },
@@ -54,7 +60,12 @@ class ConfigurationTest < Test::Unit::TestCase
        'engine' => [lambda { |c|
          c.storage.engine = :'my-kvs'
        }, /\Astorage.engine should be a valid Symbol or Class: :"my-kvs"\z/],
-       'command plugin path' => [->(c) { c.command_plugin_path = nil }, /\Acommand_plugin_path should be/])
+       'command plugin path' => [->(c) { c.command_plugin_path = nil }, /\Acommand_plugin_path should be/],
+       'log level' => [->(c) { c.log.level = :trace }, /\Alog.level should be one of :debug, :info, :warn, :error/],
+       'log shift age by the hour' => [lambda { |c|
+         c.log.shift_age = 'hour'
+       }, /\Alog.shift_age should be a number of files, or one of daily, weekly, monthly: "hour"\z/],
+       'negative log shift age' => [->(c) { c.log.shift_age = -1 }, /\Alog.shift_age should be/])
   def test_wrong_value(data)
     set, message = data
     error = assert_raise(Roma::Configuration::Error) { set.call(@config) }
