@@ -152,9 +152,13 @@ The server loads the command plugins by a convention, instead of a list in the c
 * `reqpushv` pushes a vnode only to a node in the routing table, with or without the secret. It pushed to any host.
 
 ### The logger
-The server makes the logger and gives it to what logs, instead of a singleton [#164](https://github.com/satoryu/roma/issues/164).
+The server logs by the standard `Logger`, which it makes and gives to what logs, instead of the singleton of `Roma::Logging::RLogger` [#164](https://github.com/satoryu/roma/issues/164).
 
-* `Roma::Logging::RLogger.instance` and `create_singleton_instance` are removed. A command logs by `@logger`, which is `Roma::Server#logger`.
+* `Roma::Logging::RLogger` is removed, and logger 1.7 or later is needed. `set_log_shift_age` and `set_log_shift_size` change the rotation by `Logger#reopen`.
+* `config.log.shift_age` and `set_log_shift_age` don't take `min` and `hour`: a number of files, `daily`, `weekly` or `monthly`. A log rotated by a period is named `*.log.YYYYMMDD` (`*.log.YYYYMMDDhhmm` before).
+* The TRACE level, which nothing logged at, is removed.
+
+* A command logs by `@logger`, which is `Roma::Server#logger`.
 * `RoutingTable.new` and `ChurnbasedRoutingTable.new` take `logger:`, so a class of `config.routing.table_class` is made with `(routing_data, file, logger:)`.
 * `Stats#record_latency` gives the summary of the latencies to its block, instead of logging it.
 * `Roma::Logging::StderrWrapper`, which nothing used, is removed.

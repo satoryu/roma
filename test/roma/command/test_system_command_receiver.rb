@@ -90,6 +90,20 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
     assert_equal 4096, @conn.logger.shift_size
   end
 
+  # The rotation that the commands set takes effect on a log file.
+  def test_log_rotation_set_on_a_log_file
+    Dir.mktmpdir('roma_log') do |dir|
+      file = File.join(dir, 'roma.log')
+      @conn.instance_variable_set(:@logger, Logger.new(file, 0))
+      @conn.request('set_log_shift_age 2')
+      @conn.request('set_log_shift_size 100')
+      3.times { @conn.logger.info('x' * 100) }
+      assert_equal ['roma.log', 'roma.log.0'], Dir.children(dir).sort
+    ensure
+      @conn.logger.close
+    end
+  end
+
   data('number' => ['7', 7], 'zero' => ['0', 0], 'name' => %w(daily daily))
   def test_set_log_shift_age(data)
     value, stored = data
@@ -102,6 +116,7 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
 
   def test_set_log_shift_age_with_invalid_value
     assert_equal "CLIENT_ERROR invalid arguments\r\n", @conn.request('set_log_shift_age yearly')
+    assert_equal "CLIENT_ERROR invalid arguments\r\n", @conn.request('set_log_shift_age hour')
     assert_equal "CLIENT_ERROR invalid arguments\r\n", @conn.request('rset_log_shift_age yearly')
     assert_equal 0, @conn.stats.log_shift_age
   end

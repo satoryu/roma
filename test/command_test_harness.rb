@@ -48,12 +48,19 @@ class CommandTestHarness
   EVENT_LIST = { 'get' => :ev_get, 'set' => :ev_set, 'delete' => :ev_delete, 'balse' => :ev_balse }
   SYSTEM_COMMANDS = { 'balse' => nil }
 
-  # A logger that also remembers what the commands set on RLogger.
+  # A logger that writes nowhere, and remembers the rotation that the
+  # commands set by reopen.
   class Log < ::Logger
-    attr_accessor :shift_size, :shift_age
+    attr_reader :shift_age, :shift_size
 
     def initialize
       super(nil)
+    end
+
+    def reopen(_logdev = nil, shift_age = nil, shift_size = nil, **)
+      @shift_age = shift_age unless shift_age.nil?
+      @shift_size = shift_size unless shift_size.nil?
+      self
     end
   end
 
