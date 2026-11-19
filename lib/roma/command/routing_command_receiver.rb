@@ -28,7 +28,7 @@ module Roma
       def ev_leave(s)
         return irregular_node_id_error(s[1]) unless valid_node_id?(s[1])
 
-        @log.warn("receive a leave #{s[1]} message.")
+        @logger.warn("receive a leave #{s[1]} message.")
         @routing_table.leave(s[1])
         send_data("DELETED\r\n")
       end

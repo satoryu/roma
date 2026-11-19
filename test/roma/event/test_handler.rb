@@ -92,7 +92,7 @@ class HandlerTest < Test::Unit::TestCase
     handler.define_singleton_method(:send_data) { |data| replies << data }
     handler.define_singleton_method(:close_connection_after_writing) { closed << :after_writing }
     handler.instance_variable_set(:@connected, true)
-    handler.instance_variable_set(:@log, Logger.new(nil))
+    handler.instance_variable_set(:@logger, Logger.new(nil))
     handler.send(:dispatcher)
     assert_equal ["SERVER_ERROR line too long\r\n"], replies
     assert_equal [:after_writing], closed

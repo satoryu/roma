@@ -106,19 +106,19 @@ module Roma
         @server = server
         @storages = server.storages
         @routing_table = server.routing_table
-        @log = Roma::Logging::RLogger.instance
+        @logger = Roma::Logging::RLogger.instance
         @last_access = Time.now
       end
 
       def post_init
         @port, @addr = Socket.unpack_sockaddr_in(get_peername)
-        @log.info("Connected from #{@addr}:#{@port}. I have #{EM.connection_count} connections.")
+        @logger.info("Connected from #{@addr}:#{@port}. I have #{EM.connection_count} connections.")
         @connected = true
         @last_access = Time.now
         @@connections[self] = @last_access
         @fiber = Fiber.new { dispatcher }
       rescue Exception => e
-        @log.error("#{__FILE__}:#{__LINE__}:#{e.inspect} #{$@}")
+        @logger.error("#{__FILE__}:#{__LINE__}:#{e.inspect} #{$@}")
       end
 
       def receive_data(data)
@@ -126,7 +126,7 @@ module Roma
         @last_access = Time.now
         @fiber.resume
       rescue Exception => e
-        @log.error("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} #{e.inspect} #{$@}")
+        @logger.error("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} #{e.inspect} #{$@}")
       end
 
       def unbind
@@ -140,11 +140,11 @@ module Roma
         if @enter_time
           # hilatency check
           ps = monotonic_time - @enter_time
-          @log.warn("#{@lastcmd} has incompleted, passage of #{ps} seconds") if ps > @stats.hilatency_warn_time
+          @logger.warn("#{@lastcmd} has incompleted, passage of #{ps} seconds") if ps > @stats.hilatency_warn_time
         end
-        @log.info("Disconnected from #{@addr}:#{@port}")
+        @logger.info("Disconnected from #{@addr}:#{@port}")
       rescue Exception => e
-        @log.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} #{e.inspect} #{$@}")
+        @logger.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} #{e.inspect} #{$@}")
       end
 
       protected
@@ -172,7 +172,7 @@ module Roma
 
       def dispatcher
         @stats = Roma::Stats.instance
-        # @log.debug("Roma::Event::Handler.dipatcher called")
+        # @logger.debug("Roma::Event::Handler.dipatcher called")
         while @connected
           @enter_time = nil
           next unless s = gets
@@ -196,7 +196,7 @@ module Roma
               send_data("\r\nERROR: '#{s[0]}' is not roma command.\r\nDid you mean this?\r\n\t#{similar_cmd}\r\n")
               next
             else
-              @log.warn("command error:#{s}")
+              @logger.warn("command error:#{s}")
               send_data("ERROR: '#{s[0]}' is not roma command. Please check command.\r\n(closing telnet connection command is 'quit')\r\n")
               next
             end
@@ -204,7 +204,7 @@ module Roma
 
           # hilatency check
           ps = monotonic_time - @enter_time
-          @log.warn("hilatency occurred in #{@lastcmd} put in a #{ps} seconds") if ps > @stats.hilatency_warn_time
+          @logger.warn("hilatency occurred in #{@lastcmd} put in a #{ps} seconds") if ps > @stats.hilatency_warn_time
           # check latency average
           @stats.record_latency(@lastcmd[0], ps) if @stats.latency_log && @stats.latency_check_cmd.include?(@lastcmd[0])
 
@@ -214,22 +214,22 @@ module Roma
 
           send_data("ERROR\r\n")
           close_connection_after_writing
-          @log.warn("Connection count > #{@@continuous_limit_start}:closed")
+          @logger.warn("Connection count > #{@@continuous_limit_start}:closed")
         end
       rescue Storage::StorageException => e
-        @log.error("#{e.inspect} #{s} #{$@}")
+        @logger.error("#{e.inspect} #{s} #{$@}")
         send_data("SERVER_ERROR #{e} in storage engine\r\n")
         close_connection_after_writing
         if Roma.config.storage.exception_action == :shutdown
-          @log.error('The server will stop')
+          @logger.error('The server will stop')
           @stop_event_loop = true
         end
       rescue RequestTooLarge => e
-        @log.warn("#{@addr}:#{@port} #{e.message}")
+        @logger.warn("#{@addr}:#{@port} #{e.message}")
         send_data("SERVER_ERROR #{e.message}\r\n")
         close_connection_after_writing
       rescue Exception => e
-        @log.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} #{e} #{$@}")
+        @logger.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} #{e} #{$@}")
         close_connection
       end
 
@@ -258,7 +258,7 @@ module Roma
           Fiber.yield(remain)
           next unless monotonic_time - t > @@timeout * mult
 
-          @log.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} read_bytes time out")
+          @logger.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} read_bytes time out")
           close_connection
           return nil
 

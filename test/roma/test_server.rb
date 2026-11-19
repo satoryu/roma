@@ -44,7 +44,7 @@ module ServerTestHelper
     stats.name = 'ROMA'
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
     routing_data.routes.each_key { |vnode| routing_data.routes[vnode] = nodes.dup }
-    set(stats: stats, log: Logger.new(nil), startup: true,
+    set(stats: stats, logger: Logger.new(nil), startup: true,
         routing_table: Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route.yml')),
         storages: {})
     @server
@@ -242,7 +242,7 @@ class ServerInitializeTest < Test::Unit::TestCase
     stats.address = 'servertest'
     stats.port = Process.pid.to_s
     stats.name = 'ROMA'
-    set(stats: stats, log: Logger.new(nil))
+    set(stats: stats, logger: Logger.new(nil))
     @files = []
   end
 
@@ -470,7 +470,7 @@ class ServerTimerTest < Test::Unit::TestCase
   def test_run_periodically
     server
     log = StringIO.new
-    set(log: Logger.new(log))
+    set(logger: Logger.new(log))
     calls = Queue.new
     @server.define_singleton_method(:job) do
       calls << :called
@@ -629,7 +629,7 @@ class ServerSendCmdTest < Test::Unit::TestCase
   # The value of a command such as rset isn't logged.
   def test_async_send_cmd_logs_no_value
     log = StringIO.new
-    set(log: Logger.new(log))
+    set(logger: Logger.new(log))
     assert_nil call(:async_send_cmd, 'localhost_1', "rset key 1 2 0 6\r\nsecret\r\n")
     assert_match(/command is rset key 1 2 0 6\./, log.string)
     assert_not_match(/secret/, log.string)

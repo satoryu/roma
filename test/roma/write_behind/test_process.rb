@@ -20,7 +20,7 @@ class WriteBehindProcessTest < Test::Unit::TestCase
     def initialize(wb_writer, cluster_replication_writer)
       @wb_writer = wb_writer
       @cluster_replication_writer = cluster_replication_writer
-      @log = Logger.new(nil)
+      @logger = Logger.new(nil)
     end
   end
 

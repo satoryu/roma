@@ -10,8 +10,8 @@ module Roma
       attr_reader :replica_mklhash, :replica_nodelist, :replica_rttable
 
       # +pool+ gives the connections to the nodes of the replica cluster.
-      def initialize(log, pool: Roma::Messaging::ConnectionPool.instance)
-        @log = log
+      def initialize(logger, pool: Roma::Messaging::ConnectionPool.instance)
+        @logger = logger
         @pool = pool
         @run_replication = false
         @run_existing_data_replication = false
@@ -62,7 +62,7 @@ module Roma
         @replica_nodelist.shift
         if @replica_nodelist.length == 0
           @run_replication = false
-          @log.error('Replicate Cluster was down.')
+          @logger.error('Replicate Cluster was down.')
         else
           retry
         end
@@ -74,10 +74,10 @@ module Roma
           con.write("mklhash 0\r\n")
           @replica_mklhash = con.gets.chomp
           @pool.checkin(node_id, con)
-          @log.debug("replica_mklhash has updated: [#{@replica_mklhash}]")
+          @logger.debug("replica_mklhash has updated: [#{@replica_mklhash}]")
         end
       rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
       end
 
       def update_nodelist(node_id)
@@ -86,10 +86,10 @@ module Roma
           con.write("nodelist\r\n")
           @replica_nodelist = con.gets.chomp.split("\s")
           @pool.checkin(node_id, con)
-          @log.debug("replica_nodelist has updated: #{@replica_nodelist}")
+          @logger.debug("replica_nodelist has updated: #{@replica_nodelist}")
         end
       rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
       end
 
       def update_rttable(node_id)
@@ -99,7 +99,7 @@ module Roma
           routes_length = con.gets.to_i
           if routes_length <= 0
             con.close
-            @log.error("#{__method__} process was failed.\r\n") if routes_length < 0
+            @logger.error("#{__method__} process was failed.\r\n") if routes_length < 0
             return nil
           end
 
@@ -110,10 +110,10 @@ module Roma
           routing_data = Roma::Routing::RoutingData.decode_binary(routes)
           @pool.checkin(node_id, con)
           @replica_rttable = routing_data
-          @log.debug("replica_rttable has updated: [#{@replica_rttable}]")
+          @logger.debug("replica_rttable has updated: [#{@replica_rttable}]")
         end
       rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
         nil
       end
 
@@ -122,7 +122,7 @@ module Roma
         nodes = @replica_rttable.routes[d & @replica_rttable.search_mask]
         nodes[0] # for send primary node of replica cluster
       rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
         nil
       end
 
@@ -137,8 +137,8 @@ module Roma
           @pool.checkin(node_id, con)
         end
       rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
-        @log.error("replication error: key=#{key} value=(#{value.to_s.bytesize} bytes)\r\n")
+        @logger.error("#{e}\n#{$@}")
+        @logger.error("replication error: key=#{key} value=(#{value.to_s.bytesize} bytes)\r\n")
       ensure
         @do_transmit = false
       end

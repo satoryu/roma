@@ -12,7 +12,7 @@ module Roma
       attr_accessor :failure_count_threshold, :failure_count_gap, :node_id_substitutions
 
       def initialize(routing_data)
-        @log = Roma::Logging::RLogger.instance
+        @logger = Roma::Logging::RLogger.instance
         @routing_data = routing_data
         @redundancy = @routing_data.redundancy
         @divide_bits = @routing_data.divide_bits
@@ -110,7 +110,7 @@ module Roma
         # delet node_id from list
         @routing_data.routes.each_pair do |vnode, node_ids|
           node_ids.delete_if { |other_node_id| other_node_id == node_id }
-          @log.error("Vnode data is lost.(Vnode=#{vnode})") if node_ids.length == 0
+          @logger.error("Vnode data is lost.(Vnode=#{vnode})") if node_ids.length == 0
           @merkle_tree.set(vnode, node_ids)
         end
         @failure_counts.delete(node_id)
@@ -194,7 +194,7 @@ module Roma
         if addr =~ /(\d+)\.(\d+)\.(\d+)\.(\d+)/
           iaddr = (::Regexp.last_match(1).to_i << 24) + (::Regexp.last_match(2).to_i << 16) + (::Regexp.last_match(3).to_i << 8) + ::Regexp.last_match(4).to_i
         else
-          @log.error("#{__method__}:Illigal format addr #{addr}")
+          @logger.error("#{__method__}:Illigal format addr #{addr}")
           return false
         end
 
@@ -202,7 +202,7 @@ module Roma
           imask_addr = (::Regexp.last_match(1).to_i << 24) + (::Regexp.last_match(2).to_i << 16) + (::Regexp.last_match(3).to_i << 8) + ::Regexp.last_match(4).to_i
           imask = ((2**::Regexp.last_match(5).to_i) - 1) << (32 - ::Regexp.last_match(5).to_i)
         else
-          @log.error("#{__method__}:Illigal format mask #{mask}")
+          @logger.error("#{__method__}:Illigal format mask #{mask}")
           return false
         end
         (iaddr & imask) == (imask_addr & imask)

@@ -133,7 +133,7 @@ module Roma
       rescue SafeMarshal::Error => e
         send_data("SERVER_ERROR stored data can't be loaded: #{e.message}\r\n")
       rescue LocalJumpError => e
-        @log.warn("#{e} #{$@}")
+        @logger.warn("#{e} #{$@}")
         e.exit_value
       end
 

@@ -111,7 +111,7 @@ class DefinitionTestReceiver
     @stats = Struct.new(:my_node_id).new(:my_node_id)
     @routing_table = RtStub.new
     @default_hash_name = 'roma'
-    @log = LogStub.new
+    @logger = LogStub.new
     @storages = Hash.new(StorageStub.new)
   end
 
