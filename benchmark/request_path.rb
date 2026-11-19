@@ -76,7 +76,7 @@ module RequestPath
 
     Dir.chdir(dir)
     require 'roma/server'
-    server = Roma::Server.new(%w(localhost -p 11211 --config config.rb --disable-command-protection))
+    server = Roma::Server.new('localhost', port: 11_211, config: 'config.rb', disable_command_protection: true)
     server.storages.each_value(&:opendb)
     # The dispatcher asks how many connections there are.
     EventMachine.define_singleton_method(:connection_count) { 1 }

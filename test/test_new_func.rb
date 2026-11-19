@@ -89,22 +89,6 @@ class NewFuncTest < Test::Unit::TestCase
     assert_equal("ROMA\n", res)
   end
 
-  def test_server_option
-    res = `#{bin_dir}/roma server -h`
-    assert_equal("usage:roma server [options] address
-    -d, --daemon
-    -j, --join [address:port]
-    -p, --port [PORT]
-        --verbose
-    -n, --name [name]
-        --replication-in-host        Allow redundancy to same host
-        --disable-command-protection Command protection disable while starting
-        --config FILE                Load the config file (default: config.rb if it exists)
-        --pid-file PATH              Write the pid to the file, and remove it when the server stops
-    -h, --help                       Show this message
-    -v, --version                    Show version", res.chomp)
-  end
-
   def test_waiting_node
     log = File.read('./localhost_11211.log')
     assert_equal(true, log.include?("I'm waiting for booting the localhost_11211 instance"))

@@ -27,6 +27,8 @@ Some options are words too: `--hash`, `--divide` and `--redundant` of `roma rout
 
 `--disabled_cmd_protect` of romad (`roma server`) is `--disable-command-protection`, and `--enabled_repeathost`, which was deprecated, is removed: use `--replication-in-host`. `roma server` takes the options with underscores too, such as `--replication_in_host`. `stats.enabled_repetition_host_in_routing` of the `stats` command is `stats.replication_in_host`.
 
+`roma server` parses its options as the other commands do, and `roma help server` lists them [#159](https://github.com/satoryu/roma/issues/159). The help and the errors are in the format of the other commands. `--join` (`-j`) needs a value, and `--port` (`-p`) an integer. `roma server -v` is `roma --version` (`roma -v`). `Roma::Server.new` takes the address and keyword arguments, such as `Roma::Server.new('localhost', port: 11211, join: 'localhost_11212')`, instead of the arguments of the command, and raises `Roma::Configuration::Error` instead of exiting.
+
 The tools print errors on the standard error and exit with 1.
 
 These tools are removed, as they are not needed [#51](https://github.com/satoryu/roma/issues/51):

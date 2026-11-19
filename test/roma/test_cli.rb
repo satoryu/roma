@@ -319,27 +319,89 @@ class CLITest < Test::Unit::TestCase
     assert_equal [[:new, %w(host1_1 host2_1), {}], [:run, [modes], expected]], calls
   end
 
-  # The server parses the options, and tells its usage.
-  data('--help' => '--help', '-h' => '-h')
-  def test_server_help(option)
-    out, _err, status = run_roma('server', option)
-    assert_true status.success?
-    assert_match(/\Ausage:roma server \[options\] address\n\s+-d, --daemon\n/, out)
+  # Records what roma server gives Roma::Server.run, instead of running it.
+  def spy_server
+    require 'roma/server'
+    calls = []
+    Roma::Server.define_singleton_method(:run) { |address, **options| calls << [address, options] }
+    yield
+    calls
+  ensure
+    Roma::Server.singleton_class.send(:remove_method, :run)
   end
 
-  data('no address' => [[], /\Aparse error: \nusage:roma server/],
-       'unknown option' => [%w(--unknown localhost), /\Ainvalid option: --unknown\nusage:roma server/],
-       'wrong port' => [%w(localhost -p abc), /\Aparse error: Port number is not numeric\./])
+  SERVER_DEFAULTS = { port: nil, join: nil, name: nil, config: nil, pid_file: nil, daemon: false, verbose: false,
+                      replication_in_host: false, disable_command_protection: false }.freeze
+
+  def test_server
+    calls = spy_server { roma('server', 'localhost') }
+    assert_equal [['localhost', SERVER_DEFAULTS]], calls
+  end
+
+  def test_server_options
+    calls = spy_server do
+      roma('server', 'localhost', '-p', '11300', '-j', 'roma1:11211', '-n', 'cluster', '--config', 'my.rb',
+           '--pid-file', 'roma.pid', '-d', '--verbose', '--replication-in-host', '--disable-command-protection')
+    end
+    expected = { port: 11_300, join: 'roma1_11211', name: 'cluster', config: 'my.rb', pid_file: 'roma.pid',
+                 daemon: true, verbose: true, replication_in_host: true, disable_command_protection: true }
+    assert_equal [['localhost', expected]], calls
+  end
+
+  # The options with underscores are taken too, as romad of ROMA 1.x had them.
+  def test_server_options_with_underscores
+    calls = spy_server do
+      roma('server', 'localhost', '-j', 'roma1_11211', '--replication_in_host', '--disable_command_protection',
+           '--pid_file', 'roma.pid')
+    end
+    expected = SERVER_DEFAULTS.merge(join: 'roma1_11211', pid_file: 'roma.pid', replication_in_host: true,
+                                     disable_command_protection: true)
+    assert_equal [['localhost', expected]], calls
+  end
+
+  data('--help' => %w(server --help), '-h' => %w(server -h), 'help' => %w(help server))
+  def test_server_help(args)
+    out, _err, status = roma(*args)
+    assert_nil status
+    assert_match(/\AUsage:\n  roma server ADDRESS\n\nOptions:\n  -p, \[--port=N\]/, out)
+    assert_match(/--disable-command-protection/, out)
+  end
+
+  data('no address' => [[], /\AERROR: "roma server" was called with no arguments/],
+       'unknown option' => [%w(localhost --unknown), /\AUnknown switches "--unknown"/],
+       'port not numeric' => [%w(localhost -p abc), /\AExpected numeric value for '--port'; got "abc"/],
+       'port not integer' => [%w(localhost -p 1.5), /\AExpected an integer for '--port'; got 1.5/],
+       'join without a value' => [%w(localhost -j), /\ANo value provided for option '--join'/],
+       'join without a port' => [%w(localhost -j roma1), /\AExpected HOST:PORT or HOST_PORT for '--join'; got roma1/],
+       'config without a value' => [%w(localhost --config), /\ANo value provided for option '--config'/],
+       'version' => [%w(localhost -v), /\AUnknown switches "-v"/])
   def test_server_errors(data)
     args, message = data
-    _out, err, status = run_roma('server', *args)
-    assert_equal 1, status.exitstatus
+    err = status = nil
+    calls = spy_server { _out, err, status = roma('server', *args) }
+    assert_equal 1, status
     assert_match(message, err)
+    assert_empty calls
   end
 
-  def test_server_in_help
-    out, _err, _status = roma('help', 'server')
-    assert_match(/roma server ADDRESS \[OPTIONS\]/, out)
+  def test_server_with_a_wrong_config
+    File.write(File.join(@dir, 'config.rb'), "Roma.configure { |config| config.port = 0 }\n")
+    _out, err, status = run_roma('server', 'localhost')
+    assert_equal 1, status.exitstatus
+    assert_equal "port should be a valid Integer: 0\n", err
+  end
+
+  data('--version' => '--version', '-v' => '-v')
+  def test_version(option)
+    require 'roma/version'
+    out, _err, status = roma(option)
+    assert_nil status
+    assert_equal "roma #{Roma::VERSION}\n", out
+  end
+
+  def test_version_in_help
+    out, _err, _status = roma('help')
+    assert_match(/roma --version, -v +# Print the version of ROMA/, out)
   end
 
   # Records how RecoverLost is called, instead of recovering.
