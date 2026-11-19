@@ -1,5 +1,4 @@
 require 'eventmachine'
-require 'roma/logging/rlogger'
 
 module Roma
   module Event
@@ -10,6 +9,8 @@ module Roma
       # Whether the node took the secret of the cluster, or nil before it is
       # asked. See EMConnectionPool#authenticate.
       attr_accessor :authenticated
+      # Where it logs, which EMConnectionPool sets.
+      attr_accessor :logger
 
       def post_init
         @read_buffer = ''
@@ -21,7 +22,7 @@ module Roma
         @read_buffer << data
         @fiber.resume
       rescue StandardError => e
-        Roma::Logging::RLogger.instance.error("#{__FILE__}:#{__LINE__}:#{e.inspect} #{$@}")
+        @logger.error("#{__FILE__}:#{__LINE__}:#{e.inspect} #{$@}")
       end
 
       def unbind
@@ -29,7 +30,7 @@ module Roma
         @fiber.resume
       rescue FiberError
       rescue StandardError => e
-        Roma::Logging::RLogger.instance.warn("#{__FILE__}:#{__LINE__}:#{e.inspect} #{$@}")
+        @logger.warn("#{__FILE__}:#{__LINE__}:#{e.inspect} #{$@}")
       end
 
       # Sends +data+ to the node, like IO#write of the connections of

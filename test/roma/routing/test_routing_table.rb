@@ -4,8 +4,12 @@ require 'routing_table_test_helper'
 class RoutingTableTest < Test::Unit::TestCase
   include RoutingTableTestHelper
 
+  def routing_table(routing_data)
+    Roma::Routing::RoutingTable.new(routing_data, logger: Logger.new(nil))
+  end
+
   def setup
-    @rt = Roma::Routing::RoutingTable.new(make_routing_data([[A1, B1], [B1, A1], [A1, B1], [B1]]))
+    @rt = routing_table(make_routing_data([[A1, B1], [B1, A1], [A1, B1], [B1]]))
   end
 
   def test_vnode_id
@@ -26,7 +30,7 @@ class RoutingTableTest < Test::Unit::TestCase
 
   data('16 bits' => 16, '33 bits' => 33, '64 bits' => 64)
   def test_digest_of_other_hash_spaces(bits)
-    rt = Roma::Routing::RoutingTable.new(Roma::Routing::RoutingData.create(bits, 9, 2, [A1, B1]))
+    rt = routing_table(Roma::Routing::RoutingData.create(bits, 9, 2, [A1, B1]))
     KEYS.each do |key|
       assert_equal Digest::SHA1.hexdigest(key).hex % (2**bits), rt.digest(key), key
     end
@@ -95,7 +99,7 @@ class RoutingTableTest < Test::Unit::TestCase
 
   def test_check_repetition_in_routing
     assert_false @rt.check_repetition_in_routing
-    rt = Roma::Routing::RoutingTable.new(make_routing_data([[A1, A2], [A1, B1], [B1, A1], [B1, A2]]))
+    rt = routing_table(make_routing_data([[A1, A2], [A1, B1], [B1, A1], [B1, A2]]))
     assert_true rt.check_repetition_in_routing
   end
 

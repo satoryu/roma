@@ -45,7 +45,8 @@ module ServerTestHelper
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, nodes)
     routing_data.routes.each_key { |vnode| routing_data.routes[vnode] = nodes.dup }
     set(stats: stats, logger: Logger.new(nil), startup: true,
-        routing_table: Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route.yml')),
+        routing_table: Roma::Routing::ChurnbasedRoutingTable.new(routing_data, File.join(@dir, 'test.route.yml'),
+                                                                 logger: Logger.new(nil)),
         storages: {})
     @server
   end
@@ -575,7 +576,7 @@ class ServerRoutingSyncTest < Test::Unit::TestCase
     server
     other = Roma::Routing::ChurnbasedRoutingTable.new(
       Marshal.load(Marshal.dump(@server.routing_table.instance_variable_get(:@routing_data))),
-      File.join(@dir, 'other.route.yml')
+      File.join(@dir, 'other.route.yml'), logger: Logger.new(nil)
     )
     vnode = other.routes.keys[3]
     other.update_route(vnode, 0, [OTHER_NODE_ID])

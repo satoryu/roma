@@ -1,6 +1,7 @@
 require 'test_helper'
 require 'socket'
-require 'roma/logging/rlogger'
+require 'logger'
+require 'stringio'
 require 'roma/messaging/connection_pool'
 require 'auth_node'
 
@@ -55,9 +56,11 @@ class ConnectionPoolTest < Test::Unit::TestCase
   def test_connection_rejected_by_the_node
     node = AuthNode.new('another secret of a cluster')
     @pool.secret = SECRET
+    @pool.logger = Logger.new(log = StringIO.new)
     con = @pool.checkout(node.node_id)
     con.write("whoami\r\n")
     assert_equal "UNAUTHENTICATED\r\n", con.gets
+    assert_match(/WARN -- : #{node.node_id} rejected the secret of the cluster/, log.string)
   ensure
     con&.close
     node&.close

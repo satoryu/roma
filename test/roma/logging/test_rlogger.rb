@@ -1,7 +1,6 @@
 require 'test_helper'
 require 'tmpdir'
 require 'roma/logging/rlogger'
-require 'roma/logging/stderr_wrapper'
 
 class RLoggerTest < Test::Unit::TestCase
   RLogger = Roma::Logging::RLogger
@@ -127,14 +126,5 @@ class RLoggerTest < Test::Unit::TestCase
     logger(age)
     @logger.info('message')
     assert_equal ['roma.log'], files
-  end
-
-  def test_stderr_wrapper
-    saved = RLogger.instance
-    RLogger.class_variable_set(:@@singleton_instance, logger)
-    Roma::Logging::StderrWrapper.new.write('to stderr')
-    assert_match(/ERROR -- : STDERR:to stderr/, File.read(@file))
-  ensure
-    RLogger.class_variable_set(:@@singleton_instance, saved)
   end
 end

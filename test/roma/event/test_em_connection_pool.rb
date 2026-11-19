@@ -1,6 +1,8 @@
 require 'test_helper'
 require 'roma/event/em_connection_pool'
 require 'auth_node'
+require 'logger'
+require 'stringio'
 
 class EMConnectionPoolTest < Test::Unit::TestCase
   # A node that accepts connections and never answers.
@@ -42,6 +44,7 @@ class EMConnectionPoolTest < Test::Unit::TestCase
     EM.run do
       Fiber.new do
         con = @pool.checkout(node.node_id)
+        @connection_logger = con.logger
         con.fiber = Fiber.current
         @pool.authenticate(con)
         con.write("whoami\r\n")
@@ -65,7 +68,11 @@ class EMConnectionPoolTest < Test::Unit::TestCase
   def test_authenticate_rejected_by_the_node
     node = AuthNode.new('another secret of a cluster')
     @pool.secret = SECRET
+    @pool.logger = Logger.new(log = StringIO.new)
     assert_equal "UNAUTHENTICATED\r\n", whoami_after_authentication(node)
+    assert_match(/WARN -- : #{node.node_id} rejected the secret of the cluster/, log.string)
+    # The connections log where the pool does.
+    assert_same @pool.logger, @connection_logger
   ensure
     node&.close
   end

@@ -83,7 +83,8 @@ module Roma
 
       setting :path, '.', type: String
       # Roma::Routing::ChurnbasedRoutingTable or a subclass of it, or nil for
-      # ChurnbasedRoutingTable. The server needs its failover and events.
+      # ChurnbasedRoutingTable. The server needs its failover and events, and
+      # makes it with (routing_data, file, logger:).
       setting :table_class, nil, type: [Class, NilClass],
                                  check: ->(v) { v.nil? || v.ancestors.any? { |c| c.name == CHURNBASED_ROUTING_TABLE } }
       # Replaces the host names in the routing table that a client gets:

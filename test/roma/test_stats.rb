@@ -19,9 +19,12 @@ class StatsTest < Test::Unit::TestCase
     11.times { |i| @stats.record_latency('get', i) }
     assert_equal (1..10).to_a, data['latency']
 
-    # After latency_check_time_count seconds, starts over.
+    # After latency_check_time_count seconds, gives the summary to log and
+    # starts over.
     data['time'] -= 61
-    @stats.record_latency('get', 0.5)
+    summaries = []
+    @stats.record_latency('get', 0.5) { |summary| summaries << summary }
+    assert_equal ['Latency average[get]: 5.45000000(denominator=10 max=10.00000000 min=0.00000000)'], summaries
     assert_equal [], data['latency']
     assert_equal [2, 3, 4, 5, 6, 7, 8, 9, 10, 0.5], data['latency_past']
     assert_equal 10, data['latency_max']['past']

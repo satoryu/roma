@@ -46,7 +46,7 @@ module Roma
       def ev_routingdump(s)
         routing_table = @routing_table
         routing_data = @routing_table.substituted_routing_data(@addr)
-        routing_table = Roma::Routing::RoutingTable.new(routing_data) if routing_data
+        routing_table = Roma::Routing::RoutingTable.new(routing_data, logger: @logger) if routing_data
 
         if s.length == 1
           dump = routing_table.dump
@@ -71,7 +71,7 @@ module Roma
       def ev_enabled_repetition_in_routing?(s)
         routing_table = @routing_table
         routing_data = @routing_table.substituted_routing_data(@addr)
-        routing_table = Roma::Routing::RoutingTable.new(routing_data) if routing_data
+        routing_table = Roma::Routing::RoutingTable.new(routing_data, logger: @logger) if routing_data
 
         if s.length == 1
           repetition = routing_table.check_repetition_in_routing

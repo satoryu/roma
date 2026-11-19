@@ -4,7 +4,6 @@
 require 'eventmachine'
 require 'roma/event/em_connection_pool'
 require 'roma/event/distance'
-require 'roma/logging/rlogger'
 require 'roma/stats'
 require 'roma/storage/basic_storage'
 require 'socket'
@@ -106,7 +105,7 @@ module Roma
         @server = server
         @storages = server.storages
         @routing_table = server.routing_table
-        @logger = Roma::Logging::RLogger.instance
+        @logger = server.logger
         @last_access = Time.now
       end
 
@@ -206,7 +205,9 @@ module Roma
           ps = monotonic_time - @enter_time
           @logger.warn("hilatency occurred in #{@lastcmd} put in a #{ps} seconds") if ps > @stats.hilatency_warn_time
           # check latency average
-          @stats.record_latency(@lastcmd[0], ps) if @stats.latency_log && @stats.latency_check_cmd.include?(@lastcmd[0])
+          if @stats.latency_log && @stats.latency_check_cmd.include?(@lastcmd[0])
+            @stats.record_latency(@lastcmd[0], ps) { |summary| @logger.debug(summary) }
+          end
 
           d = EM.connection_count - @@continuous_limit_start
           next unless d > 0 &&

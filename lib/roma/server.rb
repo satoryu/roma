@@ -57,7 +57,7 @@ module Roma
     # Seconds that any regexp may take on a string in the server.
     REGEXP_TIMEOUT = 1.0
 
-    attr_reader :storages, :routing_table, :stats, :wb_writer, :cluster_replication_writer
+    attr_reader :storages, :routing_table, :stats, :logger, :wb_writer, :cluster_replication_writer
 
     attr_accessor :eventloop, :startup
 
@@ -76,8 +76,8 @@ module Roma
       initialize_umask
       check_pid_file
       initialize_stats
-      initialize_connection
       initialize_logger
+      initialize_connection
       @logger.info("The config file: #{@stats.config_path || 'none, with the defaults'}")
       initialize_routing_table
       initialize_storages
@@ -260,6 +260,8 @@ module Roma
       Event::EMConnectionPool.instance.maxlength = connection.event_machine_pool.max
       Event::EMConnectionPool.instance.timeout = connection.event_machine_pool.timeout
       Messaging::ConnectionPool.instance.secret = Roma.config.cluster_secret
+      Messaging::ConnectionPool.instance.logger = @logger
+      Event::EMConnectionPool.instance.logger = @logger
       Event::EMConnectionPool.instance.secret = Roma.config.cluster_secret
     end
 
@@ -313,10 +315,7 @@ module Roma
 
     def initialize_logger
       log = Roma.config.log
-      Roma::Logging::RLogger.create_singleton_instance("#{log.path}/#{@stats.my_node_id}.log",
-                                                       log.shift_age,
-                                                       log.shift_size)
-      @logger = Roma::Logging::RLogger.instance
+      @logger = Roma::Logging::RLogger.new("#{log.path}/#{@stats.my_node_id}.log", log.shift_age, log.shift_size)
       @logger.level = Roma::Logging::RLogger::Severity::LEVELS.fetch(log.level)
     end
 
@@ -377,7 +376,7 @@ module Roma
         routing_data = Roma::Routing::RoutingData.load(fname)
         raise 'It failed in loading the routing table data.' unless routing_data
 
-        @routing_table = routing_table_class.new(routing_data, fname)
+        @routing_table = routing_table_class.new(routing_data, fname, logger: @logger)
       end
 
       @routing_table.node_id_substitutions = routing.node_id_substitutions
@@ -430,7 +429,7 @@ module Roma
 
       raise "ROMA has already contained #{@stats.my_node_id}." if routing_data.nodes.include?(@stats.my_node_id)
 
-      @routing_table = routing_table_class.new(routing_data, fname)
+      @routing_table = routing_table_class.new(routing_data, fname, logger: @logger)
       @routing_table.nodes.each { |node_id| request_join(node_id) }
       @routing_table.add_node(@stats.my_node_id)
     end

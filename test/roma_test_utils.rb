@@ -4,7 +4,6 @@ require 'rbconfig'
 require 'socket'
 require 'roma/configuration'
 require 'roma/messaging/connection_pool'
-require 'roma/logging/rlogger'
 require 'roma_test_client'
 
 module RomaTestUtils
@@ -34,10 +33,6 @@ module RomaTestUtils
       stop_roma
     end
   end
-
-  Roma::Logging::RLogger.create_singleton_instance("#{Roma.config.log.path}/roma_test.log",
-                                                   Roma.config.log.shift_age,
-                                                   Roma.config.log.shift_size)
 
   module_function
 

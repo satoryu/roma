@@ -1,5 +1,4 @@
 require 'singleton'
-require 'roma/logging/rlogger'
 
 module Roma
   class Stats
@@ -204,7 +203,7 @@ module Roma
       data['latency_min']['current'] = latency if latency < data['latency_min']['current']
       return unless @latency_check_time_count && Time.now.to_i - data['time'] > @latency_check_time_count
 
-      log_latency(cmd, data)
+      yield latency_summary(cmd, data) if block_given?
       data['time'] = Time.now.to_i
       data['latency_past'] = data['latency']
       data['latency'] = []
@@ -219,14 +218,12 @@ module Roma
       @latency_data = Hash.new { |hash, key| hash[key] = {} }
     end
 
-    def log_latency(cmd, data)
+    def latency_summary(cmd, data)
       average = data['latency'].sum(0.0) / data['latency'].size
-      Logging::RLogger.instance.debug(
-        "Latency average[#{cmd}]: #{format('%.8f', average)}" \
+      "Latency average[#{cmd}]: #{format('%.8f', average)}" \
         "(denominator=#{data['latency'].length} " \
         "max=#{format('%.8f', data['latency_max']['current'])} " \
         "min=#{format('%.8f', data['latency_min']['current'])})"
-      )
     end
 
     def clear_count(var)

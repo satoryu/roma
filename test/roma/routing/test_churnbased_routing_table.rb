@@ -17,7 +17,7 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
   end
 
   def make_rt(routes, **)
-    @rt = Roma::Routing::ChurnbasedRoutingTable.new(make_routing_data(routes, **), @fname)
+    @rt = Roma::Routing::ChurnbasedRoutingTable.new(make_routing_data(routes, **), @fname, logger: Logger.new(nil))
   end
 
   def log_lines
