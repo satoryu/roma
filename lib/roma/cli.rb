@@ -12,27 +12,63 @@ module Roma
   class CLI < Thor
     extend Subcommands::Common
 
-    # Roma::Server parses the options of server.
-    check_unknown_options! except: [:server]
-    stop_on_unknown_option! :server
+    check_unknown_options!
 
     # Thor only takes --help before a command (roma --help benchmark), so
-    # "roma benchmark --help" is turned into "roma help benchmark". A group
-    # takes --help after its subcommands by itself, such as
-    # roma route create --help.
+    # "roma benchmark --help" and "roma benchmark -h" are turned into
+    # "roma help benchmark". A group takes them after its subcommands by
+    # itself, such as roma route create --help.
     def self.start(given_args = ARGV, config = {})
       command = given_args.first
-      if given_args.include?('--help') && all_commands.key?(command) && command != 'server' &&
-         !subcommands.include?(command)
+      if given_args.intersect?(%w(--help -h)) && all_commands.key?(command) && !subcommands.include?(command)
         given_args = ['help', command]
       end
       super
     end
 
-    desc 'server ADDRESS [OPTIONS]', 'Run a ROMA node. See roma server --help'
-    def server(*args)
+    map %w(--version -v) => :version
+    desc '--version, -v', 'Print the version of ROMA'
+    def version
+      require 'roma/version'
+      puts "roma #{Roma::VERSION}"
+    end
+
+    desc 'server ADDRESS', 'Run a ROMA node'
+    option :port, aliases: '-p', type: :numeric, desc: 'Port of the node (default: config.port)'
+    # A string option without a value is '', not its name as Thor gives.
+    option :join, aliases: '-j', banner: 'NODE_ID', lazy_default: '',
+                  desc: 'Join the cluster of the node, such as localhost_11211 or localhost:11211'
+    option :name, aliases: '-n', lazy_default: '', desc: 'Name of the cluster (default: config.name)'
+    option :config, banner: 'FILE', lazy_default: '', desc: 'Load the config file (default: config.rb if it exists)'
+    option :pid_file, banner: 'PATH', lazy_default: '',
+                      desc: 'Write the pid to the file, and remove it when the server stops (default: config.pid_file)'
+    option :daemon, aliases: '-d', type: :boolean, default: false, desc: 'Run as a daemon'
+    option :verbose, type: :boolean, default: false, desc: 'Log every command'
+    option :replication_in_host, type: :boolean, default: false,
+                                 desc: 'Allow the replicas of a vnode on the same host'
+    option :disable_command_protection, type: :boolean, default: false,
+                                        desc: 'Take every command while the node is starting'
+    def server(address)
+      %i(join name config pid_file).each do |name|
+        raise Thor::Error, "No value provided for option '--#{name.to_s.tr('_', '-')}'" if options[name] == ''
+      end
+      port = options[:port]
+      raise Thor::Error, "Expected an integer for '--port'; got #{port}" if port && !port.is_a?(Integer)
+
+      join = options[:join]&.sub(':', '_')
+      if join && join !~ /\A.+_\d+\z/
+        raise Thor::Error, "Expected HOST:PORT or HOST_PORT for '--join'; got #{options[:join]}"
+      end
+
       require 'roma/server'
-      Roma::Server.run(args)
+      begin
+        Roma::Server.run(address, port: port, join: join, name: options[:name], config: options[:config],
+                                  pid_file: options[:pid_file], daemon: options[:daemon], verbose: options[:verbose],
+                                  replication_in_host: options[:replication_in_host],
+                                  disable_command_protection: options[:disable_command_protection])
+      rescue Roma::Configuration::Error => e
+        raise Thor::Error, e.message
+      end
     end
 
     desc 'new DIR', 'Make a directory to run roma server in, with config.rb, Gemfile and the routing table'

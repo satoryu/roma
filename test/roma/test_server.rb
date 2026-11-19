@@ -54,8 +54,8 @@ module ServerTestHelper
     ivars.each { |name, value| @server.instance_variable_set("@#{name}", value) }
   end
 
-  def call(name, *)
-    @server.send(name, *)
+  def call(name, *, **)
+    @server.send(name, *, **)
   end
 
   def capture_stdout
@@ -111,21 +111,15 @@ class ServerOptionsTest < Test::Unit::TestCase
     @server.stats
   end
 
-  # options exits on invalid options; make that a failure, not the end of
-  # the test run.
-  def parse(args)
-    err = StringIO.new
-    saved = $stderr
-    $stderr = err
-    call(:options, ['--config', @config, *args])
-  rescue SystemExit
-    flunk("options exited: #{err.string}")
-  ensure
-    $stderr = saved
+  OPTIONS = { port: nil, join: nil, name: nil, config: nil, pid_file: nil, daemon: false, verbose: false,
+              replication_in_host: false, disable_command_protection: false }.freeze
+
+  def parse(address = 'roma0', **)
+    call(:initialize_options, address, **OPTIONS, config: @config, **)
   end
 
   def test_defaults
-    parse(['roma0'])
+    parse
     assert_equal 'roma0', stats.address
     assert_equal Roma.config.port.to_s, stats.port
     assert_equal 'test', stats.name
@@ -138,8 +132,8 @@ class ServerOptionsTest < Test::Unit::TestCase
   end
 
   def test_options
-    parse(['-d', '-p', '11300', '-n', 'cluster', '-j', 'roma1:11211',
-           '--verbose', '--replication-in-host', '--disable-command-protection', 'roma0'])
+    parse(daemon: true, port: 11_300, name: 'cluster', join: 'roma1_11211', verbose: true,
+          replication_in_host: true, disable_command_protection: true)
     assert_equal '11300', stats.port
     assert_equal 'cluster', stats.name
     assert_equal 'roma1_11211', stats.join_node_id
@@ -149,75 +143,56 @@ class ServerOptionsTest < Test::Unit::TestCase
     assert_true stats.command_protection_disabled
   end
 
-  # OptionParser takes the underscores too, as romad of ROMA 1.x had them.
-  def test_options_with_underscores
-    parse(['--replication_in_host', '--disable_command_protection', 'roma0'])
-    assert_true stats.replication_in_host
-    assert_true stats.command_protection_disabled
-  end
-
-  data('no address' => [],
-       'port not numeric' => ['-p', 'abc', 'roma0'],
-       'join without a port' => ['-j', 'roma1', 'roma0'])
-  def test_invalid_options(args)
-    err = capture_stderr do
-      assert_raise(SystemExit) { call(:options, ['--config', @config, *args]) }
-    end
-    assert_match(/usage:/, err)
-  end
-
-  # Without --config and config.rb, the settings are kept.
+  # Without a config file and config.rb, the settings are kept.
   def test_without_config
     Roma.configure { |config| config.port = 11_300 }
     empty = File.join(@dir, 'empty')
     Dir.mkdir(empty)
-    Dir.chdir(empty) { call(:options, ['roma0']) }
+    Dir.chdir(empty) { parse(config: nil) }
     assert_equal '11300', stats.port
     assert_nil stats.config_path
   end
 
-  # Without --config, config.rb in the current directory is loaded.
+  # Without a config file, config.rb in the current directory is loaded.
   def test_default_config
-    Dir.chdir(@dir) { call(:options, ['roma0']) }
+    Dir.chdir(@dir) { parse(config: nil) }
     assert_equal 'test', stats.name
     assert_equal File.realpath(@config), File.realpath(stats.config_path)
   end
 
-  # --config is taken over config.rb in the current directory.
+  # The config file is taken over config.rb in the current directory.
   def test_config_over_default
     other = File.join(@dir, 'other.rb')
     File.write(other, "Roma.configure { |config| config.name = 'other' }\n")
-    Dir.chdir(@dir) { call(:options, ['--config', 'other.rb', 'roma0']) }
+    Dir.chdir(@dir) { parse(config: 'other.rb') }
     assert_equal 'other', stats.name
   end
 
   def test_wrong_config
     File.write(@config, "Roma.configure { |config| config.port = 0 }\n")
-    err = capture_stderr do
-      assert_raise(SystemExit) { call(:options, ['--config', @config, 'roma0']) }
-    end
-    assert_equal "port should be a valid Integer: 0\n", err
+    error = assert_raise(Roma::Configuration::Error) { parse }
+    assert_equal 'port should be a valid Integer: 0', error.message
   end
 
   def test_pid_file
-    parse(['--pid-file', 'roma.pid', 'roma0'])
+    parse(pid_file: 'roma.pid')
     assert_equal File.expand_path('roma.pid'), stats.pid_file
   end
 
   def test_pid_file_in_config
     File.write(@config, "Roma.configure { |config| config.pid_file = 'config.pid' }\n")
-    parse(['roma0'])
+    parse
     assert_equal File.expand_path('config.pid'), stats.pid_file
 
-    # --pid-file is taken over the config file.
+    # The pid file given is taken over the config file.
     @server = Roma::Server.allocate
     set(stats: Roma::Stats.send(:new))
-    parse(['--pid-file', 'roma.pid', 'roma0'])
+    parse(pid_file: 'roma.pid')
     assert_equal File.expand_path('roma.pid'), stats.pid_file
   end
 
   def test_without_pid_file
-    parse(['roma0'])
+    parse
     assert_nil stats.pid_file
   end
 end

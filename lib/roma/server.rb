@@ -1,4 +1,3 @@
-require 'optparse'
 require 'roma/version'
 require 'roma/configuration'
 require 'roma/stats'
@@ -25,11 +24,10 @@ module Roma
     include PeerCommand
     include ClusterMaintenance
 
-    # +argv+ is the arguments of roma server, such as ["localhost", "-p",
-    # "11211", "-d"]. +program+ is the name in the usage. With -d, the server
-    # runs as a daemon.
-    def self.run(argv, program: 'roma server')
-      server = new(argv, program: program)
+    # Makes a server with +address+ and +options+, as #initialize, and runs
+    # it. With daemon: true, it runs as a daemon.
+    def self.run(address, **)
+      server = new(address, **)
       if server.daemon?
         daemonize { server.start }
       else
@@ -63,12 +61,18 @@ module Roma
 
     attr_accessor :eventloop, :startup
 
-    # +program+ is the name in the usage.
-    def initialize(argv = nil, program: 'roma server')
+    # +address+ and +port+ make the node ID, such as localhost_11211.
+    # +join+ is the node ID of a node in the cluster to join. +config+ is the
+    # config file, ./config.rb if it exists by default. Without +name+,
+    # +port+ and +pid_file+, those of the config are taken. Raises
+    # Configuration::Error if the config is wrong.
+    def initialize(address, port: nil, join: nil, name: nil, config: nil, pid_file: nil, daemon: false,
+                   verbose: false, replication_in_host: false, disable_command_protection: false)
       @stats = Roma::Stats.instance
       @startup = true
-      @program = program
-      options(argv)
+      initialize_options(address, port: port, join: join, name: name, config: config, pid_file: pid_file,
+                                  daemon: daemon, verbose: verbose, replication_in_host: replication_in_host,
+                                  disable_command_protection: disable_command_protection)
       initialize_umask
       check_pid_file
       initialize_stats
@@ -316,78 +320,25 @@ module Roma
       @log.level = Roma::Logging::RLogger::Severity::LEVELS.fetch(log.level)
     end
 
-    def options(argv)
-      opts = OptionParser.new
-      opts.banner = "usage:#{@program} [options] address"
+    def initialize_options(address, port:, join:, name:, config:, pid_file:, daemon:, verbose:,
+                           replication_in_host:, disable_command_protection:)
+      @stats.address = address
+      @stats.join_node_id = join
+      @stats.daemon = daemon
+      @stats.verbose = verbose
+      @stats.replication_in_host = replication_in_host
+      @stats.command_protection_disabled = disable_command_protection
 
-      @stats.daemon = false
-      opts.on('-d', '--daemon') { |_v| @stats.daemon = true }
-
-      opts.on_tail('-h', '--help', 'Show this message') do
-        puts opts
-        exit
-      end
-
-      opts.on('-j', '--join [address:port]') { |v| @stats.join_node_id = v }
-
-      opts.on('-p', '--port [PORT]') { |v| @stats.port = v }
-
-      @stats.verbose = false
-      opts.on(nil, '--verbose') { |_v| @stats.verbose = true }
-
-      opts.on_tail('-v', '--version', 'Show version') do
-        puts "#{@program} #{Roma::VERSION}"
-        exit
-      end
-
-      opts.on('-n', '--name [name]') { |v| @stats.name = v }
-
-      # OptionParser takes --replication_in_host too.
-      @stats.replication_in_host = false
-      opts.on(nil, '--replication-in-host', 'Allow redundancy to same host') do
-        @stats.replication_in_host = true
-      end
-
-      @stats.command_protection_disabled = false
-      opts.on(nil, '--disable-command-protection', 'Command protection disable while starting') do
-        @stats.command_protection_disabled = true
-      end
-
-      opts.on('--config FILE', "Load the config file (default: #{DEFAULT_CONFIG} if it exists)") do |v|
-        @stats.config_path = File.expand_path(v)
-      end
-
-      opts.on('--pid-file PATH', 'Write the pid to the file, and remove it when the server stops') do |v|
-        @stats.pid_file = File.expand_path(v)
-      end
-
-      opts.parse!(argv)
-      raise OptionParser::ParseError.new if argv.length < 1
-
-      @stats.address = argv[0]
-
-      # Without --config and config.rb, the settings are the defaults, or
-      # what is set in Roma.configure before.
+      # Without a config file, the settings are the defaults, or what is set
+      # in Roma.configure before.
+      @stats.config_path = File.expand_path(config) if config
       @stats.config_path ||= File.expand_path(DEFAULT_CONFIG) if File.file?(DEFAULT_CONFIG)
       Roma.load_config(@stats.config_path) if @stats.config_path
 
-      @stats.name = Roma.config.name unless @stats.name
-      @stats.port = Roma.config.port.to_s unless @stats.port
-      @stats.pid_file ||= File.expand_path(Roma.config.pid_file) if Roma.config.pid_file
-
-      raise OptionParser::ParseError.new('Port number is not numeric.') unless @stats.port =~ /^\d+$/
-
-      @stats.join_node_id.sub!(':', '_') if @stats.join_node_id
-      if @stats.join_node_id && !(@stats.join_node_id =~ /^.+_\d+$/)
-        raise OptionParser::ParseError.new('[address:port] can not parse.')
-      end
-    rescue OptionParser::ParseError => e
-      warn e.message
-      warn opts.help
-      exit 1
-    rescue Configuration::Error => e
-      warn e.message
-      exit 1
+      @stats.name = name || Roma.config.name
+      @stats.port = (port || Roma.config.port).to_s
+      pid_file ||= Roma.config.pid_file
+      @stats.pid_file = File.expand_path(pid_file) if pid_file
     end
 
     # Exits if the server can't take the pid file. It runs before -d makes
