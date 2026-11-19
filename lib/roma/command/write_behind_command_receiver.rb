@@ -170,7 +170,7 @@ module Roma
             writer.activate(s[2], existing_data: s[3] == 'all')
             if s[3] == 'all'
               Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_replicate_existing_data_process',
-                                                                 [writer.replica_rttable]))
+                                                                 [writer.replica_routing_table]))
             end
             'ACTIVATED'
           else

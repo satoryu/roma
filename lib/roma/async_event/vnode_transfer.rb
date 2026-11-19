@@ -466,7 +466,7 @@ module Roma
       end
 
       def asyncev_start_replicate_existing_data_process(args)
-        # args is [@cluster_replication_writer.replica_rttable])
+        # args is [@cluster_replication_writer.replica_routing_table])
         start_thread(__method__) do
           @cluster_replication_writer.run_existing_data_replication = true
           replicate_existing_data_process(args)

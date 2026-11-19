@@ -7,7 +7,7 @@ class ChurnbasedRoutingTableTest < Test::Unit::TestCase
   include RoutingTableTestHelper
 
   def setup
-    @dir = Dir.mktmpdir('roma_rttable')
+    @dir = Dir.mktmpdir('roma_routing_table')
     @fname = File.join(@dir, 'test.route.yml')
   end
 

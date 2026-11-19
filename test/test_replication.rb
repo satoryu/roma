@@ -44,9 +44,9 @@ class StreamWriterTest < Test::Unit::TestCase
     pre_nodelist = sw.replica_nodelist
     assert_equal(%w(localhost_21211 localhost_21212), pre_nodelist)
 
-    sw.update_rttable('localhost_21211')
-    pre_rttable = sw.replica_rttable
-    assert_kind_of(Roma::Routing::RoutingData, pre_rttable)
+    sw.update_routing_table('localhost_21211')
+    previous_routing_table = sw.replica_routing_table
+    assert_kind_of(Roma::Routing::RoutingData, previous_routing_table)
   end
 
   def test_sw_activate_and_deactivate
@@ -55,12 +55,12 @@ class StreamWriterTest < Test::Unit::TestCase
     assert_true sw.run_replication
     assert_true sw.run_existing_data_replication
     assert_equal(%w(localhost_21211 localhost_21212), sw.replica_nodelist)
-    assert_kind_of(Roma::Routing::RoutingData, sw.replica_rttable)
+    assert_kind_of(Roma::Routing::RoutingData, sw.replica_routing_table)
 
     sw.deactivate
     assert_equal [false, false, nil, [], nil],
                  [sw.run_replication, sw.run_existing_data_replication, sw.replica_mklhash, sw.replica_nodelist,
-                  sw.replica_rttable]
+                  sw.replica_routing_table]
   end
 
   def test_sw_change_mkl_hash?

@@ -78,7 +78,7 @@ class ClusterSecretTest < Test::Unit::TestCase
       stats = @rc.stats(node: JOIN_NODE)
       stats['routing.primary'].to_i.positive? && stats['stats.run_join'] == 'false'
     end
-    @rc.update_rttable
+    @rc.update_routing_table
     10.times { |i| assert_equal "value#{i}", @rc.get("key#{i}") }
   end
 

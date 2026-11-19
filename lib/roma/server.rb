@@ -79,7 +79,7 @@ module Roma
       initialize_connection
       initialize_logger
       @logger.info("The config file: #{@stats.config_path || 'none, with the defaults'}")
-      initialize_rttable
+      initialize_routing_table
       initialize_storages
       initialize_handler
       initialize_plugin
@@ -366,10 +366,10 @@ module Roma
       end
     end
 
-    def initialize_rttable
+    def initialize_routing_table
       routing = Roma.config.routing
       if @stats.join_node_id
-        initialize_rttable_join
+        initialize_routing_table_join
       else
         fname = File.join(routing.path, Roma::Routing::RoutingData.file_name(@stats.my_node_id))
         raise "#{fname} not found." unless File.exist?(fname)
@@ -412,7 +412,7 @@ module Roma
       Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('start_get_routing_event'))
     end
 
-    def initialize_rttable_join
+    def initialize_routing_table_join
       name = async_send_cmd(@stats.join_node_id, "whoami\r\n")
       raise "No respons from #{@stats.join_node_id}." unless name
 

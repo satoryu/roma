@@ -63,7 +63,7 @@ class RomaTestClient
   def initialize(nodes)
     @default_hash_name = 'roma'
     @used_keys = []
-    update_rttable(nodes)
+    update_routing_table(nodes)
   end
 
   # Deletes every key this client has sent a command for, so that tests
@@ -74,7 +74,7 @@ class RomaTestClient
     @used_keys.clear
   end
 
-  def update_rttable(nodes = @routing_table.nodes)
+  def update_routing_table(nodes = @routing_table.nodes)
     nodes.each do |node|
       routing_data = fetch_routing_data(node)
       if routing_data

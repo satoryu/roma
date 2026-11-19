@@ -44,24 +44,24 @@ module Roma
 
       # routingdump [yaml|json|yamlbytes|bin]\r\n
       def ev_routingdump(s)
-        rt = @routing_table
+        routing_table = @routing_table
         routing_data = @routing_table.substituted_routing_data(@addr)
-        rt = Roma::Routing::RoutingTable.new(routing_data) if routing_data
+        routing_table = Roma::Routing::RoutingTable.new(routing_data) if routing_data
 
         if s.length == 1
-          dump = rt.dump
+          dump = routing_table.dump
           send_data("#{dump.length}\r\n#{dump}\r\nEND\r\n")
         elsif s[1] == 'yaml'
-          dump = rt.dump_yaml
+          dump = routing_table.dump_yaml
           send_data("#{dump}\r\nEND\r\n")
         elsif s[1] == 'json'
-          dump = rt.dump_json
+          dump = routing_table.dump_json
           send_data("#{dump}\r\nEND\r\n")
         elsif s[1] == 'yamlbytes'
-          dump = rt.dump_yaml
+          dump = routing_table.dump_yaml
           send_data("#{dump.length + 7}\r\nEND\r\n")
         elsif s[1] == 'bin'
-          dump = rt.dump_binary
+          dump = routing_table.dump_binary
           send_data("#{dump.length}\r\n#{dump}\r\nEND\r\n")
         else
           send_data("CLIENT_ERROR\r\n")
@@ -69,12 +69,12 @@ module Roma
       end
 
       def ev_enabled_repetition_in_routing?(s)
-        rt = @routing_table
+        routing_table = @routing_table
         routing_data = @routing_table.substituted_routing_data(@addr)
-        rt = Roma::Routing::RoutingTable.new(routing_data) if routing_data
+        routing_table = Roma::Routing::RoutingTable.new(routing_data) if routing_data
 
         if s.length == 1
-          repetition = rt.check_repetition_in_routing
+          repetition = routing_table.check_repetition_in_routing
           send_data("#{repetition}\r\n")
         else
           send_data("CLIENT_ERROR\r\n")
@@ -238,7 +238,7 @@ module Roma
         send_data("STORED\r\n")
       end
 
-      # cleat RTTABLE_SUB_NID map
+      # clear the substitutions of the node IDs
       def ev_clear_rttable_sub_nid(_s)
         res = broadcast_cmd("rclear_rttable_sub_nid\r\n")
         @routing_table.node_id_substitutions.clear

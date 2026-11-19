@@ -114,7 +114,7 @@ class SystemCommandReceiverServerTest < Test::Unit::TestCase
     assert_false cr.run_replication
     assert_nil cr.replica_mklhash
     assert_equal [], cr.replica_nodelist
-    assert_nil cr.replica_rttable
+    assert_nil cr.replica_routing_table
   end
 
   def test_switch_replication_with_existing_data

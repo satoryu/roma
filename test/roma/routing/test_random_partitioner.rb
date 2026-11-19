@@ -10,7 +10,7 @@ class RandomPartitionerTest < Test::Unit::TestCase
   C1 = 'hostc_11211'
 
   def setup
-    @dir = Dir.mktmpdir('roma_rttable')
+    @dir = Dir.mktmpdir('roma_routing_table')
   end
 
   def teardown
