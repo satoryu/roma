@@ -414,10 +414,10 @@ module Roma
 
     def initialize_routing_table_join
       name = async_send_cmd(@stats.join_node_id, "whoami\r\n")
-      raise "No respons from #{@stats.join_node_id}." unless name
+      raise "No response from #{@stats.join_node_id}." unless name
 
       if name != @stats.name
-        raise "#{@stats.join_node_id} has diffarent name.\n" +
+        raise "#{@stats.join_node_id} has different name.\n" +
               "me = \"#{@stats.name}\"  #{@stats.join_node_id} = \"#{name}\""
       end
 
