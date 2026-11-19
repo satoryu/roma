@@ -26,7 +26,7 @@ module Roma
         res.chomp
       rescue StandardError => e
         @routing_table.proc_failed(node_id)
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
         nil
       end
 
@@ -52,7 +52,7 @@ module Roma
         res
       rescue StandardError => e
         @routing_table.proc_failed(node_id)
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
         nil
       end
 
@@ -64,7 +64,7 @@ module Roma
         end
         res
       rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
         nil
       end
 
@@ -74,7 +74,7 @@ module Roma
       def forward_and_one_line_receive(node_id, argv, data = nil)
         return send_data("SERVER_ERROR Routing table is inconsistent.\r\n") if argv.last == 'forward'
 
-        @log.warn("forward #{argv} to #{node_id}")
+        @logger.warn("forward #{argv} to #{node_id}")
 
         buf = "#{argv.join(' ')} forward\r\n"
         buf << "#{data}\r\n" if data
@@ -89,7 +89,7 @@ module Roma
       def forward_and_multi_line_receive(node_id, argv, data = nil)
         return send_data("SERVER_ERROR Routing table is inconsistent.\r\n") if argv.last == 'forward'
 
-        @log.warn("forward #{argv} to #{node_id}")
+        @logger.warn("forward #{argv} to #{node_id}")
 
         buf = "#{argv.join(' ')} forward\r\n"
         buf << "#{data}\r\n" if data
@@ -100,12 +100,12 @@ module Roma
         buf = con.gets
         if buf.nil?
           @routing_table.proc_failed(node_id)
-          @log.error("forward get failed:node_id=#{node_id} argv=#{argv} #{$@}")
+          @logger.error("forward get failed:node_id=#{node_id} argv=#{argv} #{$@}")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         elsif buf.start_with?('ERROR')
           @routing_table.proc_succeed(node_id)
           con.close_connection
-          @log.error("forward get failed:node_id=#{node_id} argv=#{argv} #{$@}")
+          @logger.error("forward get failed:node_id=#{node_id} argv=#{argv} #{$@}")
           return send_data("SERVER_ERROR Message forward failed.\r\n")
         elsif buf.start_with?('VALUE') == false
           checkin_connection(node_id, con)
@@ -134,7 +134,7 @@ module Roma
         send_data(res)
       rescue StandardError => e
         @routing_table.proc_failed(node_id) if e.message != 'no connection'
-        @log.error("forward get failed:node_id=#{node_id} argv=#{argv} #{e} #{$@}")
+        @logger.error("forward get failed:node_id=#{node_id} argv=#{argv} #{e} #{$@}")
         send_data("SERVER_ERROR Message forward failed.\r\n")
       end
 
@@ -150,7 +150,7 @@ module Roma
       # of the server, goes only to the log.
       def reply_server_error(error)
         send_data("#{"SERVER_ERROR #{error}".tr("\r\n", ' ')}\r\n")
-        @log.error("#{error} #{error.backtrace&.join(' ')}")
+        @logger.error("#{error} #{error.backtrace&.join(' ')}")
       end
 
       # change to actual time for a memcached's expire time value

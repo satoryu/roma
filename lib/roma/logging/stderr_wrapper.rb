@@ -4,11 +4,11 @@ module Roma
   module Logging
     class StderrWrapper < IO
       def initialize
-        @log = RLogger.instance
+        @logger = RLogger.instance
       end
 
       def write(s)
-        @log.error("STDERR:#{s}")
+        @logger.error("STDERR:#{s}")
       end
 
       def flush; end

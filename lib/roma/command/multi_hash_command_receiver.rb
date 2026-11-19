@@ -103,10 +103,10 @@ module Roma
         st = storage.build("#{storage.path}/#{@stats.my_node_id}/#{hash_name}", @routing_table.vnodes)
         st.opendb
         @storages[hash_name] = st
-        @log.info("createhash #{hash_name}")
+        @logger.info("createhash #{hash_name}")
         msg
       rescue StandardError => e
-        @log.error("#{e} #{$@}")
+        @logger.error("#{e} #{$@}")
         "NOT #{msg}"
       end
       private :createhash
@@ -116,10 +116,10 @@ module Roma
         return ret if ret != 'UNMOUNTED'
 
         FileUtils.rm_rf "#{Roma.config.storage.path}/#{@stats.my_node_id}/#{hash_name}"
-        @log.info("deletehash #{hash_name}")
+        @logger.info("deletehash #{hash_name}")
         'DELETED'
       rescue StandardError => e
-        @log.error("#{e}")
+        @logger.error("#{e}")
       end
       private :deletehash
 

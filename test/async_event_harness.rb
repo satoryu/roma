@@ -32,7 +32,7 @@ class AsyncEventHarness
   attr_accessor :send_cmd_reply
 
   def initialize(nodes: [NODE_ID, OTHER_NODE_ID], vnode_nodes: nil)
-    @log = Logger.new(nil)
+    @logger = Logger.new(nil)
     @stats = Roma::Stats.send(:new)
     @stats.address, @stats.port = NODE_ID.split('_')
     @dir = Dir.mktmpdir('roma_async')

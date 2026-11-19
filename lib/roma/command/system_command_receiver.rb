@@ -65,9 +65,9 @@ module Roma
         end
 
         if s.length == 2
-          @log.info("Receive a balse #{s[1]}")
+          @logger.info("Receive a balse #{s[1]}")
         else
-          @log.info('Receive a balse command.')
+          @logger.info('Receive a balse command.')
         end
         @routing_table.enabled_failover = false
         res = broadcast_cmd("rbalse\r\n")
@@ -80,9 +80,9 @@ module Roma
       # rbalse [reason]
       def ev_rbalse(s)
         if s.length == 2
-          @log.info("Receive a rbalse #{s[1]}")
+          @logger.info("Receive a rbalse #{s[1]}")
         else
-          @log.info('Receive a rbalse command.')
+          @logger.info('Receive a rbalse command.')
         end
         @routing_table.enabled_failover = false
         send_data("BYE\r\n")
@@ -99,9 +99,9 @@ module Roma
         end
 
         if s.length == 2
-          @log.info("Receive a shutdown #{s[1]}")
+          @logger.info("Receive a shutdown #{s[1]}")
         else
-          @log.info('Receive a shutdown command.')
+          @logger.info('Receive a shutdown command.')
         end
         @routing_table.enabled_failover = false
         res = broadcast_cmd("rshutdown\r\n")
@@ -114,9 +114,9 @@ module Roma
       # rshutdown [reason]
       def ev_rshutdown(s)
         if s.length == 2
-          @log.info("Receive a rshutdown #{s[1]}")
+          @logger.info("Receive a rshutdown #{s[1]}")
         else
-          @log.info('Receive a rshutdown command.')
+          @logger.info('Receive a rshutdown command.')
         end
         @routing_table.enabled_failover = false
         send_data("BYE\r\n")
@@ -135,7 +135,7 @@ module Roma
             close_connection_after_writing
             return
           end
-          @log.info('Receive a shutdown_self command.')
+          @logger.info('Receive a shutdown_self command.')
           @routing_table.enabled_failover = false
           send_data("BYE\r\n")
           @stop_event_loop = true
@@ -240,7 +240,7 @@ module Roma
         level = Roma::Logging::RLogger::Severity::LEVELS[s[1].downcase.to_sym]
         return send_data("CLIENT_ERROR no match log-level string\r\n") unless level
 
-        @log.level = level
+        @logger.level = level
         @stats.log_level = s[1].downcase
 
         send_data("STORED\r\n")
@@ -287,7 +287,7 @@ module Roma
         if @storages[hash_name].rset(vnode, key, d, s[3].to_i, s[4].to_i, data)
           send_data("STORED\r\n")
         else
-          @log.error("rset NOT_STORED:#{@storages[hash_name].error_message} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
+          @logger.error("rset NOT_STORED:#{@storages[hash_name].error_message} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
           send_data("NOT_STORED\r\n")
         end
         @stats.redundant_count += 1
@@ -311,12 +311,12 @@ module Roma
         if @storages[hash_name].rset(vnode, key, d, s[3].to_i, s[4].to_i, data)
           send_data("STORED\r\n")
         else
-          @log.error("rzset NOT_STORED:#{@storages[hash_name].error_message} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
+          @logger.error("rzset NOT_STORED:#{@storages[hash_name].error_message} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
           send_data("NOT_STORED\r\n")
         end
         @stats.redundant_count += 1
       rescue Zlib::Error, ValueTooLarge => e
-        @log.error("rzset NOT_STORED:#{e} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
+        @logger.error("rzset NOT_STORED:#{e} #{vnode} #{s[1]} #{d} #{s[3]} #{s[4]}")
         send_data("NOT_STORED\r\n")
       end
 
@@ -341,7 +341,7 @@ module Roma
       private :inflate_value
 
       def ev_forcedly_start(_s)
-        @log.info('ROMA forcedly start.')
+        @logger.info('ROMA forcedly start.')
         AsyncEvent.queue.clear
         @routing_table.enabled_failover = true
         Command::Receiver.make_event_list
@@ -441,11 +441,11 @@ module Roma
         res = broadcast_cmd("rswitch_dns_caching #{s[1]}\r\n")
         if %w(on true).include?(s[1])
           DNSCache.instance.enable_dns_cache
-          @log.info('DNS caching enabled')
+          @logger.info('DNS caching enabled')
           res[@stats.my_node_id] = 'ENABLED'
         elsif %w(off false).include?(s[1])
           DNSCache.instance.disable_dns_cache
-          @log.info('DNS caching disabled')
+          @logger.info('DNS caching disabled')
           res[@stats.my_node_id] = 'DISABLED'
         else
           res[@stats.my_node_id] = 'NOTSWITCHED'
@@ -459,11 +459,11 @@ module Roma
 
         if %w(on true).include?(s[1])
           DNSCache.instance.enable_dns_cache
-          @log.info('DNS caching enabled')
+          @logger.info('DNS caching enabled')
           send_data("ENABLED\r\n")
         elsif %w(off false).include?(s[1])
           DNSCache.instance.disable_dns_cache
-          @log.info('DNS caching disabled')
+          @logger.info('DNS caching disabled')
           send_data("DISABLED\r\n")
         else
           send_data("NOTSWITCHED\r\n")
@@ -589,7 +589,7 @@ module Roma
 
       # set_log_shift_size <size>
       def_setting_command :log_shift_size, POSITIVE_LENGTH do |v|
-        @log.shift_size = v.to_i
+        @logger.shift_size = v.to_i
         @stats.log_shift_size = v.to_i
       end
 
@@ -597,7 +597,7 @@ module Roma
       # The age is a number of files, or min, hour, daily, weekly or monthly.
       def_setting_command :log_shift_age, LOG_SHIFT_AGE do |v|
         age = v.to_i > 0 || v == '0' ? v.to_i : v
-        @log.shift_age = age
+        @logger.shift_age = age
         @stats.log_shift_age = age
       end
 
@@ -690,11 +690,11 @@ module Roma
         when 'on'
           close_all_connections
           @routing_table.enabled_failover = true
-          @log.info('failover enabled')
+          @logger.info('failover enabled')
           'ENABLED'
         when 'off'
           @routing_table.enabled_failover = false
-          @log.info('failover disabled')
+          @logger.info('failover disabled')
           'DISABLED'
         else
           'NOTSWITCHED'

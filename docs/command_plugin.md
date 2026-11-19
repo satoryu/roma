@@ -122,7 +122,7 @@ object for each client connection. So it can use what the receiver has:
 | `@storages` | The storages by hash name. The default hash name is `@default_hash_name`, `roma`. |
 | `@routing_table` | The routing table: `get_vnode_id(digest)`, `search_nodes(vnode)`, `nodes` and so on. See [Routing](routing.md). |
 | `@stats` | `Roma::Stats`: the node ID (`my_node_id`), counters and settings. |
-| `@log` | The logger. |
+| `@logger` | The logger. |
 | `@server` | `Roma::Server`, the running server: `wb_writer`, `cluster_replication_writer` and so on. |
 | `send_cmd(node_id, line)` | Sends a command to another node and returns the first line of its reply. |
 | `broadcast_cmd(line)` | Sends a command to every other node and returns the replies by node ID. |
@@ -581,6 +581,7 @@ To port a plugin:
 | `@rttable`, `@nid`, `@defhash` | `@routing_table`, `@my_node_id`, `@default_hash_name` |
 | `@rttable.hbits` | `@routing_table.hash_space_size` |
 | `$roma` | `@server` |
+| `@log` | `@logger` |
 | `@stats.ap_str`, `@stats.size_of_zredundant` | `@stats.my_node_id`, `@stats.compression_threshold` |
 | `ctx.params.vn` | `ctx.params.vnode` |
 | `ctx.stored.vn`, `clk`, `flg`, `expt` | `ctx.stored.vnode`, `clock`, `flags`, `expire_time` |

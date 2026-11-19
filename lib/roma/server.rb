@@ -78,7 +78,7 @@ module Roma
       initialize_stats
       initialize_connection
       initialize_logger
-      @log.info("The config file: #{@stats.config_path || 'none, with the defaults'}")
+      @logger.info("The config file: #{@stats.config_path || 'none, with the defaults'}")
       initialize_rttable
       initialize_storages
       initialize_handler
@@ -88,7 +88,7 @@ module Roma
 
     def start
       if node_check(@stats.my_node_id)
-        @log.error("#{@stats.my_node_id} is already running.")
+        @logger.error("#{@stats.my_node_id} is already running.")
         return
       end
 
@@ -108,11 +108,11 @@ module Roma
 
       # select a kind of system call
       if Roma.config.connection.use_epoll
-        @log.info('use an epoll')
+        @logger.info('use an epoll')
         EM.epoll
         EM.set_descriptor_table_size(Roma.config.connection.descriptor_table_size)
       else
-        @log.info('use a select')
+        @logger.info('use a select')
       end
 
       address = bind_address
@@ -124,7 +124,7 @@ module Roma
           Event::Handler.connections.each_key do |k|
             k.close_connection
           rescue Exception => e
-            @log.error("#{e}\n#{$@}")
+            @logger.error("#{e}\n#{$@}")
           end
           Event::Handler.connections.clear
 
@@ -143,36 +143,36 @@ module Roma
                     begin
                       k.close_connection
                       if k.addr
-                        @log.info("connection expired from #{k.addr}:#{k.port},lastcmd = #{k.lastcmd}")
+                        @logger.info("connection expired from #{k.addr}:#{k.port},lastcmd = #{k.lastcmd}")
                       else
-                        @log.info('connection expired in irregular connection')
+                        @logger.info('connection expired in irregular connection')
                         dellist << k
                       end
                     rescue Exception => e
-                      @log.error("#{e}\n#{$@}")
+                      @logger.error("#{e}\n#{$@}")
                       dellist << k
                     end
                   end
                 end
                 dellist.each do |k|
-                  @log.info("delete connection lastcmd = #{k.lastcmd}")
+                  @logger.info("delete connection lastcmd = #{k.lastcmd}")
                   Event::Handler.connections.delete(k)
                 end
               end
             end
 
-            @log.info("Now accepting connections on address #{address}, port #{@stats.port}")
+            @logger.info("Now accepting connections on address #{address}, port #{@stats.port}")
           end
         rescue SignalException => e
           if daemon?
-            @log.error("#{e.inspect}\n#{$@}")
+            @logger.error("#{e.inspect}\n#{$@}")
             retry
           else
             warn "#{e.inspect}"
           end
         rescue Exception => e
-          @log.error("#{e}\n#{$@}")
-          @log.error('restart an eventmachine')
+          @logger.error("#{e}\n#{$@}")
+          @logger.error('restart an eventmachine')
           retry
         end
       end
@@ -206,7 +206,7 @@ module Roma
       @stats.last_clean_up = Time.now
       return true unless @stats.run_storage_clean_up
 
-      @log.info('Storage clean up process will be stop.')
+      @logger.info('Storage clean up process will be stop.')
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
       while @stats.run_storage_clean_up
         return false if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
@@ -267,22 +267,22 @@ module Roma
       @wb_writer = Roma::WriteBehind::FileWriter.new(
         Roma.config.write_behind.path,
         Roma.config.write_behind.shift_size,
-        @log,
+        @logger,
         node_id: @stats.my_node_id
       )
 
-      @cluster_replication_writer = Roma::WriteBehind::StreamWriter.new(@log)
+      @cluster_replication_writer = Roma::WriteBehind::StreamWriter.new(@logger)
     end
 
     def initialize_plugin
       Roma::CommandPlugin.require_all(Roma.config.command_plugin_path).each do |path|
-        @log.info("#{path} loaded")
+        @logger.info("#{path} loaded")
       end
       Roma::CommandPlugin.plugins.each do |plugin|
         Roma::Command::Receiver.class_eval do
           include plugin
         end
-        @log.info("#{plugin} included")
+        @logger.info("#{plugin} included")
       end
 
       return unless @stats.command_protection_disabled
@@ -298,7 +298,7 @@ module Roma
 
           def gets
             ret = gets2
-            @log.info("command log:#{ret.chomp}") if ret
+            @logger.info("command log:#{ret.chomp}") if ret
             ret
           end
         end
@@ -316,8 +316,8 @@ module Roma
       Roma::Logging::RLogger.create_singleton_instance("#{log.path}/#{@stats.my_node_id}.log",
                                                        log.shift_age,
                                                        log.shift_size)
-      @log = Roma::Logging::RLogger.instance
-      @log.level = Roma::Logging::RLogger::Severity::LEVELS.fetch(log.level)
+      @logger = Roma::Logging::RLogger.instance
+      @logger.level = Roma::Logging::RLogger::Severity::LEVELS.fetch(log.level)
     end
 
     def initialize_options(address, port:, join:, name:, config:, pid_file:, daemon:, verbose:,
@@ -397,14 +397,14 @@ module Roma
         if @routing_table.lost_action == :shutdown
           async_broadcast_cmd("rbalse lose_data\r\n")
           EventMachine.stop_event_loop
-          @log.error('The server has stopped, so that lose data.')
+          @logger.error('The server has stopped, so that lose data.')
         end
       end
       @routing_table.on_recover do |action|
         if %i(shutdown auto_assign).include?(@routing_table.lost_action) && @routing_table.auto_recover == true
           Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new("#{action}"))
         else
-          @log.error("AUTO_RECOVER is off or Unavailable value is set to [DEFAULT_LOST_ACTION] => #{@routing_table.lost_action}")
+          @logger.error("AUTO_RECOVER is off or Unavailable value is set to [DEFAULT_LOST_ACTION] => #{@routing_table.lost_action}")
         end
       end
 
@@ -460,7 +460,7 @@ module Roma
         st.closedb
       end
       @routing_table.close_log
-      @log.info("The server has stopped: #{@stats.my_node_id}")
+      @logger.info("The server has stopped: #{@stats.my_node_id}")
     end
   end
 end

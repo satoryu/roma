@@ -220,7 +220,7 @@ class AsyncEventHandlerTest < Test::Unit::TestCase
   # Values aren't logged, only their length.
   def test_redundant_logs_no_value
     log = StringIO.new
-    @h.instance_variable_set(:@log, Logger.new(log))
+    @h.instance_variable_set(:@logger, Logger.new(log))
     @h.call(:asyncev_redundant, [OTHER_NODE_ID, 'roma', 'key', 1, 2, 0, 'secret'])
     assert_match(/"key".*"\(6 bytes\)"/, log.string)
     assert_not_match(/secret/, log.string)

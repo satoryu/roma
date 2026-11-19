@@ -24,7 +24,7 @@ module Roma
       end
       @async_thread[:name] = __method__
     rescue StandardError => e
-      @log.error("#{e}\n#{$ERROR_POSITION}")
+      @logger.error("#{e}\n#{$ERROR_POSITION}")
     end
 
     private
@@ -51,18 +51,18 @@ module Roma
             end
             t[:name] = __method__
           else
-            @log.error("async event retry out:#{msg.event} #{loggable_args(msg.event, msg.args).inspect}")
+            @logger.error("async event retry out:#{msg.event} #{loggable_args(msg.event, msg.args).inspect}")
             msg.callback.call(msg, false) if msg.callback
           end
         end
       end
     rescue StandardError => e
-      @log.error("#{e}\n#{$ERROR_POSITION}")
+      @logger.error("#{e}\n#{$ERROR_POSITION}")
       retry
     end
 
     def asyncev_broadcast_cmd(args)
-      @log.debug("#{__method__} #{args.inspect}")
+      @logger.debug("#{__method__} #{args.inspect}")
       cmd, node_ids, tout = args
       t = Thread.new do
         async_broadcast_cmd("#{cmd}\r\n", node_ids, tout)
@@ -76,14 +76,14 @@ module Roma
 
     def asyncev_rdelete(args)
       node_id, hash_name, k, clock = args
-      @log.debug("#{__method__} #{args.inspect}")
+      @logger.debug("#{__method__} #{args.inspect}")
       unless @routing_table.nodes.include?(node_id)
-        @log.warn("async rdelete failed:#{node_id} does not found in routing table.#{k}\e#{hash_name} #{clock}")
+        @logger.warn("async rdelete failed:#{node_id} does not found in routing table.#{k}\e#{hash_name} #{clock}")
         return true # no retry
       end
       res = async_send_cmd(node_id, "rdelete #{k}\e#{hash_name} #{clock}\r\n", 10)
       unless res
-        @log.warn("async redundant failed:#{k}\e#{hash_name} #{clock} -> #{node_id}")
+        @logger.warn("async redundant failed:#{k}\e#{hash_name} #{clock} -> #{node_id}")
         return false # retry
       end
       true
@@ -95,7 +95,7 @@ module Roma
       t = Thread.new do
         yield
       rescue StandardError => e
-        @log.error("#{name}:#{e.inspect} #{$ERROR_POSITION}")
+        @logger.error("#{name}:#{e.inspect} #{$ERROR_POSITION}")
       end
       t[:name] = name
       t
@@ -114,15 +114,15 @@ module Roma
     # compressed value. Returns false to retry later.
     def send_redundant(command, args)
       node_id, hash_name, k, d, clock, expire_time, v = args
-      @log.debug("#{__method__} #{command} #{loggable_args('redundant', args).inspect}")
+      @logger.debug("#{__method__} #{command} #{loggable_args('redundant', args).inspect}")
       request = "#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length}"
       unless @routing_table.nodes.include?(node_id)
-        @log.warn("async #{command} failed:#{node_id} does not found in routing table.#{request}")
+        @logger.warn("async #{command} failed:#{node_id} does not found in routing table.#{request}")
         return true # no retry
       end
       res = async_send_cmd(node_id, "#{command} #{request}\r\n#{v}\r\n", 10)
       if res.nil? || res.start_with?('ERROR')
-        @log.warn("async #{command} failed:#{request} -> #{node_id}")
+        @logger.warn("async #{command} failed:#{request} -> #{node_id}")
         return false # retry
       end
       true

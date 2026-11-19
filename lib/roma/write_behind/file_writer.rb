@@ -4,11 +4,11 @@ module Roma
       attr_accessor :shift_size
 
       # Writes into +path+/+node_id+, a file up to +shift_size+ bytes.
-      def initialize(path, shift_size, log, node_id:)
+      def initialize(path, shift_size, logger, node_id:)
         @node_id = node_id
         path.chop! if path[-1] == '/'
         @path = path
-        @log = log
+        @logger = logger
         @file_handles = {} # file handle hash
         @file_names = {} # file name hash
         @do_write = false
@@ -40,7 +40,7 @@ module Roma
         fd = @file_handles[hash_name]
         unless fd
           fd = openfile(hash_name)
-          @log.info("WriteBehind file has been created: [#{@file_names[hash_name]}]")
+          @logger.info("WriteBehind file has been created: [#{@file_names[hash_name]}]")
           @total_size[hash_name] = 0
         end
         klen = key.length
@@ -48,23 +48,23 @@ module Roma
         vlen = val.length
         size = fd.write([t.to_i, cmd, klen, key, vlen, val].pack("NnNa#{klen}Na#{vlen}"))
         @total_size[hash_name] += size
-      #        @log.debug("WriteBehind:hash_name=#{hash_name} cmd=#{cmd} key=#{key} val=#{val} total_size=#{@total_size}")
+      #        @logger.debug("WriteBehind:hash_name=#{hash_name} cmd=#{cmd} key=#{key} val=#{val} total_size=#{@total_size}")
       ensure
         @do_write = false
       end
 
       def rotate(hash_name)
-        @log.info("WriteBehind:rotate #{hash_name}")
+        @logger.info("WriteBehind:rotate #{hash_name}")
         fd_old = @file_handles[hash_name]
         unless fd_old
-          @log.info("WriteBehind:rotate #{hash_name} not opend")
+          @logger.info("WriteBehind:rotate #{hash_name} not opend")
           return false
         end
         @file_handles.delete(hash_name)
         @file_names.delete(hash_name)
         sleep 0.01 while @do_write
         fd_old.close
-        @log.info('WriteBehind:rotate succeed')
+        @logger.info('WriteBehind:rotate succeed')
         true
       end
 
@@ -90,9 +90,9 @@ module Roma
       end
 
       def current_file_path(hash_name)
-        @log.info("WriteBehind:current_file_path #{hash_name}")
+        @logger.info("WriteBehind:current_file_path #{hash_name}")
         unless @file_names[hash_name]
-          @log.info("WriteBehind:current_file_path #{hash_name} not opend")
+          @logger.info("WriteBehind:current_file_path #{hash_name} not opend")
           return nil
         end
         File.expand_path("#{@file_names[hash_name]}")

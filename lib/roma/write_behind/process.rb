@@ -13,7 +13,7 @@ module Roma
         end
         @thread[:name] = 'write_behind'
       rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
       end
 
       def stop_write_behind_process
@@ -41,7 +41,7 @@ module Roma
           end
         end
       rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
         retry
       end
       private :process_loop

@@ -23,7 +23,7 @@ module Roma
       # get <key>*\r\n
       def ev_get(s)
         if s.length < 2
-          @log.error("get:wrong number of arguments(#{s})")
+          @logger.error("get:wrong number of arguments(#{s})")
           return send_data("CLIENT_ERROR Wrong number of arguments.\r\n")
         end
 
@@ -36,7 +36,7 @@ module Roma
         nodes = @routing_table.search_nodes(vnode)
 
         unless nodes.include?(@my_node_id)
-          @log.warn("forward get #{s[1]}")
+          @logger.warn("forward get #{s[1]}")
           res = forward_get(nodes[0], s[1], d)
           send_data(res || "SERVER_ERROR Message forward failed.\r\n")
           return
@@ -54,7 +54,7 @@ module Roma
         nodes = @routing_table.search_nodes(vnode)
 
         unless nodes.include?(@my_node_id)
-          @log.error("fget failed key=#{s[1]} vnode=#{vnode}")
+          @logger.error("fget failed key=#{s[1]} vnode=#{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
@@ -104,7 +104,7 @@ module Roma
       # delete <key> [<time>] [noreply]\r\n
       def ev_delete(s)
         if s.length < 2
-          @log.error("delete:wrong number of arguments(#{s})")
+          @logger.error("delete:wrong number of arguments(#{s})")
           return send_data("CLIENT_ERROR Wrong number of arguments.\r\n")
         end
 
@@ -118,7 +118,7 @@ module Roma
           cmd = "fdelete #{key}\e#{hash_name}"
           s[2..-1].each { |c| cmd << " #{c}" }
           cmd << "\r\n"
-          @log.warn("forward delete #{s[1]}")
+          @logger.warn("forward delete #{s[1]}")
           res = send_cmd(nodes[0], cmd)
           return send_data("SERVER_ERROR Message forward failed.\r\n") if res.nil? || res.start_with?('ERROR')
 
@@ -136,7 +136,7 @@ module Roma
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.error("fdelete failed delete key=#{s[1]} vnode=#{vnode}")
+          @logger.error("fdelete failed delete key=#{s[1]} vnode=#{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
@@ -194,7 +194,7 @@ module Roma
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
-          @log.warn("forward cas key=#{key} vnode=#{vnode} to #{nodes[0]}")
+          @logger.warn("forward cas key=#{key} vnode=#{vnode} to #{nodes[0]}")
           res = send_cmd(nodes[0], "fcas #{key}\e#{hash_name} #{d} #{s[3]} #{v.length} #{s[5]}\r\n#{v}\r\n")
           return send_data("SERVER_ERROR Message forward failed.\r\n") if res.nil? || res.start_with?('ERROR')
 
@@ -213,7 +213,7 @@ module Roma
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.error("fcas failed key = #{s[1]} vnode = #{vnode}")
+          @logger.error("fcas failed key = #{s[1]} vnode = #{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
@@ -237,7 +237,7 @@ module Roma
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
-          @log.warn("forward set_expt key=#{key} vnode=#{vnode} to #{nodes[0]}")
+          @logger.warn("forward set_expt key=#{key} vnode=#{vnode} to #{nodes[0]}")
           res = send_cmd(nodes[0], "fset_expt #{s[1]} #{s[2]}\r\n")
           return send_data("#{res}\r\n") if res
 
@@ -255,7 +255,7 @@ module Roma
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.error("fset_expt failed key = #{s[1]} vnode = #{vnode}")
+          @logger.error("fset_expt failed key = #{s[1]} vnode = #{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
@@ -268,7 +268,7 @@ module Roma
       # get_expt <key> [unix]
       def ev_get_expt(s)
         unless s.length.between?(2, 3)
-          @log.error("get_expt: wrong number of arguments(#{s.length - 1} to 2-3)")
+          @logger.error("get_expt: wrong number of arguments(#{s.length - 1} to 2-3)")
           return send_data("CLIENT_ERROR Wrong number of arguments.\r\n")
         end
         case s[2]
@@ -277,7 +277,7 @@ module Roma
         when nil
           is_unix = false
         else
-          @log.error('get_expt: wrong format of arguments.')
+          @logger.error('get_expt: wrong format of arguments.')
           return send_data("CLIENT_ERROR Wrong format of arguments.\r\n")
         end
 
@@ -290,7 +290,7 @@ module Roma
 
         nodes = @routing_table.search_nodes(vnode)
         unless nodes.include?(@my_node_id)
-          @log.warn("forward get_expt #{s[1]} #{s[2]}")
+          @logger.warn("forward get_expt #{s[1]} #{s[2]}")
           res = forward_get_expt(nodes[0], vnode, s[1], s[2])
           send_data(res || "SERVER_ERROR Message forward failed.\r\n")
           return
@@ -353,7 +353,7 @@ module Roma
           next if send_cmd(node_id, "rdelete #{key}\e#{hash_name} #{clock}\r\n")
 
           Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('rdelete', [node_id, hash_name, key_arg, clock]))
-          @log.warn("rdelete failed:#{key_arg}\e#{hash_name} #{d} #{clock} -> #{node_id}")
+          @logger.warn("rdelete failed:#{key_arg}\e#{hash_name} #{d} #{clock} -> #{node_id}")
         end
         return send_data("NOT_FOUND\r\n") unless value
 
@@ -405,7 +405,7 @@ module Roma
         res = con.gets
         if res.nil?
           @routing_table.proc_failed(node_id)
-          @log.error("forward get failed:node_id=#{node_id} key=#{k}")
+          @logger.error("forward get failed:node_id=#{node_id} key=#{k}")
           return nil
         elsif res == "END\r\n"
           # value does not found
@@ -423,8 +423,8 @@ module Roma
         res
       rescue StandardError => e
         @routing_table.proc_failed(node_id) if e.message != 'no connection'
-        @log.error("#{e.inspect}/#{$@}")
-        @log.error("forward get failed:node_id=#{node_id} key=#{k}")
+        @logger.error("#{e.inspect}/#{$@}")
+        @logger.error("forward get failed:node_id=#{node_id} key=#{k}")
         nil
       end
 
@@ -442,7 +442,7 @@ module Roma
         res
       rescue StandardError
         @routing_table.proc_failed(node_id)
-        @log.error("forward gets failed:node_id=#{node_id} key=#{keys}")
+        @logger.error("forward gets failed:node_id=#{node_id} key=#{keys}")
         {}
       end
 
@@ -461,7 +461,7 @@ module Roma
         res
       rescue StandardError
         @routing_table.proc_failed(node_id)
-        @log.error("forward get_expt failed:node_id=#{node_id} key=#{key}")
+        @logger.error("forward get_expt failed:node_id=#{node_id} key=#{key}")
         nil
       end
 
@@ -484,7 +484,7 @@ module Roma
           end
           send_data("STORED\r\n")
         else
-          @log.error("#{fnc} NOT_STORED:#{hash_name} #{vnode} #{k} #{d} #{expire_time}")
+          @logger.error("#{fnc} NOT_STORED:#{hash_name} #{vnode} #{k} #{d} #{expire_time}")
           send_data("NOT_STORED\r\n")
         end
       end
@@ -500,7 +500,7 @@ module Roma
 
         case ret
         when nil
-          @log.error("cas NOT_STORED:#{hash_name} #{vnode} #{k} #{d} #{expire_time} #{clock}")
+          @logger.error("cas NOT_STORED:#{hash_name} #{vnode} #{k} #{d} #{expire_time} #{clock}")
           send_data("NOT_STORED\r\n")
         when :not_found
           send_data("NOT_FOUND\r\n")
@@ -530,7 +530,7 @@ module Roma
 
           Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('redundant',
                                                              [node_id, hash_name, k, d, clock, expire_time, v]))
-          @log.warn("redundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length} -> #{node_id}")
+          @logger.warn("redundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{v.length} -> #{node_id}")
         end
       end
 
@@ -543,19 +543,19 @@ module Roma
 
           Roma::AsyncEvent.queue.push(Roma::AsyncMessage.new('zredundant',
                                                              [node_id, hash_name, k, d, clock, expire_time, zv]))
-          @log.warn("zredundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length} -> #{node_id}")
+          @logger.warn("zredundant failed:#{k}\e#{hash_name} #{d} #{clock} #{expire_time} #{zv.length} -> #{node_id}")
         end
       end
 
       def set(fnc, s)
         if s.length != 5
-          @log.error("set:wrong number of arguments(#{s})")
+          @logger.error("set:wrong number of arguments(#{s})")
           return send_data("CLIENT_ERROR Wrong number of arguments.\r\n")
         end
 
         bytes = s[4].to_i
         if bytes < 0
-          @log.error("set:wrong value size(#{s})")
+          @logger.error("set:wrong value size(#{s})")
           return send_data("CLIENT_ERROR Wrong value size.\r\n")
         end
 
@@ -566,7 +566,7 @@ module Roma
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
-          @log.warn("forward #{fnc} key=#{key} vnode=#{vnode} to #{nodes[0]}")
+          @logger.warn("forward #{fnc} key=#{key} vnode=#{vnode} to #{nodes[0]}")
           res = send_cmd(nodes[0], "f#{fnc} #{s[1]} #{d} #{s[3]} #{s[4]}\r\n#{v}\r\n")
           return send_data("SERVER_ERROR Message forward failed.\r\n") if res.nil? || res.start_with?('ERROR')
 
@@ -585,7 +585,7 @@ module Roma
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.error("f#{fnc} failed key = #{s[1]} vnode = #{vnode}")
+          @logger.error("f#{fnc} failed key = #{s[1]} vnode = #{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 
@@ -623,7 +623,7 @@ module Roma
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes[0] != @my_node_id
-          @log.debug("forward #{fnc} key=#{s[1]} vnode=#{vnode} to #{nodes[0]}")
+          @logger.debug("forward #{fnc} key=#{s[1]} vnode=#{vnode} to #{nodes[0]}")
           res = send_cmd(nodes[0], "f#{fnc} #{s[1]} #{d} #{s[2]}\r\n")
           return send_data("SERVER_ERROR Message forward failed.\r\n") if res.nil? || res.start_with?('ERROR')
 
@@ -642,7 +642,7 @@ module Roma
         vnode = @routing_table.vnode_id(d)
         nodes = @routing_table.search_nodes_for_write(vnode)
         if nodes.include?(@my_node_id) == false
-          @log.debug("f#{fnc} failed key = #{s[1]} vnode = #{vnode}")
+          @logger.debug("f#{fnc} failed key = #{s[1]} vnode = #{vnode}")
           return send_data("SERVER_ERROR Routing table is inconsistent.\r\n")
         end
 

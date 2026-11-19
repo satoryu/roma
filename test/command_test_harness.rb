@@ -127,7 +127,7 @@ class CommandTestHarness
     end
   end
 
-  attr_reader :stats, :routing_table, :log, :server, :broadcasts, :storage, :storages
+  attr_reader :stats, :routing_table, :logger, :server, :broadcasts, :storage, :storages
   # How the last command closed the connection: :after_writing, :now or nil.
   attr_reader :closed
   # What the other node answers to relayed commands.
@@ -139,7 +139,7 @@ class CommandTestHarness
     @my_node_id = NODE_ID
     @addr = CLIENT_ADDR
     @default_hash_name = 'roma'
-    @log = Log.new
+    @logger = Log.new
     @server = Server.new
     @dir = Dir.mktmpdir('roma_command')
     @storage = Roma::Storage::HashStorage.new

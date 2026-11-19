@@ -87,7 +87,7 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
 
   def test_log_shift_size_is_set_on_the_logger
     @conn.request('set_log_shift_size 4096')
-    assert_equal 4096, @conn.log.shift_size
+    assert_equal 4096, @conn.logger.shift_size
   end
 
   data('number' => ['7', 7], 'zero' => ['0', 0], 'name' => %w(daily daily))
@@ -96,7 +96,7 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
     assert_equal relayed('STORED'), @conn.request("set_log_shift_age #{value}")
     assert_equal ["rset_log_shift_age #{value}\r\n"], @conn.broadcasts
     assert_equal stored, @conn.stats.log_shift_age
-    assert_equal stored, @conn.log.shift_age
+    assert_equal stored, @conn.logger.shift_age
     assert_equal "STORED\r\n", @conn.request("rset_log_shift_age #{value}")
   end
 
@@ -112,7 +112,7 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
     value, level = data
     # set_log_level changes only this node.
     assert_equal "STORED\r\n", @conn.request("set_log_level #{value}")
-    assert_equal level, @conn.log.level
+    assert_equal level, @conn.logger.level
     assert_equal value.downcase, @conn.stats.log_level
     assert_equal [], @conn.broadcasts
   end

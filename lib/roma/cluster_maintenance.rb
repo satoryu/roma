@@ -23,7 +23,7 @@ module Roma
           sleep interval
           send(job)
         rescue Exception => e
-          @log.error("#{e}\n#{$@}")
+          @logger.error("#{e}\n#{$@}")
         end
       end
       t[:name] = job
@@ -46,16 +46,16 @@ module Roma
     # the storages, updates the replica cluster and resets the counters.
     def maintain_cluster
       if @startup && @routing_table.enabled_failover == false
-        @log.debug('nodes_check start')
+        @logger.debug('nodes_check start')
         if nodes_check(@routing_table.nodes - [@stats.my_node_id])
-          @log.info('all nodes started')
+          @logger.info('all nodes started')
           AsyncEvent.queue.clear
           @routing_table.enabled_failover = true
           Command::Receiver.make_event_list
           @startup = false
         end
       elsif @routing_table.enabled_failover == false
-        @log.warn('failover disable now!!')
+        @logger.warn('failover disable now!!')
       else
         version_check
         @routing_table.delete_old_transactions(@stats.routing_transaction_timeout)
@@ -91,15 +91,15 @@ module Roma
 
     def node_check(node_id)
       if @startup && @routing_table.enabled_failover == false && !Roma::Messaging::ConnectionPool.instance.check_connection(node_id)
-        @log.info("I'm waiting for booting the #{node_id} instance.")
+        @logger.info("I'm waiting for booting the #{node_id} instance.")
         return false
       end
       name = async_send_cmd(node_id, "whoami\r\n", 2)
       return false unless name
 
       if name != @stats.name
-        @log.error("#{node_id} has diffarent name.")
-        @log.error("me = \"#{@stats.name}\"  #{node_id} = \"#{name}\"")
+        @logger.error("#{node_id} has diffarent name.")
+        @logger.error("me = \"#{@stats.name}\"  #{node_id} = \"#{name}\"")
         return false
       end
       true
@@ -128,7 +128,7 @@ module Roma
 
       idx = nodes.index(@stats.my_node_id)
       unless idx
-        @log.error("My node-id(=#{@stats.my_node_id}) does not found in the routingtable.")
+        @logger.error("My node-id(=#{@stats.my_node_id}) does not found in the routingtable.")
         EventMachine.stop_event_loop
         return
       end
@@ -136,7 +136,7 @@ module Roma
         begin
           ret = routing_hash_comparison(nodes[idx - 1])
           if ret == :inconsistent
-            @log.info('create nodes from routes')
+            @logger.info('create nodes from routes')
 
             @routing_table.create_nodes_from_routes
             begin
@@ -145,15 +145,15 @@ module Roma
               if con.gets == "CREATED\r\n"
                 Roma::Messaging::ConnectionPool.instance.checkin(nodes[idx - 1], con)
               else
-                @log.error("get busy result in create_nodes_from_v_idx command from #{nodes[idx - 1]}.")
+                @logger.error("get busy result in create_nodes_from_v_idx command from #{nodes[idx - 1]}.")
                 con.close
               end
             rescue Exception
-              @log.error("create_nodes_from_v_idx command unreachable to the #{nodes[idx - 1]}.")
+              @logger.error("create_nodes_from_v_idx command unreachable to the #{nodes[idx - 1]}.")
             end
           end
         rescue Exception => e
-          @log.error("#{e}\n#{$@}")
+          @logger.error("#{e}\n#{$@}")
         end
         @stats.run_sync_routing = false
       end
@@ -178,7 +178,7 @@ module Roma
 
     def sync_routing(node_id, id)
       vnode = @routing_table.merkle_tree.to_vnode(id)
-      @log.warn("vnode=#{vnode} inconsistent")
+      @logger.warn("vnode=#{vnode} inconsistent")
 
       res = async_send_cmd(node_id, "getroute #{vnode}\r\n")
       return if res.nil? || res.start_with?('ERROR')

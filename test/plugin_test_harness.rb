@@ -103,7 +103,7 @@ class PluginTestHarness
     @default_hash_name = HASH_NAME
     @routing_table = RoutingTable.new(nodes)
     @stats = Stats.new({}, 0, 0, 0, 0, node_id)
-    @log = Logger.new(nil)
+    @logger = Logger.new(nil)
     @storage = Roma::Storage::HashStorage.new
     @storage.vn_list = [0]
     @storage.opendb

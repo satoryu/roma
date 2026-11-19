@@ -23,7 +23,7 @@ module Roma
           @authenticated = true
           send_data("AUTHENTICATED\r\n")
         else
-          @log.warn("#{@addr}:#{@port} failed in the authentication")
+          @logger.warn("#{@addr}:#{@port} failed in the authentication")
           send_data("CLIENT_ERROR authentication failed\r\n")
         end
       end

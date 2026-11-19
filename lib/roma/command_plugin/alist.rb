@@ -438,7 +438,7 @@ module Roma
 
         values, times = list
 
-        # @log.debug("#{s[2]} et=#{et}")
+        # @logger.debug("#{s[2]} et=#{et}")
         expired_swap(values, times, data, et)
 
         values.insert(0, data)
@@ -477,7 +477,7 @@ module Roma
 
         values, times = list
 
-        # @log.debug("#{s[2]} et=#{et}")
+        # @logger.debug("#{s[2]} et=#{et}")
         expired_swap(values, times, data, et)
 
         values.insert(0, data)
@@ -831,7 +831,7 @@ module Roma
 
         values, times = list
 
-        # @log.debug("#{s[2]} et=#{et}")
+        # @logger.debug("#{s[2]} et=#{et}")
         expired_swap(values, times, data, et)
 
         values.push(data)
@@ -870,7 +870,7 @@ module Roma
 
         values, times = list
 
-        # @log.debug("#{s[2]} et=#{et}")
+        # @logger.debug("#{s[2]} et=#{et}")
         expired_swap(values, times, data, et)
 
         max = s[3].to_i
@@ -1000,11 +1000,11 @@ module Roma
       #  |<-['STORED'\r\n]                     |
       def ev_alist_spushv(s)
         if s.length != 3
-          @log.error("#{__method__}:wrong number of arguments(#{s})")
+          @logger.error("#{__method__}:wrong number of arguments(#{s})")
           return send_data("CLIENT_ERROR Wrong number of arguments.\r\n")
         end
         if @stats.spushv_protection
-          @log.info("#{__method__}:In spushv_protection")
+          @logger.info("#{__method__}:In spushv_protection")
           return send_data("SERVER_ERROR In spushv_protection.\r\n")
         end
         @stats.run_receive_a_vnode["#{s[1]}_#{s[2]}"] = true
@@ -1027,29 +1027,29 @@ module Roma
           v = read_stream_bytes(vlen, 100)
           val = to_alist_value(v)
           if val
-            # @log.debug("listdata #{vnode} #{k} #{val.inspect}")
+            # @logger.debug("listdata #{vnode} #{k} #{val.inspect}")
             count += 1 if merge_list(s[1], vnode, last, clock, expire_time, k, v, val)
           elsif @storages[s[1]].load_stream_dump(vnode, last, clock, expire_time, k, v)
-            # @log.debug("not listdata #{vnode} #{k} #{val}")
+            # @logger.debug("not listdata #{vnode} #{k} #{val}")
             count += 1
           end
         end
         if @stats.spushv_protection
-          @log.info("#{__method__}:Canceled because of spushv_protection")
+          @logger.info("#{__method__}:Canceled because of spushv_protection")
           send_data("CANCELED\r\n")
         else
           send_data("STORED\r\n")
         end
-        @log.debug("alist #{count} keys loaded.")
+        @logger.debug("alist #{count} keys loaded.")
       rescue Roma::Storage::StorageException => e
-        @log.error("#{e.inspect} #{$@}")
+        @logger.error("#{e.inspect} #{$@}")
         close_connection
         if Roma.config.storage.exception_action == :shutdown
-          @log.error("#{__method__}:The server will stop")
+          @logger.error("#{__method__}:The server will stop")
           @stop_event_loop = true
         end
       rescue StandardError => e
-        @log.error("#{e}\n#{$@}")
+        @logger.error("#{e}\n#{$@}")
       ensure
         @stats.run_receive_a_vnode.delete("#{s[1]}_#{s[2]}") if s.length == 3
       end

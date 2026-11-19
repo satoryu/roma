@@ -6,14 +6,14 @@ module Roma
       private
 
       def asyncev_start_get_routing_event(args)
-        @log.debug("#{__method__} #{args}")
+        @logger.debug("#{__method__} #{args}")
         start_thread(__method__) do
           load_routing_events
         end
       end
 
       def load_routing_events
-        @log.info("#{__method__}:start.")
+        @logger.info("#{__method__}:start.")
 
         routing_path = Roma.config.routing.path
         # The storage files may be in a directory named like the routing logs.
@@ -28,13 +28,13 @@ module Roma
           end
         end
 
-        @log.info("#{__method__} has done.")
+        @logger.info("#{__method__} has done.")
       rescue StandardError => e
-        @log.error("#{e}\n#{$ERROR_POSITION}")
+        @logger.error("#{e}\n#{$ERROR_POSITION}")
       end
 
       def asyncev_start_get_logs(args)
-        @log.debug("#{__method__} #{args}")
+        @logger.debug("#{__method__} #{args}")
         start_thread(__method__) do
           load_logs(args)
         ensure
@@ -43,7 +43,7 @@ module Roma
       end
 
       def load_logs(args)
-        @log.debug("#{__method__}:start.")
+        @logger.debug("#{__method__}:start.")
 
         log_path = Roma.config.log.path
         log_file = "#{log_path}/#{@stats.my_node_id}.log"
@@ -64,10 +64,10 @@ module Roma
         # set gathered date for expiration
         @routing_table.logs.unshift(Time.now)
 
-        @log.debug("#{__method__} has done.")
+        @logger.debug("#{__method__} has done.")
       rescue StandardError => e
         @routing_table.logs = []
-        @log.error("#{e}\n#{$ERROR_POSITION}")
+        @logger.error("#{e}\n#{$ERROR_POSITION}")
       ensure
         @stats.gui_run_gather_logs = false
       end
@@ -76,7 +76,7 @@ module Roma
         # hilatency check
         ps = Time.now - latency_time
         if ps > 5
-          @log.warn('gather_logs process was failed.')
+          @logger.warn('gather_logs process was failed.')
           raise
         end
 
@@ -113,14 +113,14 @@ module Roma
             if target_time < begining_time
               return 0
             elsif target_time > end_time
-              @log.error('irregular time was set.')
+              @logger.error('irregular time was set.')
               raise
             end
           when 'end'
             if target_time > end_time
               return f.size
             elsif target_time < begining_time
-              @log.error('irregular time was set.')
+              @logger.error('irregular time was set.')
               raise
             end
           end

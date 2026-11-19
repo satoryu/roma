@@ -6,9 +6,9 @@ module Roma
       private
 
       def asyncev_start_storage_clean_up_process(_args)
-        #      @log.info("#{__method__}")
+        #      @logger.info("#{__method__}")
         if @stats.run_storage_clean_up
-          @log.error("#{__method__}:already in being")
+          @logger.error("#{__method__}:already in being")
           return
         end
         @stats.run_storage_clean_up = true
@@ -21,7 +21,7 @@ module Roma
       end
 
       def storage_clean_up_process
-        @log.info("#{__method__}:start")
+        @logger.info("#{__method__}:start")
         me = @stats.my_node_id
         vnhash = {}
         @routing_table.each_vnode do |vnode, node_ids|
@@ -39,7 +39,7 @@ module Roma
           break unless @stats.do_clean_up?
 
           st.each_clean_up(t, vnhash) do |key, vnode|
-            # @log.debug("#{__method__}:key=#{key} vnode=#{vnode}")
+            # @logger.debug("#{__method__}:key=#{key} vnode=#{vnode}")
             # A client may have set the key again since it was found.
             clock = expired_clock(st, vnode, key, t)
             if @stats.run_receive_a_vnode.key?("#{hash_name}_#{vnode}") || clock.nil?
@@ -50,8 +50,8 @@ module Roma
                 nodes[1..-1].each do |node_id|
                   # With the clock, a node deletes only that record, not a newer one.
                   res = async_send_cmd(node_id, "out #{key}\e#{hash_name} #{vnode} #{clock}\r\n")
-                  @log.warn("send out command failed:#{key}\e#{hash_name} #{vnode} -> #{node_id}") unless res
-                  # @log.debug("#{__method__}:res=#{res}")
+                  @logger.warn("send out command failed:#{key}\e#{hash_name} #{vnode} -> #{node_id}") unless res
+                  # @logger.debug("#{__method__}:res=#{res}")
                 end
               end
               count += 1
@@ -60,7 +60,7 @@ module Roma
             end
           end
         end
-        @log.info("#{__method__}:#{count} keys deleted.") if count > 0
+        @logger.info("#{__method__}:#{count} keys deleted.") if count > 0
 
         # delete @routing_table.logs
         if @stats.gui_run_gather_logs || @routing_table.logs.empty?
@@ -71,7 +71,7 @@ module Roma
           @routing_table.logs.clear if gathered_time.to_i < Time.now.to_i - (60 * 5)
         end
       ensure
-        @log.info("#{__method__}:stop")
+        @logger.info("#{__method__}:stop")
       end
 
       # The logical clock of the record of +key+ if it has expired, or is a
@@ -87,28 +87,28 @@ module Roma
 
       def asyncev_start_storage_flush_process(args)
         hash_name, db_index = args
-        @log.debug("#{__method__} #{args.inspect}")
+        @logger.debug("#{__method__} #{args.inspect}")
 
         st = @storages[hash_name]
         if st.dbs[db_index] != :safecopy_flushing
-          @log.error("Can not flush storage. stat = #{st.dbs[db_index]}")
+          @logger.error("Can not flush storage. stat = #{st.dbs[db_index]}")
           return true
         end
         start_thread(__method__) do
           st.flush_db(db_index)
           st.update_db_status(db_index, :safecopy_flushed)
-          @log.info("#{__method__}:storage has flushed. (#{hash_name}, #{db_index})")
+          @logger.info("#{__method__}:storage has flushed. (#{hash_name}, #{db_index})")
         end
         true
       end
 
       def asyncev_start_storage_cachecleaning_process(args)
         hash_name, db_index = args
-        @log.debug("#{__method__} #{args.inspect}")
+        @logger.debug("#{__method__} #{args.inspect}")
 
         st = @storages[hash_name]
         if st.dbs[db_index] != :cachecleaning
-          @log.error("Can not start cachecleaning process. stat = #{st.dbs[db_index]}")
+          @logger.error("Can not start cachecleaning process. stat = #{st.dbs[db_index]}")
           return true
         end
         start_thread(__method__) do
@@ -129,7 +129,7 @@ module Roma
           break if keys.nil? || keys.length == 0
           break unless @do_storage_cachecleaning_process
 
-          # @log.debug("#{__method__}:#{keys.length} keys found")
+          # @logger.debug("#{__method__}:#{keys.length} keys found")
 
           # copy cache -> db
           st.each_cache_by_keys(db_index, keys) do |vnode, last, clock, expire_time, k, v|
@@ -137,10 +137,10 @@ module Roma
 
             if st.load_stream_dump_for_cachecleaning(vnode, last, clock, expire_time, k, v)
               count += 1
-              # @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
+              # @logger.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was stored.")
             else
               rcount += 1
-              # @log.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was rejected.")
+              # @logger.debug("#{__method__}:[#{vnode} #{last} #{clock} #{expire_time} #{k}] was rejected.")
             end
           end
 
@@ -148,12 +148,12 @@ module Roma
           keys.each { |key| st.out_cache(db_index, key) }
         end
         if @do_storage_cachecleaning_process == false
-          @log.warn("#{__method__}:uncompleted")
+          @logger.warn("#{__method__}:uncompleted")
         else
           st.update_db_status(db_index, :normal)
         end
-        @log.debug("#{__method__}:#{count} keys loaded.")
-        @log.debug("#{__method__}:#{rcount} keys rejected.") if rcount > 0
+        @logger.debug("#{__method__}:#{count} keys loaded.")
+        @logger.debug("#{__method__}:#{rcount} keys rejected.") if rcount > 0
       ensure
         @do_storage_cachecleaning_process = false
       end
