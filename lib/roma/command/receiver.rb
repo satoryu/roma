@@ -20,7 +20,7 @@ module Roma
       include MultiHashCommandReceiver
       include SystemCommandReceiver
 
-      def initialize(storages, routing_table)
+      def initialize(server)
         super
         @stats = Roma::Stats.instance
         @my_node_id = @stats.my_node_id

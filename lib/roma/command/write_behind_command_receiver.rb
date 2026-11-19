@@ -22,7 +22,7 @@ module Roma
 
         res = broadcast_cmd("rwritebehind_rotate #{s[1]}\r\n")
 
-        res[@stats.my_node_id] = if $roma.wb_writer.rotate(s[1])
+        res[@stats.my_node_id] = if @server.wb_writer.rotate(s[1])
                                    'ROTATED'
                                  else
                                    'NOT_OPEND'
@@ -34,7 +34,7 @@ module Roma
       def ev_rwritebehind_rotate(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        if $roma.wb_writer.rotate(s[1])
+        if @server.wb_writer.rotate(s[1])
           send_data("ROTATED\r\n")
         else
           send_data("NOT_OPEND\r\n")
@@ -47,7 +47,7 @@ module Roma
 
         res = broadcast_cmd("rwritebehind_get_path #{s[1]}\r\n")
 
-        ret = $roma.wb_writer.path(s[1])
+        ret = @server.wb_writer.path(s[1])
         res[@stats.my_node_id] = ret
 
         send_data("#{res}\r\n")
@@ -57,7 +57,7 @@ module Roma
       def ev_rwritebehind_get_path(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        ret = $roma.wb_writer.path(s[1])
+        ret = @server.wb_writer.path(s[1])
         send_data("#{ret}\r\n")
       end
 
@@ -67,7 +67,7 @@ module Roma
 
         res = broadcast_cmd("rwritebehind_get_current_file #{s[1]}\r\n")
 
-        ret = $roma.wb_writer.current_file_path(s[1])
+        ret = @server.wb_writer.current_file_path(s[1])
         res[@stats.my_node_id] = (ret || 'NOT_OPEND')
         send_data("#{res}\r\n")
       end
@@ -76,7 +76,7 @@ module Roma
       def ev_rwritebehind_get_current_file(s)
         return send_data("CLIENT_ERROR number of arguments (0 for 1)\r\n") if s.length < 2
 
-        ret = $roma.wb_writer.current_file_path(s[1])
+        ret = @server.wb_writer.current_file_path(s[1])
         if ret
           send_data("#{ret}\r\n")
         else
@@ -164,7 +164,7 @@ module Roma
       # Switches the cluster replication of this node by switch_replication,
       # and returns the reply.
       def switch_replication(s)
-        writer = $roma.cluster_replication_writer
+        writer = @server.cluster_replication_writer
         Timeout.timeout(1) do
           if s[1] == 'true'
             writer.activate(s[2], existing_data: s[3] == 'all')

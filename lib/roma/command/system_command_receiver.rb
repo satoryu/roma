@@ -177,7 +177,7 @@ module Roma
         @storages.each do |hash_name, st|
           send_stat_result("storages[#{hash_name}].", storage_stat(st), regexp)
         end
-        send_stat_result(nil, $roma.write_behind_stat, regexp)
+        send_stat_result(nil, @server.write_behind_stat, regexp)
         send_stat_result(nil, @routing_table.stat(@stats.my_node_id), regexp)
         send_stat_result(nil, connection_stat, regexp)
         send_stat_result(nil, DNSCache.instance.stat, regexp)
@@ -345,7 +345,7 @@ module Roma
         AsyncEvent.queue.clear
         @routing_table.enabled_failover = true
         Command::Receiver.make_event_list
-        $roma.startup = false
+        @server.startup = false
         send_data("STARTED\r\n")
       end
 
@@ -503,7 +503,7 @@ module Roma
 
       # set_wb_shift_size <size>
       def_setting_command :wb_shift_size, POSITIVE_LENGTH do |v|
-        $roma.wb_writer.shift_size = v.to_i
+        @server.wb_writer.shift_size = v.to_i
       end
 
       # set_storage_status [number of file][safecopy|normal]{hash_name}
@@ -672,7 +672,7 @@ module Roma
       # Restarts the event loop of the server, with new connections to the
       # other nodes, and failover off until the nodes have started.
       def restart_event_loop
-        $roma.eventloop = true
+        @server.eventloop = true
         @routing_table.enabled_failover = false
         close_all_connections
         EventMachine.stop_event_loop

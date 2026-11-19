@@ -284,18 +284,10 @@ Style/CollectionQuerying:
 Style/FormatStringToken:
   EnforcedStyle: unannotated
 
-# Offense count: 27
+# Offense count: 2
 # Configuration parameters: AllowedVariables.
 Style/GlobalVars:
   Exclude:
-    - 'lib/roma/command/system_command_receiver.rb'
-    - 'lib/roma/command/vnode_command_receiver.rb'
-    - 'lib/roma/command/write_behind_command_receiver.rb'
-    - 'lib/roma/command_plugin/alist.rb'
-    - 'lib/roma/command_plugin/storage.rb'
-    - 'lib/roma/server.rb'
-    - 'test/command_test_harness.rb'
-    - 'test/plugin_test_harness.rb'
     - 'test/rcirb.rb'
 
 # Offense count: 7

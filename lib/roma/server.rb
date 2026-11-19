@@ -29,11 +29,11 @@ module Roma
     # "11211", "-d"]. +program+ is the name in the usage. With -d, the server
     # runs as a daemon.
     def self.run(argv, program: 'roma server')
-      $roma = new(argv, program: program)
-      if $roma.daemon?
-        daemonize { $roma.start }
+      server = new(argv, program: program)
+      if server.daemon?
+        daemonize { server.start }
       else
-        $roma.start
+        server.start
       end
     end
 
@@ -127,8 +127,7 @@ module Roma
           EventMachine.run do
             trap_stop_signals
             EventMachine.start_server(address, @stats.port,
-                                      Roma::Command::Receiver,
-                                      @storages, @routing_table)
+                                      Roma::Command::Receiver, self)
             # a management of connections lives
             EventMachine.add_periodic_timer(10) do
               if Event::Handler.connection_expire_time > 0
