@@ -10,8 +10,8 @@ module Roma
       attr_accessor :lost_action, :auto_recover, :auto_recover_status, :auto_recover_time, :event, :event_limit_line,
                     :logs
 
-      def initialize(routing_data, fname)
-        super(routing_data)
+      def initialize(routing_data, fname, logger:)
+        super(routing_data, logger: logger)
         @routing_data.nodes.sort!
         @transactions = {}
         @fname = fname

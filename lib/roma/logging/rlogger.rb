@@ -132,17 +132,6 @@ module Roma
         end
       end
 
-      @@singleton_instance = nil
-
-      def self.create_singleton_instance(logdev, shift_age = 0, shift_size = 1_048_576)
-        @@singleton_instance = RLogger.new(logdev, shift_age, shift_size)
-        private_class_method :new, :allocate
-      end
-
-      def self.instance
-        @@singleton_instance
-      end
-
       def initialize(logdev, shift_age = 0, shift_size = 1_048_576)
         # Logger knows only daily, weekly and monthly periods; RLogger shifts
         # the log itself, so give Logger one of them and set the real one.

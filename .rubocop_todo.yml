@@ -53,12 +53,11 @@ Lint/AssignmentInCondition:
     - 'lib/roma/write_behind/process.rb'
     - 'test/fake_node.rb'
 
-# Offense count: 3
+# Offense count: 2
 # Configuration parameters: AllowedParentClasses.
 Lint/MissingSuper:
   Exclude:
     - 'lib/roma/event/handler.rb'
-    - 'lib/roma/logging/stderr_wrapper.rb'
     - 'test/plugin_test_harness.rb'
 
 # Offense count: 2

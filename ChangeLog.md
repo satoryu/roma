@@ -151,6 +151,14 @@ The server loads the command plugins by a convention, instead of a list in the c
 * The tools, such as `roma node send`, take the secret from the environment variable `ROMA_CLUSTER_SECRET`.
 * `reqpushv` pushes a vnode only to a node in the routing table, with or without the secret. It pushed to any host.
 
+### The logger
+The server makes the logger and gives it to what logs, instead of a singleton [#164](https://github.com/satoryu/roma/issues/164).
+
+* `Roma::Logging::RLogger.instance` and `create_singleton_instance` are removed. A command logs by `@logger`, which is `Roma::Server#logger`.
+* `RoutingTable.new` and `ChurnbasedRoutingTable.new` take `logger:`, so a class of `config.routing.table_class` is made with `(routing_data, file, logger:)`.
+* `Stats#record_latency` gives the summary of the latencies to its block, instead of logging it.
+* `Roma::Logging::StderrWrapper`, which nothing used, is removed.
+
 ### Fixes
 * A write that is sent to the replica cluster isn't also written to the write-behind files, where it made a file `wb/<node>//<date>/<n>.wb` and raised TypeError for each write [#134](https://github.com/satoryu/roma/issues/134)
 * The files that the server makes (storages, logs, write-behind, routing logs, the pid file) aren't readable by other users: the server sets the umask to `config.umask`, 0o027 by default, at start. They were made by the umask of the process, usually 0o022, so readable by everyone [#134](https://github.com/satoryu/roma/issues/134)

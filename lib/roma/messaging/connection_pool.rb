@@ -1,5 +1,6 @@
 require 'socket'
 require 'singleton'
+require 'logger'
 require 'roma/dns_cache'
 require 'roma/peer_auth'
 
@@ -15,8 +16,11 @@ module Roma
       # The secret of the cluster, by which a new connection is
       # authenticated, or nil. See PeerAuth.
       attr_accessor :secret
+      # Where it logs. The server sets its logger; before it, nowhere.
+      attr_accessor :logger
 
       def initialize(maxlength = 10, expire_time = 30)
+        @logger = Logger.new(nil)
         @pool = {}
         @maxlength = maxlength
         @expire_time = expire_time
@@ -29,13 +33,13 @@ module Roma
         if ret && @expire_time != 0 && last < Time.now - @expire_time
           ret.close
           ret = nil
-          Logging::RLogger.instance.info("connection expired at #{ap},remains #{@pool[ap].length}")
+          @logger.info("connection expired at #{ap},remains #{@pool[ap].length}")
         end
         return create_connection(ap) unless ret
 
         ret
       rescue StandardError => e
-        Logging::RLogger.instance.error("#{__FILE__}:#{__LINE__}:#{e}")
+        @logger.error("#{__FILE__}:#{__LINE__}:#{e}")
         nil
       end
 
@@ -50,7 +54,7 @@ module Roma
       rescue Errno::ECONNREFUSED
         false
       rescue StandardError => e
-        Logging::RLogger.instance.error("#{__FILE__}:#{__LINE__}:#{e}")
+        @logger.error("#{__FILE__}:#{__LINE__}:#{e}")
       end
 
       def checkin(ap, con)
@@ -70,7 +74,7 @@ module Roma
           @pool[ap] = [[con, Time.now]]
         end
       rescue StandardError => e
-        Logging::RLogger.instance.error("#{__FILE__}:#{__LINE__}:#{e}")
+        @logger.error("#{__FILE__}:#{__LINE__}:#{e}")
       end
 
       def create_connection(ap)
@@ -87,7 +91,7 @@ module Roma
       def authenticate(ap, sock)
         return if PeerAuth.authenticate(sock, @secret)
 
-        Logging::RLogger.instance.warn("#{ap} rejected the secret of the cluster")
+        @logger.warn("#{ap} rejected the secret of the cluster")
       rescue StandardError
         sock.close
         raise
@@ -116,7 +120,7 @@ module Roma
             begin
               @pool[ap].shift[0].close
             rescue StandardError => e
-              Roma::Logging::RLogger.instance.error("#{__FILE__}:#{__LINE__}:#{e}")
+              @logger.error("#{__FILE__}:#{__LINE__}:#{e}")
             end
           end
           @pool.delete(ap)

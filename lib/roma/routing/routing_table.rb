@@ -1,4 +1,3 @@
-require 'roma/logging/rlogger'
 require 'roma/routing/routing_data'
 require 'roma/routing/merkle_tree'
 require 'json'
@@ -11,8 +10,9 @@ module Roma
                   :divide_bits
       attr_accessor :failure_count_threshold, :failure_count_gap, :node_id_substitutions
 
-      def initialize(routing_data)
-        @logger = Roma::Logging::RLogger.instance
+      # +logger+ is where it logs, such as a lost vnode.
+      def initialize(routing_data, logger:)
+        @logger = logger
         @routing_data = routing_data
         @redundancy = @routing_data.redundancy
         @divide_bits = @routing_data.divide_bits

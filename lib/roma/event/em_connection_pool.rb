@@ -4,7 +4,7 @@
 require 'singleton'
 require 'socket'
 require 'eventmachine'
-require 'roma/logging/rlogger'
+require 'logger'
 require 'roma/dns_cache'
 require 'roma/event/em_connection'
 require 'roma/peer_auth'
@@ -23,8 +23,12 @@ module Roma
       # The secret of the cluster, by which a new connection is
       # authenticated, or nil. See PeerAuth.
       attr_accessor :secret
+      # Where it and its connections log. The server sets its logger; before
+      # it, nowhere.
+      attr_accessor :logger
 
       def initialize
+        @logger = Logger.new(nil)
         @pool = {}
         @maxlength = 30
         @expire_time = 30
@@ -37,7 +41,7 @@ module Roma
         if ret && @expire_time != 0 && ret.last_access < Time.now - @expire_time
           ret.close_connection if ret.connected
           ret = nil
-          Logging::RLogger.instance.info("EM connection expired at #{ap},remains #{@pool[ap].length}")
+          @logger.info("EM connection expired at #{ap},remains #{@pool[ap].length}")
         end
         ret = create_connection(ap) if ret.nil? || ret.connected != true
         ret.comm_inactivity_timeout = @timeout
@@ -52,7 +56,7 @@ module Roma
         return if @secret.nil? || !con.authenticated.nil?
 
         con.authenticated = PeerAuth.authenticate(con, @secret)
-        Logging::RLogger.instance.warn("#{con.ap} rejected the secret of the cluster") unless con.authenticated
+        @logger.warn("#{con.ap} rejected the secret of the cluster") unless con.authenticated
       rescue StandardError
         con.close_connection
         raise
@@ -84,6 +88,7 @@ module Roma
         con = EventMachine.connect(addr, port, Roma::Event::EMConnection)
         con.pending_connect_timeout = @timeout
         con.ap = ap
+        con.logger = @logger
         con
       end
 
@@ -106,7 +111,7 @@ module Roma
             begin
               @pool[ap].shift.close_connection
             rescue StandardError => e
-              Roma::Logging::RLogger.instance.error("#{__FILE__}:#{__LINE__}:#{e.inspect}")
+              @logger.error("#{__FILE__}:#{__LINE__}:#{e.inspect}")
             end
           end
           @pool.delete(ap)
