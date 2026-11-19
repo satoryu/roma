@@ -121,8 +121,8 @@ module Roma
         @eventloop = false
         begin
           # initialize an instance of connections as restarting of an evantmachine
-          Event::Handler.connections.each_key do |k|
-            k.close_connection
+          Event::Handler.connections.each_key do |client_connection|
+            client_connection.close_connection
           rescue Exception => e
             @logger.error("#{e}\n#{$@}")
           end
@@ -135,28 +135,28 @@ module Roma
             # a management of connections lives
             EventMachine.add_periodic_timer(10) do
               if Event::Handler.connection_expire_time > 0
-                dellist = []
-                Event::Handler.connections.each do |k, _v|
-                  if k.connected == false || k.last_access.nil?
-                    dellist << k
-                  elsif k.last_access < Time.now - Event::Handler.connection_expire_time
+                connections_to_remove = []
+                Event::Handler.connections.each_key do |client_connection|
+                  if client_connection.connected == false || client_connection.last_access.nil?
+                    connections_to_remove << client_connection
+                  elsif client_connection.last_access < Time.now - Event::Handler.connection_expire_time
                     begin
-                      k.close_connection
-                      if k.addr
-                        @logger.info("connection expired from #{k.addr}:#{k.port},lastcmd = #{k.lastcmd}")
+                      client_connection.close_connection
+                      if client_connection.addr
+                        @logger.info("connection expired from #{client_connection.addr}:#{client_connection.port},lastcmd = #{client_connection.lastcmd}")
                       else
                         @logger.info('connection expired in irregular connection')
-                        dellist << k
+                        connections_to_remove << client_connection
                       end
                     rescue Exception => e
                       @logger.error("#{e}\n#{$@}")
-                      dellist << k
+                      connections_to_remove << client_connection
                     end
                   end
                 end
-                dellist.each do |k|
-                  @logger.info("delete connection lastcmd = #{k.lastcmd}")
-                  Event::Handler.connections.delete(k)
+                connections_to_remove.each do |client_connection|
+                  @logger.info("delete connection lastcmd = #{client_connection.lastcmd}")
+                  Event::Handler.connections.delete(client_connection)
                 end
               end
             end
