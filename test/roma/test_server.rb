@@ -383,11 +383,11 @@ class ServerInitializeTest < Test::Unit::TestCase
   def test_initialize_routing_table_join_errors
     node = fake_node
     @server.stats.join_node_id = 'localhost_1'
-    assert_raise_message(/No respons/) { call(:initialize_routing_table_join) }
+    assert_raise_message(/No response/) { call(:initialize_routing_table_join) }
 
     @server.stats.join_node_id = node.node_id
     @server.stats.name = 'other'
-    assert_raise_message(/diffarent name/) { call(:initialize_routing_table_join) }
+    assert_raise_message(/different name/) { call(:initialize_routing_table_join) }
 
     @server.stats.name = 'ROMA'
     node.replies['routingdump'] = "0\r\n"
@@ -404,6 +404,30 @@ class ServerInitializeTest < Test::Unit::TestCase
     assert_raise_message(/Hotscale initialize failed/) { call(:initialize_routing_table_join) }
   ensure
     @server.routing_table&.close_log
+  end
+
+  data('added' => ["ADDED\r\n", nil],
+       'busy' => ["SERVER_ERROR busy\r\n", /is busy/],
+       'closed' => [:close, /is busy/],
+       'authentication' => ["CLIENT_ERROR authentication required\r\n", /needs the secret of the cluster/])
+  def test_request_join(data)
+    reply, message = data
+    node = fake_node
+    node.replies['join'] = reply
+    if message
+      assert_raise_message(/\AHotscale initialize failed\.\n#{node.node_id} #{message.source}/) do
+        call(:request_join, node.node_id)
+      end
+    else
+      assert_nil call(:request_join, node.node_id)
+    end
+    assert_equal ["join #{ap}"], node.commands
+  end
+
+  def test_request_join_to_a_node_down
+    assert_raise_message("Hotscale initialize failed.\nlocalhost_1 unreachable connection.") do
+      call(:request_join, 'localhost_1')
+    end
   end
 end
 

@@ -98,7 +98,7 @@ module Roma
       return false unless name
 
       if name != @stats.name
-        @logger.error("#{node_id} has diffarent name.")
+        @logger.error("#{node_id} has different name.")
         @logger.error("me = \"#{@stats.name}\"  #{node_id} = \"#{name}\"")
         return false
       end
