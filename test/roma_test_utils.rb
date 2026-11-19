@@ -111,7 +111,7 @@ module RomaTestUtils
 
     until client.routing_table.nodes.include?(node)
       sleep 1
-      client.update_rttable
+      client.update_routing_table
       wait_count += 1
       raise "#{__method__} timeout" if wait_count > DEFAULT_TIMEOUT_SEC
     end

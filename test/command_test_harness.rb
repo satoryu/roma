@@ -97,8 +97,8 @@ class CommandTestHarness
       @replica_nodelist = [node_id]
     end
 
-    def update_rttable(node_id)
-      @replica_rttable = "routing_table of #{node_id}"
+    def update_routing_table(node_id)
+      @replica_routing_table = "routing_table of #{node_id}"
     end
   end
 

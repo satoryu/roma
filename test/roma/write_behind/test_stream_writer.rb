@@ -58,19 +58,19 @@ class StreamWriterTest < Test::Unit::TestCase
   end
 
   # The routing table is read in the binary format, not by Marshal.
-  def test_update_rttable
+  def test_update_routing_table
     routing_data = Roma::Routing::RoutingData.create(32, 3, 1, %w(replica_1))
     dump = routing_data.dump_binary
     sw = writer('replica_1' => "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n")
-    sw.update_rttable('replica_1')
-    assert_equal routing_data.routes, sw.replica_rttable.routes
+    sw.update_routing_table('replica_1')
+    assert_equal routing_data.routes, sw.replica_routing_table.routes
   end
 
-  def test_update_rttable_with_marshal
+  def test_update_routing_table_with_marshal
     dump = Marshal.dump(Roma::Routing::RoutingData.create(32, 3, 1, %w(replica_1)))
     sw = writer('replica_1' => "#{dump.bytesize}\r\n#{dump}\r\nEND\r\n")
-    sw.update_rttable('replica_1')
-    assert_nil sw.replica_rttable
+    sw.update_routing_table('replica_1')
+    assert_nil sw.replica_routing_table
   end
 
   # A failed write to the replica cluster logs the key and the length of the

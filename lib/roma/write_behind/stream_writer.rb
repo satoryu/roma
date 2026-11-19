@@ -7,7 +7,7 @@ module Roma
   module WriteBehind
     class StreamWriter
       attr_accessor :run_replication, :run_existing_data_replication
-      attr_reader :replica_mklhash, :replica_nodelist, :replica_rttable
+      attr_reader :replica_mklhash, :replica_nodelist, :replica_routing_table
 
       # +pool+ gives the connections to the nodes of the replica cluster.
       def initialize(logger, pool: Roma::Messaging::ConnectionPool.instance)
@@ -17,7 +17,7 @@ module Roma
         @run_existing_data_replication = false
         @replica_mklhash = nil
         @replica_nodelist = []
-        @replica_rttable = nil
+        @replica_routing_table = nil
         @do_transmit = false
       end
 
@@ -36,7 +36,7 @@ module Roma
       def activate(node_id, existing_data: false)
         update_mklhash(node_id)
         update_nodelist(node_id)
-        update_rttable(node_id)
+        update_routing_table(node_id)
         @run_replication = true
         @run_existing_data_replication = true if existing_data
       end
@@ -44,7 +44,7 @@ module Roma
       def deactivate
         @replica_mklhash = nil
         @replica_nodelist = []
-        @replica_rttable = nil
+        @replica_routing_table = nil
         @run_replication = false
         @run_existing_data_replication = false
       end
@@ -92,7 +92,7 @@ module Roma
         @logger.error("#{e}\n#{$@}")
       end
 
-      def update_rttable(node_id)
+      def update_routing_table(node_id)
         Timeout.timeout(1) do
           con = @pool.checkout(node_id)
           con.write "routingdump bin\r\n"
@@ -109,8 +109,8 @@ module Roma
           con.gets
           routing_data = Roma::Routing::RoutingData.decode_binary(routes)
           @pool.checkin(node_id, con)
-          @replica_rttable = routing_data
-          @logger.debug("replica_rttable has updated: [#{@replica_rttable}]")
+          @replica_routing_table = routing_data
+          @logger.debug("replica_routing_table has updated: [#{@replica_routing_table}]")
         end
       rescue StandardError => e
         @logger.error("#{e}\n#{$@}")
@@ -118,8 +118,8 @@ module Roma
       end
 
       def search_replica_primary_node(key)
-        d = Digest::SHA1.hexdigest(key).hex % (2**@replica_rttable.digest_bits)
-        nodes = @replica_rttable.routes[d & @replica_rttable.search_mask]
+        d = Digest::SHA1.hexdigest(key).hex % (2**@replica_routing_table.digest_bits)
+        nodes = @replica_routing_table.routes[d & @replica_routing_table.search_mask]
         nodes[0] # for send primary node of replica cluster
       rescue StandardError => e
         @logger.error("#{e}\n#{$@}")

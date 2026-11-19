@@ -77,7 +77,7 @@ module Roma
         node_id = @cluster_replication_writer.replica_nodelist.sample
         @cluster_replication_writer.update_mklhash(node_id)
         @cluster_replication_writer.update_nodelist(node_id)
-        @cluster_replication_writer.update_rttable(node_id)
+        @cluster_replication_writer.update_routing_table(node_id)
       end
 
       @stats.clear_counters

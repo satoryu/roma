@@ -274,9 +274,9 @@ class ServerInitializeTest < Test::Unit::TestCase
     assert_equal Roma.config.storage.clean_up_interval, @server.stats.clean_up_interval
   end
 
-  def test_initialize_rttable
+  def test_initialize_routing_table
     save_routing([ap, OTHER_NODE_ID])
-    call(:initialize_rttable)
+    call(:initialize_routing_table)
     routing_table = @server.routing_table
     assert_equal [OTHER_NODE_ID, ap].sort, routing_table.nodes.sort
     assert_equal Roma.config.routing.lost_action, routing_table.lost_action
@@ -286,13 +286,13 @@ class ServerInitializeTest < Test::Unit::TestCase
     assert_equal 'start_get_routing_event', Roma::AsyncEvent.queue.pop.event
   end
 
-  def test_initialize_rttable_without_a_file
-    assert_raise_message(/not found/) { call(:initialize_rttable) }
+  def test_initialize_routing_table_without_a_file
+    assert_raise_message(/not found/) { call(:initialize_routing_table) }
   end
 
   def test_leave_proc
     save_routing([ap, OTHER_NODE_ID])
-    call(:initialize_rttable)
+    call(:initialize_routing_table)
     Roma::AsyncEvent.queue.clear
     @server.routing_table.enabled_failover = true
     @server.routing_table.leave(OTHER_NODE_ID)
@@ -304,7 +304,7 @@ class ServerInitializeTest < Test::Unit::TestCase
   def test_recover_proc(data)
     auto_recover, messages = data
     save_routing([ap, OTHER_NODE_ID])
-    call(:initialize_rttable)
+    call(:initialize_routing_table)
     Roma::AsyncEvent.queue.clear
     @server.routing_table.auto_recover = auto_recover
     @server.routing_table.instance_variable_get(:@recover_proc).call('start_auto_recover_process')
@@ -313,7 +313,7 @@ class ServerInitializeTest < Test::Unit::TestCase
 
   def test_initialize_storages
     save_routing([ap, OTHER_NODE_ID])
-    call(:initialize_rttable)
+    call(:initialize_routing_table)
     path = "#{Roma.config.storage.path}/#{ap}"
     @files << path
     call(:initialize_storages)
@@ -350,14 +350,14 @@ class ServerInitializeTest < Test::Unit::TestCase
   end
 
   # Joining an existing cluster gets the routing table from a node of it.
-  def test_initialize_rttable_join
+  def test_initialize_routing_table_join
     node = fake_node
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [node.node_id])
     node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
     node.replies['join'] = "ADDED\r\n"
     @server.stats.join_node_id = node.node_id
     fname = routing_file
-    call(:initialize_rttable)
+    call(:initialize_routing_table)
     assert_equal [node.node_id, ap].sort, @server.routing_table.nodes.sort
     assert_include node.commands, "join #{ap}"
     # The routing table is saved for the next start.
@@ -365,7 +365,7 @@ class ServerInitializeTest < Test::Unit::TestCase
   end
 
   # routing.table_class is taken when it joins too.
-  def test_initialize_rttable_join_with_table_class
+  def test_initialize_routing_table_join_with_table_class
     node = fake_node
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [node.node_id])
     node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
@@ -374,34 +374,34 @@ class ServerInitializeTest < Test::Unit::TestCase
     table_class = Class.new(Roma::Routing::ChurnbasedRoutingTable)
     Roma.config.routing.table_class = table_class
     routing_file
-    call(:initialize_rttable)
+    call(:initialize_routing_table)
     assert_instance_of table_class, @server.routing_table
   ensure
     Roma.config.routing.table_class = nil
   end
 
-  def test_initialize_rttable_join_errors
+  def test_initialize_routing_table_join_errors
     node = fake_node
     @server.stats.join_node_id = 'localhost_1'
-    assert_raise_message(/No respons/) { call(:initialize_rttable_join) }
+    assert_raise_message(/No respons/) { call(:initialize_routing_table_join) }
 
     @server.stats.join_node_id = node.node_id
     @server.stats.name = 'other'
-    assert_raise_message(/diffarent name/) { call(:initialize_rttable_join) }
+    assert_raise_message(/diffarent name/) { call(:initialize_routing_table_join) }
 
     @server.stats.name = 'ROMA'
     node.replies['routingdump'] = "0\r\n"
-    assert_raise_message(/failed in getting the routing table/) { call(:initialize_rttable_join) }
+    assert_raise_message(/failed in getting the routing table/) { call(:initialize_routing_table_join) }
 
     routing_file
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [node.node_id, ap])
     node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
-    assert_raise_message(/already contained/) { call(:initialize_rttable_join) }
+    assert_raise_message(/already contained/) { call(:initialize_routing_table_join) }
 
     routing_data = Roma::Routing::RoutingData.create(32, 3, 2, [node.node_id])
     node.replies['routingdump'] = "#{routing_data.dump_binary.bytesize}\r\n#{routing_data.dump_binary}\r\nEND\r\n"
     node.replies['join'] = "SERVER_ERROR busy\r\n"
-    assert_raise_message(/Hotscale initialize failed/) { call(:initialize_rttable_join) }
+    assert_raise_message(/Hotscale initialize failed/) { call(:initialize_routing_table_join) }
   ensure
     @server.routing_table&.close_log
   end
@@ -447,7 +447,7 @@ class ServerTimerTest < Test::Unit::TestCase
       def change_mklhash? = true
       def update_mklhash(node_id) = (self.updated = [node_id])
       def update_nodelist(node_id) = updated << node_id
-      def update_rttable(node_id) = updated << node_id
+      def update_routing_table(node_id) = updated << node_id
     end.new(true, ['localhost_21211'])
     set(startup: false, cluster_replication_writer: cluster_replication_writer)
     @server.stats.last_clean_up = Time.at(0)
