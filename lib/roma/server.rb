@@ -56,6 +56,9 @@ module Roma
     DEFAULT_CONFIG = 'config.rb'.freeze
     # Seconds that any regexp may take on a string in the server.
     REGEXP_TIMEOUT = 1.0
+    # Seconds between the checks for client connections to close or forget.
+    # An idle connection closes up to this long after connection.expire_time.
+    CONNECTION_EXPIRE_CHECK_INTERVAL = 10
 
     attr_reader :storages, :routing_table, :stats, :logger, :wb_writer, :cluster_replication_writer
 
@@ -133,7 +136,7 @@ module Roma
             EventMachine.start_server(address, @stats.port,
                                       Roma::Command::Receiver, self)
             # a management of connections lives
-            EventMachine.add_periodic_timer(10) do
+            EventMachine.add_periodic_timer(CONNECTION_EXPIRE_CHECK_INTERVAL) do
               if Event::Handler.connection_expire_time > 0
                 connections_to_remove = []
                 Event::Handler.connections.each_key do |client_connection|
