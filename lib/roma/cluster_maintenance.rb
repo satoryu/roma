@@ -8,11 +8,17 @@ module Roma
   module ClusterMaintenance
     include PeerCommand
 
+    # Seconds between the checks of the other nodes, for failover.
+    WATCH_CLUSTER_INTERVAL = 1
+    # Seconds between the other jobs: the versions, syncing the routing
+    # table, cleaning up the storages and the old transactions.
+    MAINTAIN_CLUSTER_INTERVAL = 10
+
     private
 
     def start_periodic_jobs
-      run_periodically(1, :watch_cluster)
-      run_periodically(10, :maintain_cluster)
+      run_periodically(WATCH_CLUSTER_INTERVAL, :watch_cluster)
+      run_periodically(MAINTAIN_CLUSTER_INTERVAL, :maintain_cluster)
     end
 
     # Calls +job+ every +interval+ seconds in a thread named after it. An

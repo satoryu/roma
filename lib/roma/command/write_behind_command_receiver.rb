@@ -9,6 +9,10 @@ module Roma
     module WriteBehindCommandReceiver
       extend Authentication
 
+      # Seconds that switch_replication may take to reach the replica
+      # cluster, since it runs in the event loop.
+      SWITCH_REPLICATION_TIMEOUT = 1
+
       # switch_replication sends the data to the nodes of another cluster.
       # The r* commands are those that the other nodes relay.
       require_authentication :switch_replication, :wb_command_map, :writebehind_rotate,
@@ -165,7 +169,7 @@ module Roma
       # and returns the reply.
       def switch_replication(s)
         writer = @server.cluster_replication_writer
-        Timeout.timeout(1) do
+        Timeout.timeout(SWITCH_REPLICATION_TIMEOUT) do
           if s[1] == 'true'
             writer.activate(s[2], existing_data: s[3] == 'all')
             if s[3] == 'all'

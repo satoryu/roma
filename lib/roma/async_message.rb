@@ -1,5 +1,10 @@
 module Roma
   class AsyncMessage
+    # How many times an event that fails is tried again, and the seconds to
+    # wait before each.
+    RETRY_MAX = 10
+    RETRY_WAIT = 0.1
+
     attr_accessor :event, :args, :callback
 
     def initialize(ev, ag = nil, &cb)
@@ -7,8 +12,8 @@ module Roma
       @args = ag
       @callback = cb
       @retry_count = 0
-      @retry_max = 10
-      @retry_wait = 0.1
+      @retry_max = RETRY_MAX
+      @retry_wait = RETRY_WAIT
     end
 
     def retry?

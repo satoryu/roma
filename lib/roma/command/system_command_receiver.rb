@@ -204,6 +204,17 @@ module Roma
       end
       private :send_stat_result
 
+      # The data copy for each priority of dcnice, from 1, the highest, to 5:
+      # stats.stream_copy_wait, and each_vn_dump_sleep and
+      # each_vn_dump_sleep_count of the storages.
+      DCNICE = {
+        1 => [0.001, 0.001, 1000],
+        2 => [0.005, 0.005, 100],
+        3 => [0.01, 0.001, 10], # the default
+        4 => [0.01, 0.005, 10],
+        5 => [0.01, 0.01, 10]
+      }.freeze
+
       # dcnice command is setting priority for a data-copy thread.
       # a niceness of 1 is the highest priority and 5 is the lowest priority.
       # dcnice <priority:1 to 5>
@@ -611,39 +622,12 @@ module Roma
       end
 
       def dcnice(p)
-        case p
-        when 1 # highest priority
-          @stats.stream_copy_wait = 0.001
-          @storages.each_value do |st|
-            st.each_vn_dump_sleep = 0.001
-            st.each_vn_dump_sleep_count = 1000
-          end
-        when 2
-          @stats.stream_copy_wait = 0.005
-          @storages.each_value do |st|
-            st.each_vn_dump_sleep = 0.005
-            st.each_vn_dump_sleep_count = 100
-          end
-        when 3 # default priority
-          @stats.stream_copy_wait = 0.01
-          @storages.each_value do |st|
-            st.each_vn_dump_sleep = 0.001
-            st.each_vn_dump_sleep_count = 10
-          end
-        when 4
-          @stats.stream_copy_wait = 0.01
-          @storages.each_value do |st|
-            st.each_vn_dump_sleep = 0.005
-            st.each_vn_dump_sleep_count = 10
-          end
-        when 5 # lowest priority
-          @stats.stream_copy_wait = 0.01
-          @storages.each_value do |st|
-            st.each_vn_dump_sleep = 0.01
-            st.each_vn_dump_sleep_count = 10
-          end
-        else
-          return 'CLIENT_ERROR You sholud input a priority from 1 to 5.'
+        return 'CLIENT_ERROR You sholud input a priority from 1 to 5.' unless DCNICE.key?(p)
+
+        @stats.stream_copy_wait, dump_sleep, dump_sleep_count = DCNICE[p]
+        @storages.each_value do |st|
+          st.each_vn_dump_sleep = dump_sleep
+          st.each_vn_dump_sleep_count = dump_sleep_count
         end
         @stats.dcnice = p
         'STORED'

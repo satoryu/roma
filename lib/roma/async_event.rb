@@ -12,6 +12,13 @@ module Roma
     include StorageMaintenance
     include LogGathering
 
+    # Seconds to wait for a node to answer a redundant write or delete.
+    REDUNDANT_TIMEOUT = 10
+    # When the server stops, it checks every STOP_CHECK_INTERVAL seconds,
+    # up to STOP_CHECK_COUNT times, whether the queue is empty.
+    STOP_CHECK_INTERVAL = 0.1
+    STOP_CHECK_COUNT = 100
+
     @@async_queue = Queue.new
 
     def self.queue
@@ -31,9 +38,9 @@ module Roma
 
     def stop_async_event_loop
       count = 0
-      while @@async_queue.empty? == false && count < 100
+      while @@async_queue.empty? == false && count < STOP_CHECK_COUNT
         count += 1
-        sleep 0.1
+        sleep STOP_CHECK_INTERVAL
       end
       @async_thread.exit
     end
@@ -81,7 +88,7 @@ module Roma
         @logger.warn("async rdelete failed:#{node_id} does not found in routing table.#{k}\e#{hash_name} #{clock}")
         return true # no retry
       end
-      res = async_send_cmd(node_id, "rdelete #{k}\e#{hash_name} #{clock}\r\n", 10)
+      res = async_send_cmd(node_id, "rdelete #{k}\e#{hash_name} #{clock}\r\n", REDUNDANT_TIMEOUT)
       unless res
         @logger.warn("async redundant failed:#{k}\e#{hash_name} #{clock} -> #{node_id}")
         return false # retry
@@ -120,7 +127,7 @@ module Roma
         @logger.warn("async #{command} failed:#{node_id} does not found in routing table.#{request}")
         return true # no retry
       end
-      res = async_send_cmd(node_id, "#{command} #{request}\r\n#{v}\r\n", 10)
+      res = async_send_cmd(node_id, "#{command} #{request}\r\n#{v}\r\n", REDUNDANT_TIMEOUT)
       if res.nil? || res.start_with?('ERROR')
         @logger.warn("async #{command} failed:#{request} -> #{node_id}")
         return false # retry

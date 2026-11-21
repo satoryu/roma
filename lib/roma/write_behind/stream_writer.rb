@@ -6,6 +6,12 @@ require 'roma/routing/routing_data'
 module Roma
   module WriteBehind
     class StreamWriter
+      # Seconds to wait for the replica cluster to answer a query for its
+      # mklhash, nodes or routing table.
+      QUERY_TIMEOUT = 1
+      # Seconds to wait for it to take a write.
+      TRANSMIT_TIMEOUT = 5
+
       attr_accessor :run_replication, :run_existing_data_replication
       attr_reader :replica_mklhash, :replica_nodelist, :replica_routing_table
 
@@ -69,7 +75,7 @@ module Roma
       end
 
       def update_mklhash(node_id)
-        Timeout.timeout(1) do
+        Timeout.timeout(QUERY_TIMEOUT) do
           con = @pool.checkout(node_id)
           con.write("mklhash 0\r\n")
           @replica_mklhash = con.gets.chomp
@@ -81,7 +87,7 @@ module Roma
       end
 
       def update_nodelist(node_id)
-        Timeout.timeout(1) do
+        Timeout.timeout(QUERY_TIMEOUT) do
           con = @pool.checkout(node_id)
           con.write("nodelist\r\n")
           @replica_nodelist = con.gets.chomp.split("\s")
@@ -93,7 +99,7 @@ module Roma
       end
 
       def update_routing_table(node_id)
-        Timeout.timeout(1) do
+        Timeout.timeout(QUERY_TIMEOUT) do
           con = @pool.checkout(node_id)
           con.write "routingdump bin\r\n"
           routes_length = con.gets.to_i
@@ -128,7 +134,7 @@ module Roma
 
       # +value+ is for the error log, which has its length.
       def transmit(cmd, key, value)
-        Timeout.timeout(5) do
+        Timeout.timeout(TRANSMIT_TIMEOUT) do
           @do_transmit = true
           node_id = search_replica_primary_node(key)
           con = @pool.checkout(node_id)

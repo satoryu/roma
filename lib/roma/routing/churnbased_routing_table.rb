@@ -6,6 +6,9 @@ module Roma
     class ChurnbasedRoutingTable < RoutingTable
       include Routing::RandomPartitioner
 
+      # Bytes of the routing log, after which it is rotated.
+      LOG_SHIFT_SIZE = 1000 * 1024
+
       attr_reader :fname, :log_fd, :log_name, :transactions, :leave_proc, :lost_proc, :recover_proc, :version_of_nodes, :min_version, :enabled_failover # transaction
       attr_accessor :lost_action, :auto_recover, :auto_recover_status, :auto_recover_time, :event, :event_limit_line,
                     :logs
@@ -89,8 +92,7 @@ module Roma
       end
 
       def write_log(line)
-        # log rotation
-        if File.stat(@log_name).size > 1000 * 1024
+        if File.stat(@log_name).size > LOG_SHIFT_SIZE
           close_log
           open_log
         end
@@ -334,7 +336,7 @@ module Roma
       end
 
       # +sec+: elapsed-time
-      def delete_old_transactions(sec = 3600)
+      def delete_old_transactions(sec)
         @transactions.delete_if { |_vnode, val| val[1] < Time.now - sec }
       end
 

@@ -80,7 +80,7 @@ module Roma
       @spushv_klength_warn = 1024 # 1kB
       @spushv_vlength_warn = 1024 * 1024 # 1MB
       @spushv_read_timeout = 100
-      @reqpushv_timeout_count = 300 # 0.1 * 300 sec
+      @reqpushv_timeout_count = 300 # times of AsyncEvent::VnodeTransfer::REQPUSHV_CHECK_INTERVAL: 30 sec
       @routing_transaction_timeout = 3600 * 3 # 3hr
       @log_shift_size = Configuration::Log.default(:shift_size)
       @log_shift_age = Configuration::Log.default(:shift_age)

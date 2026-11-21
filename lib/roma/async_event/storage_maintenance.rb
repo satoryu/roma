@@ -3,6 +3,9 @@ module Roma
     # The processes that clean up, flush and clean the caches of the
     # storages.
     module StorageMaintenance
+      # Seconds to keep the logs that gather_logs gathered for show_logs.
+      GATHERED_LOGS_KEEP_TIME = 60 * 5
+
       private
 
       def asyncev_start_storage_clean_up_process(_args)
@@ -67,8 +70,7 @@ module Roma
           false
         else
           gathered_time = @routing_table.logs[0]
-          # delete gathering log data after 5min
-          @routing_table.logs.clear if gathered_time.to_i < Time.now.to_i - (60 * 5)
+          @routing_table.logs.clear if gathered_time.to_i < Time.now.to_i - GATHERED_LOGS_KEEP_TIME
         end
       ensure
         @logger.info("#{__method__}:stop")

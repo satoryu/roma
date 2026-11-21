@@ -11,6 +11,9 @@ module Roma
       # They read the logs of every node.
       require_authentication :gather_logs, :show_logs
 
+      # show_logs waits stats.stream_show_wait every this many lines.
+      SHOW_LOGS_LINES_PER_WAIT = 10
+
       # get_routing_history
       def ev_get_routing_history(_s)
         routing_path = config_stat['config.routing.path']
@@ -56,7 +59,7 @@ module Roma
         else
           @routing_table.logs.each_with_index do |log, index|
             send_data("#{log}\r\n")
-            sleep @stats.stream_show_wait if index % 10 == 0
+            sleep @stats.stream_show_wait if index % SHOW_LOGS_LINES_PER_WAIT == 0
           end
           send_data("END\r\n")
           @routing_table.logs.clear
