@@ -1017,14 +1017,14 @@ module Roma
 
         count = 0
         loop do
-          context_bin = read_bytes(20, 100)
+          context_bin = read_bytes(20, @stats.spushv_read_timeout)
           vnode, last, clock, expire_time, klen = context_bin.unpack('NNNNN')
           break if klen == 0 # end of dump ?
 
           k = read_stream_bytes(klen)
-          vlen_bin = read_bytes(4, 100)
+          vlen_bin = read_bytes(4, @stats.spushv_read_timeout)
           vlen, =  vlen_bin.unpack('N')
-          v = read_stream_bytes(vlen, 100)
+          v = read_stream_bytes(vlen, @stats.spushv_read_timeout)
           val = to_alist_value(v)
           if val
             # @logger.debug("listdata #{vnode} #{k} #{val.inspect}")
