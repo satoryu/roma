@@ -1,4 +1,5 @@
 require 'singleton'
+require 'roma/configuration'
 
 module Roma
   class Stats
@@ -58,10 +59,10 @@ module Roma
       @last_clean_up = Time.now
       @gui_last_snapshot = []
       @spushv_protection = false
-      @stream_copy_wait = 0.0001
-      @stream_show_wait = 0.001
+      @stream_copy_wait = Configuration::DataCopy.default(:stream_copy_wait)
+      @stream_show_wait = Configuration::Log.default(:stream_show_wait)
       @dcnice = 3
-      @clean_up_interval = 300
+      @clean_up_interval = Configuration::Storage.default(:clean_up_interval)
       @enabled_vnodes_balance = nil
       @write_count = 0
       @read_count = 0
@@ -69,7 +70,7 @@ module Roma
       @out_count = 0
       @out_message_count = 0
       @redundant_count = 0
-      @compression_threshold = 0
+      @compression_threshold = Configuration::Redundant.default(:compression_threshold)
       @hilatency_warn_time = 5.0
       @wb_command_map = {}
       @latency_log = false
@@ -81,9 +82,9 @@ module Roma
       @spushv_read_timeout = 100
       @reqpushv_timeout_count = 300 # 0.1 * 300 sec
       @routing_transaction_timeout = 3600 * 3 # 3hr
-      @log_shift_size = 1_048_576
-      @log_shift_age = 0
-      @log_level = :debug
+      @log_shift_size = Configuration::Log.default(:shift_size)
+      @log_shift_age = Configuration::Log.default(:shift_age)
+      @log_level = Configuration::Log.default(:level)
     end
 
     def my_node_id

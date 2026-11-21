@@ -44,6 +44,9 @@ module Roma
         attr_reader name
       end
 
+      # The default of the setting +name+.
+      def self.default(name) = settings.fetch(name)
+
       def self.settings
         @settings ||= {}
       end
