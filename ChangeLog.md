@@ -164,6 +164,7 @@ The server logs by the standard `Logger`, which it makes and gives to what logs,
 * `Roma::Logging::StderrWrapper`, which nothing used, is removed.
 
 ### Fixes
+* `set_spushv_read_timeout` applies to `alist_spushv` too, which waited for the stream of a vnode for 100 times the read timeout whatever the setting
 * A write that is sent to the replica cluster isn't also written to the write-behind files, where it made a file `wb/<node>//<date>/<n>.wb` and raised TypeError for each write [#134](https://github.com/satoryu/roma/issues/134)
 * The files that the server makes (storages, logs, write-behind, routing logs, the pid file) aren't readable by other users: the server sets the umask to `config.umask`, 0o027 by default, at start. They were made by the umask of the process, usually 0o022, so readable by everyone [#134](https://github.com/satoryu/roma/issues/134)
 * `get_expt` doesn't find a deleted or expired key, as `get` doesn't. It replied the expire time of a delete mark (1970) or of an expired key, which told that the key had been there [#134](https://github.com/satoryu/roma/issues/134)
