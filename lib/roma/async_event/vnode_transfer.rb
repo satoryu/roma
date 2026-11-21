@@ -5,6 +5,17 @@ module Roma
     # The processes that move the vnodes between the nodes: join, balance,
     # recover, release, and copying the data to the replica cluster.
     module VnodeTransfer
+      # Seconds between the checks whether the auto recover is still waiting.
+      AUTO_RECOVER_CHECK_INTERVAL = 1
+      # Seconds between the requests for vnodes to other nodes. Recover waits
+      # one more after a node rejects a request.
+      VNODE_REQUEST_INTERVAL = 1
+      # Seconds that join and balance wait after a node rejects a request.
+      REJECTED_REQUEST_WAIT = 5
+      # Seconds between the checks whether a requested vnode has come, up to
+      # stats.reqpushv_timeout_count times.
+      REQPUSHV_CHECK_INTERVAL = 0.1
+
       private
 
       def asyncev_start_join_process(_args)
@@ -87,7 +98,7 @@ module Roma
         t = Thread.new do
           Timeout.timeout(@routing_table.auto_recover_time) do
             loop do
-              sleep 1
+              sleep AUTO_RECOVER_CHECK_INTERVAL
               break if @routing_table.auto_recover_status != 'preparing'
               # break if @stats.run_join #run_join don't have possibility to be true in this case.
               break if @stats.run_recover
@@ -150,11 +161,11 @@ module Roma
 
           ret = req_push_a_vnode(vnode, nodes[0], is_primary)
           if ret == :rejected
-            sleep 1
+            sleep VNODE_REQUEST_INTERVAL
           elsif ret == false
             break
           end
-          sleep 1
+          sleep VNODE_REQUEST_INTERVAL
         end
         @logger.info("#{__method__} has done.")
       rescue StandardError => e
@@ -180,9 +191,9 @@ module Roma
           end
           ret = req_push_a_vnode(vnode, nodes[0], is_primary)
           if ret == :rejected
-            sleep 5
+            sleep REJECTED_REQUEST_WAIT
           else
-            sleep 1
+            sleep VNODE_REQUEST_INTERVAL
             count += 1
           end
         end
@@ -210,9 +221,9 @@ module Roma
           end
           ret = req_push_a_vnode(vnode, nodes[0], is_primary)
           if ret == :rejected
-            sleep 5
+            sleep REJECTED_REQUEST_WAIT
           else
-            sleep 1
+            sleep VNODE_REQUEST_INTERVAL
             count += 1
           end
         end
@@ -240,7 +251,7 @@ module Roma
         count = 0
         while @routing_table.search_nodes(vnode).include?(@stats.my_node_id) == false &&
               count < @stats.reqpushv_timeout_count
-          sleep 0.1
+          sleep REQPUSHV_CHECK_INTERVAL
           count += 1
         end
         if count >= @stats.reqpushv_timeout_count

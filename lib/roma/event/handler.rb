@@ -52,14 +52,10 @@ module Roma
         @@connection_expire_time
       end
 
-      @@timeout = 10
-      def self.timeout=(n)
-        @@timeout = n
-      end
-
-      def self.timeout
-        @@timeout
-      end
+      # Seconds that read_bytes waits for a client, times its +mult+.
+      READ_TIMEOUT = 10
+      # A distance to an unknown command below this suggests the command.
+      SIMILAR_COMMAND_DISTANCE = 0.2
 
       # Raised when a request is larger than a limit. The rest of it isn't
       # read, so it is replied and the connection is closed. It isn't a
@@ -185,7 +181,7 @@ module Roma
             next if @@system_commands.key?(@lastcmd[0].downcase)
           else
             distance, similar_cmd = Roma::Event::Distance.check_distance(s[0], @@event_list)
-            if distance < 0.2
+            if distance < SIMILAR_COMMAND_DISTANCE
               send_data("\r\nERROR: '#{s[0]}' is not roma command.\r\nDid you mean this?\r\n\t#{similar_cmd}\r\n")
               next
             else
@@ -251,7 +247,7 @@ module Roma
 
           remain = size + skip - @read_buffer.bytesize
           Fiber.yield(remain)
-          next unless monotonic_time - t > @@timeout * mult
+          next unless monotonic_time - t > READ_TIMEOUT * mult
 
           @logger.warn("#{__FILE__}:#{__LINE__}:#{@addr}:#{@port} read_bytes time out")
           close_connection
