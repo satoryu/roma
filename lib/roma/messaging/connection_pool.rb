@@ -3,6 +3,7 @@ require 'singleton'
 require 'logger'
 require 'roma/dns_cache'
 require 'roma/peer_auth'
+require 'roma/configuration'
 
 module Roma
   module Messaging
@@ -19,12 +20,12 @@ module Roma
       # Where it logs. The server sets its logger; before it, nowhere.
       attr_accessor :logger
 
-      def initialize(maxlength = 10, expire_time = 30)
+      def initialize
         @logger = Logger.new(nil)
         @pool = {}
-        @maxlength = maxlength
-        @expire_time = expire_time
-        @timeout = 10
+        @maxlength = Configuration::Pool.default(:max)
+        @expire_time = Configuration::Pool.default(:expire_time)
+        @timeout = Configuration::Pool.default(:timeout)
         @lock = Mutex.new
       end
 

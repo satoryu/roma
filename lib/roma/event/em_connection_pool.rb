@@ -8,6 +8,7 @@ require 'logger'
 require 'roma/dns_cache'
 require 'roma/event/em_connection'
 require 'roma/peer_auth'
+require 'roma/configuration'
 
 module Roma
   module Event
@@ -30,9 +31,9 @@ module Roma
       def initialize
         @logger = Logger.new(nil)
         @pool = {}
-        @maxlength = 30
-        @expire_time = 30
-        @timeout = 10
+        @maxlength = Configuration::EventMachinePool.default(:max)
+        @expire_time = Configuration::EventMachinePool.default(:expire_time)
+        @timeout = Configuration::EventMachinePool.default(:timeout)
         @lock = Mutex.new
       end
 

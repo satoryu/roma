@@ -17,10 +17,6 @@ module Roma
       @@system_commands = {}
       def self.system_commands = @@system_commands
 
-      @@continuous_limit_start = 200
-      @@continuous_limit_rate = 30
-      @@continuous_limit_full = 300
-
       def self.continuous_limit
         "#{@@continuous_limit_start}:#{@@continuous_limit_rate}:#{@@continuous_limit_full}"
       end
@@ -42,10 +38,12 @@ module Roma
         end
       end
 
+      update_continuous_limit(Configuration::Connection.default(:continuous_limit))
+
       @@connections = {}
       def self.connections = @@connections
 
-      @@connection_expire_time = 60
+      @@connection_expire_time = Configuration::Connection.default(:expire_time)
       def self.connection_expire_time=(t)
         @@connection_expire_time = t
       end
@@ -70,7 +68,7 @@ module Roma
       class RequestTooLarge < Exception; end # rubocop:disable Lint/InheritException
 
       # The longest request line, and the largest value, in bytes.
-      @@max_line_length = 1024 * 1024
+      @@max_line_length = Configuration::Connection.default(:max_line_length)
       def self.max_line_length=(n)
         @@max_line_length = n
       end
@@ -79,7 +77,7 @@ module Roma
         @@max_line_length
       end
 
-      @@max_value_size = 16 * 1024 * 1024
+      @@max_value_size = Configuration::Storage.default(:max_value_size)
       def self.max_value_size=(n)
         @@max_value_size = n
       end
@@ -98,10 +96,6 @@ module Roma
             add_event(m.to_s[3..-1], m) if m.to_s.start_with?('ev_')
           end
         end
-        @th1 = 100
-        @close_rate = 70
-        @th2 = 200
-
         @server = server
         @storages = server.storages
         @routing_table = server.routing_table

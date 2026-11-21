@@ -115,10 +115,11 @@ class SystemCommandReceiverTest < Test::Unit::TestCase
   end
 
   def test_set_log_shift_age_with_invalid_value
+    shift_age = @conn.stats.log_shift_age
     assert_equal "CLIENT_ERROR invalid arguments\r\n", @conn.request('set_log_shift_age yearly')
     assert_equal "CLIENT_ERROR invalid arguments\r\n", @conn.request('set_log_shift_age hour')
     assert_equal "CLIENT_ERROR invalid arguments\r\n", @conn.request('rset_log_shift_age yearly')
-    assert_equal 0, @conn.stats.log_shift_age
+    assert_equal shift_age, @conn.stats.log_shift_age
   end
 
   data('debug' => ['debug', Logger::DEBUG], 'info' => ['info', Logger::INFO],
